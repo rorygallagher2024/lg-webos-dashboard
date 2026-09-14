@@ -2886,6 +2886,82 @@ function mkdirp(dir) {
 }
 
 /*
+ * The staged app keeps LG's manifest - the id, window type and permissions the
+ * screen saver role expects - but not its type. A webOS 10 set ships the screen
+ * saver as a Flutter app, payload in lib/ and data/flutter_assets, and the mount
+ * puts a QML file where that payload was: SAM begins a launch that never draws,
+ * and tvpower parks at "Screen Saver Ready" and refuses every later request with
+ * "Invalid State change Request". Point type and main at what is actually
+ * staged. Where the stock screen saver is already QML these are the values it
+ * carried anyway.
+ */
+function stageScreensaverAppinfo() {
+  var stock = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8');
+  var out = stock;
+  try {
+    var info = JSON.parse(stock);
+    info.type = 'qml';
+    info.main = 'qml/main.qml';
+    out = JSON.stringify(info, null, 2);
+  } catch (e) {
+    console.error('screensaver: stock appinfo.json did not parse, staging it unchanged: ' + e.message);
+  }
+  fs.writeFileSync(path.join(SCREENSAVER_DIR, 'appinfo.json'), out);
+}
+
+/*
+ * SAM reads every appinfo.json once, when it starts, and hands an app to the
+ * runner that copy names - a manifest swapped underneath it goes unnoticed.
+ * /usr/palm/applications is "system_builtin" in sam-conf.json, so no install
+ * event covers it, and the bus offers no rescan: the service has to be
+ * restarted. Compare what SAM holds against the manifest now visible at the app
+ * directory, and restart only when they differ - which is the two swaps that
+ * change the type, stock to a replacement and back. A set whose screen saver is
+ * QML to begin with never differs and never pays for this.
+ */
+function ensureScreensaverRunner(cb) {
+  var staged;
+  try {
+    staged = JSON.parse(fs.readFileSync(
+      path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8')).type;
+  } catch (e) {
+    return cb(false);
+  }
+  luna('com.webos.applicationManager/getAppInfo', { id: 'com.webos.app.screensaver' }, function (r) {
+    var cached = r && r.appInfo && r.appInfo.type;
+    // No answer means the bus is not up yet. Leave the service alone.
+    if (!cached || cached === staged) return cb(false);
+    console.log('screensaver: sam holds the app as "' + cached + '" and it is now "'
+                + staged + '" - restarting sam so it reads the manifest again');
+    /*
+     * systemd, even though /etc/init/sam.conf is still on disk: upstart is not
+     * the init on this platform and initctl is inert.
+     *
+     * --no-block because the stop alone can take the best part of a minute -
+     * every app SAM started is in its cgroup and gets waited on, then killed.
+     * Nothing here needs to see the end of that, and a client that gives up on
+     * a timeout only orphans a restart that is happening anyway.
+     */
+    execFile('/bin/systemctl', ['restart', '--no-block', 'sam'], { timeout: 10000 }, function (e) {
+      if (e) console.error('screensaver: could not restart sam: ' + e.message);
+      cb(!e);
+    });
+  });
+}
+
+/*
+ * Two things go stale when the screen saver is swapped: what SAM thinks the app
+ * is, and the copy it has already loaded. A service restart settles the first
+ * and closes every app on the way, so the lighter refresh is for the other case.
+ */
+function settleScreensaverApp(cb) {
+  ensureScreensaverRunner(function (samRestarted) {
+    if (samRestarted) return cb();
+    restartScreensaverApp(cb);
+  });
+}
+
+/*
  * Unmount first, always. The stock appinfo.json has to be read from the real
  * app directory, and while a replacement is mounted that is exactly what is
  * hidden.
@@ -2897,7 +2973,7 @@ function setScreensaver(mode, level, cb) {
   execFile('/bin/umount', [SCREENSAVER_APP_DIR], { timeout: 4000 }, function () {
     if (mode === 'stock') {
       lastStats = null;
-      return restartScreensaverApp(function () {
+      return settleScreensaverApp(function () {
         cb({ ok: screensaverMode() === 'stock', current: screensaverMode(), level: screensaverLevel() });
       });
     }
@@ -2907,8 +2983,7 @@ function setScreensaver(mode, level, cb) {
 
     try {
       mkdirp(path.join(SCREENSAVER_DIR, 'qml'));
-      fs.writeFileSync(path.join(SCREENSAVER_DIR, 'appinfo.json'),
-                       fs.readFileSync(path.join(SCREENSAVER_APP_DIR, 'appinfo.json')));
+      stageScreensaverAppinfo();
       writeScreensaverQml(src, level);
       fs.writeFileSync(path.join(SCREENSAVER_DIR, SCREENSAVER_MARKER), mode);
     } catch (e) {
@@ -2917,7 +2992,7 @@ function setScreensaver(mode, level, cb) {
 
     execFile('/bin/mount', ['--bind', SCREENSAVER_DIR, SCREENSAVER_APP_DIR], { timeout: 4000 }, function (err) {
       lastStats = null;
-      restartScreensaverApp(function () {
+      settleScreensaverApp(function () {
         var now = screensaverMode();
         cb({ ok: !err && now === mode, current: now, level: screensaverLevel(),
              error: (!err && now === mode) ? undefined : 'the mount did not take' });

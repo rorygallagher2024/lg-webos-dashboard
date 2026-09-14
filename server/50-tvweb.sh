@@ -24,9 +24,23 @@ fi
 
 # Restore the chosen screen saver. The app directory is on the read-only
 # overlay, so the replacement is a bind mount and does not survive a reboot.
+#
+# sam.service is up well before this hook runs and reads each appinfo.json only
+# once, so where the replacement changes the app's type - as it does on a set
+# whose screen saver ships as Flutter - it has to read the file again or the
+# launch goes to the wrong runner and nothing draws. Comparing the manifest
+# either side of the mount says exactly when that is, with no call onto the bus.
+# Seconds into boot is the cheapest moment to restart it.
 if [ -f /var/lib/tvweb/screensaver/.tvweb-screensaver ]; then
-  mount --bind /var/lib/tvweb/screensaver \
-        /usr/palm/applications/com.webos.app.screensaver 2>/dev/null || true
+  ssapp=/usr/palm/applications/com.webos.app.screensaver
+  stock_type=$(sed -n 's/.*"type"[^"]*"\([^"]*\)".*/\1/p' "$ssapp/appinfo.json" 2>/dev/null)
+  mount --bind /var/lib/tvweb/screensaver "$ssapp" 2>/dev/null || true
+  staged_type=$(sed -n 's/.*"type"[^"]*"\([^"]*\)".*/\1/p' "$ssapp/appinfo.json" 2>/dev/null)
+  # --no-block: stopping sam waits on every app in its cgroup, which is most of
+  # a minute, and no hook may hold up boot for that.
+  if [ -n "$stock_type" ] && [ -n "$staged_type" ] && [ "$stock_type" != "$staged_type" ]; then
+    systemctl restart --no-block sam >/dev/null 2>&1 || true
+  fi
 fi
 
 # Detach fully so upstart/webosbrew startup is never held up by this.
