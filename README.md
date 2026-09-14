@@ -436,9 +436,20 @@ only where one is already installed.
 **A current curl or wget on the TV is required.** The stock pair cannot negotiate
 TLS with GitHub: `/usr/bin/curl` is 7.53.1 against OpenSSL 1.0.2, and busybox
 `wget` is no better. Without one the check says so and nothing else changes. The
-probe looks in `/usr/local/bin`, `/opt/bin`, `/opt/usr/bin`,
-`/var/lib/webosbrew/bin`, `/media/developer/bin` and `/home/root/bin`; point
+probe looks in the Homebrew Channel's own `/media/developer/bin` first, which is
+where the set this was confirmed on keeps its curl, then `/usr/local/bin`,
+`/opt/bin`, `/opt/usr/bin`, `/var/lib/webosbrew/bin` and `/home/root/bin`; point
 `"update": { "client": "/path/to/curl" }` at it if it lives somewhere else.
+
+`.previous` is a complete copy of the version that was replaced, so getting back
+does not depend on the installed `tvwebctl` having a `rollback` command:
+
+```bash
+ssh root@<tv-ip>
+/var/lib/tvweb/tvwebctl stop
+cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
+/var/lib/tvweb/tvwebctl start
+```
 
 ### Checking automatically
 

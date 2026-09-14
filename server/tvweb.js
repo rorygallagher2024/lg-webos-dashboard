@@ -3477,12 +3477,14 @@ var STAGE_DIR = path.join(INSTALL_DIR, '.update');
 var PREVIOUS_DIR = path.join(INSTALL_DIR, '.previous');
 
 /*
- * Where a rooted curl or wget tends to land, most likely first. /usr/bin and
- * /bin come last: the stock pair is there, and it is the pair that cannot do
- * the job - see probeFetch below.
+ * Where a rooted curl or wget tends to land, most likely first.
+ * /media/developer/bin is the Homebrew Channel's own bin directory and is where
+ * the one confirmed set had its curl; the rest are the other plausible places.
+ * /usr/bin and /bin come last: the stock pair is there, and it is the pair that
+ * cannot do the job - see probeFetch below.
  */
-var CLIENT_DIRS = ['/usr/local/bin', '/opt/bin', '/opt/usr/bin', '/var/lib/webosbrew/bin',
-                   '/media/developer/bin', '/home/root/bin', '/usr/bin', '/bin'];
+var CLIENT_DIRS = ['/media/developer/bin', '/usr/local/bin', '/opt/bin', '/opt/usr/bin',
+                   '/var/lib/webosbrew/bin', '/home/root/bin', '/usr/bin', '/bin'];
 var fetchClient = null;   // the one that answered, remembered for the next call
 
 var UPDATE = {
@@ -3557,6 +3559,49 @@ function execErr(err, stderr) {
   return m || (err && err.message) || 'failed';
 }
 
+/*
+ * The status GitHub answered with, where the client got one. Both clients name
+ * it on stderr:
+ *   busybox wget  wget: server returned error: HTTP/1.1 404 Not Found
+ *   GNU wget      ERROR 404: Not Found.
+ *   curl -fS      curl: (22) The requested URL returned error: 404
+ * Matched by phrase rather than by hunting for a 4xx-shaped number, which would
+ * also match "Failed to connect to api.github.com port 443".
+ *
+ * Returns -1 for an error whose status is not in the text: GNU wget under -q
+ * prints nothing at all, but both clients keep a dedicated exit code for "the
+ * server answered with an error" - curl 22, wget 8.
+ */
+function httpErrorStatus(err, stderr) {
+  var text = String(stderr || '');
+  var m = /returned error:?\s*(?:HTTP\/[\d.]+\s+)?([1-5]\d\d)/i.exec(text) ||
+          /\bERROR\s+([1-5]\d\d)\b/i.exec(text);
+  if (m) return parseInt(m[1], 10);
+  if (err && (err.code === 22 || err.code === 8)) return -1;
+  return 0;
+}
+
+function githubSaid(status, url) {
+  var where = String(url).replace(/^https?:\/\/[^\/]+/, '');
+  if (status === 404) {
+    return 'GitHub returned 404 for ' + where +
+           ' - no release published yet, or the repository is not visible';
+  }
+  if (status === 403 || status === 429) {
+    /*
+     * Hedged on purpose. All that is known is that something answered over
+     * HTTP, and 403 is equally what a proxy, a captive portal or a filtering
+     * resolver returns - naming only one cause would mislead as badly as the
+     * missing-client message this replaced.
+     */
+    return status + ' for ' + where +
+           ' - either the API rate limit for this address is spent (60 an hour ' +
+           'unauthenticated), or something on the network refused the request';
+  }
+  if (status > 0) return 'GitHub returned ' + status + ' for ' + where;
+  return 'GitHub answered with an error for ' + where;
+}
+
 function fetchArgs(bin, url, outFile) {
   var ua = 'tvweb/' + TVWEB_VERSION;
   /*
@@ -3608,6 +3653,17 @@ function probeFetch(url, outFile, cb) {
              { timeout: outFile ? 180000 : 45000, maxBuffer: 1024 * 1024 },
              function (err, stdout, stderr) {
       if (err) {
+        /*
+         * A status means this client reached GitHub and GitHub answered, so the
+         * transport works and the request is what went wrong. Trying the rest of
+         * the list would ask the same question again, and reporting it as a
+         * missing client would send someone off installing curl for nothing.
+         */
+        var status = httpErrorStatus(err, stderr);
+        if (status) {
+          fetchClient = bin;   // it works; the answer is just not the one wanted
+          return cb(new Error(githubSaid(status, url)));
+        }
         last = path.basename(bin) + ': ' + execErr(err, stderr);
         return next();
       }
@@ -3874,6 +3930,11 @@ function installUpdate(cb) {
  * Put back what the last update replaced. The copies stay where they are
  * afterwards, so rolling back twice does nothing rather than reinstating the
  * version that was just rejected.
+ *
+ * An update replaces tvwebctl along with everything else, so the command that
+ * undoes it is the new release's copy: `rollback` has to keep its name, or an
+ * install has no way back to the version it came from. .previous holds a whole
+ * copy either way, so restoring it by hand is always possible - see the README.
  */
 function rollbackUpdate(cb) {
   var was = rollbackVersion();

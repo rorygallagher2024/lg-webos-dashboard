@@ -167,7 +167,7 @@ becomes the remote shell's own `argv`:
 
 ## Upgrading in place
 
-Four things decide how `tvwebctl update` works.
+Five things decide how `tvwebctl update` works.
 
 **The HTTP client is probed, not assumed.** The stock `/usr/bin/curl` is 7.53.1
 against OpenSSL 1.0.2 and busybox `wget` is no better, so neither completes a
@@ -192,6 +192,17 @@ already running out of it. A rename leaves that process on the old inode.
 busybox's gzip support is not, and an inflate failure is how a truncated download
 is caught — cheaper than trusting a content length. The unpacked `tvweb.js` then
 has to declare the version that was asked for before anything is replaced.
+
+**A client that cannot answer is not the same as a request that is refused.**
+Treating every non-zero exit as "try the next client" reported a 404 from a
+repository with no releases as `no HTTP client on this TV could reach GitHub -
+install a current curl`, which would send someone off installing software they
+already have. Both clients name the status on stderr (`server returned error:
+HTTP/1.1 404`, `ERROR 404:`, `returned error: 404`) and both keep an exit code
+for it — curl 22, wget 8 — so an HTTP answer of any kind ends the probe: the
+transport has proved itself and only the request is wrong. The 403 wording stays
+hedged, since a proxy or a captive portal returns that as readily as a spent
+rate limit.
 
 The upgrade runs in the server itself, with `tvwebctl update` invoking
 `node tvweb.js --update` as a one-shot. One implementation serves the dashboard,
