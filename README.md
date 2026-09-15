@@ -238,20 +238,13 @@ Include your model, webOS version and
 ## 1. Get the files
 
 `deploy.sh` runs on a computer on the same network as the TV &mdash; macOS,
-Linux, or Windows under WSL or Git Bash &mdash; not on the TV itself.
+Linux, or Windows under WSL or Git Bash &mdash; not on the TV itself. Clone the
+repository there:
 
 ```bash
 git clone https://github.com/rorygallagher2024/lg-webos-mqtt.git
 cd lg-webos-mqtt/server
 ```
-
-It needs `bash`. If the TV has no SSH yet, `python3` and `nc` as well: telnet
-offers no file transfer, so that path serves the files back to the TV over HTTP
-for a few seconds.
-
-The TV's address is under Settings &rarr; Network on the set, or in the router's
-client list. It stands in for `<tv-ip>` below, and a static lease for it saves
-trouble later.
 
 ## 2. Access
 
@@ -265,12 +258,19 @@ has to change to get started. `--telnet` forces the older path.
   see [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh).
   It can be done before or after installing; `deploy.sh` works either side.
 
+The telnet path has no file transfer of its own, so it also wants `python3` and
+`nc` on this machine: the files are served back to the TV over HTTP for a few
+seconds while it runs.
+
 Worth knowing whichever way: a rooted TV's telnet is an **unauthenticated root
 shell on port 23**. Anyone on the network gets root with no password. That comes
 from the rooting rather than from this project, but it is the largest exposure
 on the TV and worth closing when the chance comes.
 
 ## 3. Install the dashboard
+
+`<tv-ip>` is the TV's own address &mdash; Settings &rarr; Network on the set, or
+the router's client list. A static lease for it saves trouble later.
 
 ```bash
 ./deploy.sh <tv-ip> --persist
