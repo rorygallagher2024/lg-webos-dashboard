@@ -51,9 +51,7 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 
 ---
 
-### Web Dashboard & Controls
-
-Control, System, Screensaver, Privacy, MQTT and Service menu, plus OLED Care on an OLED set.
+## Web dashboard
 
 <p align="center">
   <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Metrics tab: SoC temperature, system readouts, storage and display panel counters, dark theme (OLED65B8SLC)" width="440"></a>
@@ -61,7 +59,7 @@ Control, System, Screensaver, Privacy, MQTT and Service menu, plus OLED Care on 
   <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, picture, sound, apps and power, light theme (OLED65B8SLC)" width="440"></a>
 </p>
 
-### Home Assistant (Auto-Discovered Device via MQTT)
+## Home Assistant (auto-discovered device via MQTT)
 
 Up to 69 native entities arrive over MQTT Discovery as a single unified device
 <p align="center">
@@ -73,25 +71,124 @@ A custom Home Assistant dashboard for an LG TV:
   <a href="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600"><img width="800" alt="Custom dashboard leveraging MQTT data" src="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600" /></a>
 </p>
 
+---
+
+## Core features
+
+One tab per subject, each with a deep link. OLED Care appears on OLED sets
+only. Fonts and assets are served by the TV, so the page works with no internet
+access, and a high-contrast light theme with dark text sits alongside the
+default true-black OLED one &mdash; masthead toggle (☾ / ☀) or `/?theme=light`.
+
+### Control
+
+`/?tab=control`. Drives the set from a browser, including the things the remote
+does not do easily.
+
+* A D-pad &mdash; arrows, OK, Back and Home &mdash; to navigate the TV's own
+  interface.
+* Volume, mute, input select, and media playback &mdash; play, pause, stop,
+  skip &mdash; through native remote key injection.
+* App launching, picture presets and sound output routing. The presets on offer
+  are the ones the TV will accept for whatever is playing: a Dolby Vision source
+  has its own set.
+* Screen blanking, sleep timer, standby LED, on-screen notifications, and power
+  and restart &mdash; from here or from Home Assistant.
+
 ### System
-Surfaces data that you won't find in your TV settings, including:
 
-OLED panel health and maintenance, which lives on the OLED Care tab
+`/?tab=system`. What the set is doing and what it is made of, most of which is
+absent from its own settings menu.
 
-<img width="429" height="304" alt="Screenshot 2026-09-11 at 20 43 39" src="https://github.com/user-attachments/assets/825ef48d-9560-474c-9d3e-7feb045724b5" />
+* SoC temperature and current draw, CPU and per-core load, GPU clock, memory and
+  swap, Wi-Fi RSSI and network throughput.
+* eMMC flash wear with JEDEC health translation, and free space on the app
+  partition.
+* HDMI link state per port straight off the receiver &mdash; resolution, refresh
+  rate, colour depth, pixel clock &mdash; and, where `/proc/lg/hdmi20` exists,
+  HDMI 2.1 diagnostics: link rate, chroma format, HDCP version, cable error
+  counter, ALLM, VRR, QMS and colorimetry.
+* Dolby Vision / HDR / SDR detection, picture mode, OLED light level, the raw
+  HDMI signal (`3840x2160 @ 120Hz`), audio output routing, and the running app
+  with friendly input names (`Apple TV (HDMI2)`).
+* Magic Remote battery and model; webOS and firmware version, SoC architecture,
+  OLED cell ID and TCON firmware where the platform exposes them.
+* On demand: what is resident in memory, and which processes are using the
+  processor right now &mdash; measured over a short window rather than read from
+  the lifetime average `ps` reports.
 
+<p align="center">
+  <img width="432" alt="System tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
+</p>
 
-System monitoring
+### Privacy
 
-<img width="432" height="396" alt="Screenshot 2026-09-11 at 20 45 02" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
+`/?tab=privacy`. Reports what the TV is doing rather than repeating its settings
+menu: whether the content-recognition engine is running and sampling frames, the
+set's advertising identifier and whether ad tracking is limited, every data
+agreement recorded on the set, and which of LG's collection services are alive
+&mdash; the two the service bus starts on demand are marked as such, and the two
+upstart supervises can be switched off for good.
 
-### Screen savers
+Most of those agreements can be switched off from here, and the advertising ID
+can be reset and its cookies cleared. The TV keeps two records &mdash; the
+agreements, and the flags derived from them &mdash; and a change writes both, so
+it survives a reboot on firmware that rebuilds the flags at boot. Some
+agreements cover several flags, and the panel names the ones that move together
+before anything is clicked. Acceptance of the terms themselves is left to the
+TV's own menus.
 
-The Screensaver tab, or `/?tab=screensaver`. Four in place of LG's: a clock, a
-starfield, fireworks, and one showing the set's own panel hours and refresher
-countdown. Each draws dim or bright, and all of them move so nothing marks the
-panel. If a firmware update is applied, the screen saver is restored to the LG
-default.
+The ad & telemetry blocker blackholes LG's tracking, ad and ACR endpoints on the
+set itself, by bind-mounting a hosts table over `/etc/hosts`, and is restored on
+boot. Two tiers: *ads & telemetry* blocks the nine ad and diagnostics hosts and
+leaves LG's service platform reachable; *everything* adds the ten that carry the
+Content Store and firmware delivery, so on that tier the app store and updates
+may stop working. The store server differs by platform
+&mdash; `com.webos.appInstallService` installs from `lgtvsdp.com` on webOS 4 and
+`nextlgsdp.com` on webOS 9 &mdash; and both are in that tier.
+
+<p align="center">
+  <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
+</p>
+
+### OLED Care
+
+`/?tab=oledcare`, on OLED sets. The panel's own wear figures beside what each
+burn-in protection does and a switch for it.
+
+* Cumulative panel hours, panel maintenance and Pixel Refresher countdowns with
+  scheduling, completed cycle counters and failure alerts.
+* Screen shift and logo dimming on any OLED.
+* Temporal peak control (ASBL) and global stress reduction, on webOS 4 and
+  webOS 9 alike &mdash; the two normally reachable only from the service menu,
+  with a service remote and a PIN, and carrying a warning to match.
+
+<p align="center">
+  <a href="docs/screenshots/oledcare.png"><img src="docs/screenshots/oledcare.png" alt="OLED Care tab: screen shift, logo dimming, temporal peak control and global stress reduction, each described, with switches and a warranty warning" width="700"></a>
+</p>
+
+<p align="center">
+  <img width="429" alt="Panel life: total power-on hours, panel maintenance and Pixel Refresher countdowns" src="https://github.com/user-attachments/assets/825ef48d-9560-474c-9d3e-7feb045724b5" />
+</p>
+
+### Service menu
+
+`/?tab=servicemenu`. Opens LG's engineering menu on the TV &mdash; EZ Adjust or
+In Start &mdash; without a service remote; the TV still asks for its PIN. Newer
+firmware shows a cut-down version until it is unlocked, and the dashboard can
+unlock it: the TV has to be switched off and on again before that takes effect.
+Sets old enough not to lock it say so.
+
+<p align="center">
+  <a href="docs/screenshots/servicemenu.png"><img src="docs/screenshots/servicemenu.png" alt="Service menu tab: unlock state with a power-cycle note, buttons to open EZ Adjust or In Start, and a warning about what the menu can change" width="700"></a>
+</p>
+
+### Screensaver
+
+`/?tab=screensaver`. Four screen savers in place of LG's: a clock, a starfield,
+fireworks, and one showing the set's own panel hours and refresher countdown.
+Each draws dim or bright, and all of them move so nothing marks the panel. A
+firmware update restores the LG default.
 
 <p align="center">
   <a href="docs/screenshots/screensaver.png"><img src="docs/screenshots/screensaver.png" alt="Screensaver tab: LG default, Clock, Starfield, Fireworks and Panel vitals, with a dim and bright toggle" width="700"></a>
@@ -101,114 +198,11 @@ default.
   <a href="docs/screenshots/screensaver-starfield.png"><img src="docs/screenshots/screensaver-starfield.png" alt="Starscape screen saver on OLED: drifting stars and meteor with ion trail" width="700"></a>
 </p>
 
----
+### MQTT
 
-### OLED care
-
-The OLED Care tab, or `/?tab=oledcare`, on OLED sets. The panel's own wear
-figures - power-on hours, panel maintenance and Pixel Refresher countdowns -
-beside what each burn-in protection does and a switch for it: screen shift and logo dimming on any OLED,
-and ASBL and Global Stress Reduction &mdash; the two normally
-reachable only from the TV's service menu, with a service remote and a PIN.
-
-<p align="center">
-  <a href="docs/screenshots/oledcare.png"><img src="docs/screenshots/oledcare.png" alt="OLED Care tab: screen shift, logo dimming, temporal peak control and global stress reduction, each described, with switches and a warranty warning" width="700"></a>
-</p>
-
----
-
-### Service menu
-
-The Service menu tab, or `/?tab=servicemenu`. Opens LG's engineering menu on the
-TV &mdash; EZ Adjust or In Start &mdash; without a service remote; the TV still
-asks for its PIN. Newer firmware shows a cut-down version until it is unlocked,
-and the dashboard can unlock it: the TV has to be switched off and on again
-before that takes effect. Sets old enough not to lock it say so.
-
-<p align="center">
-  <a href="docs/screenshots/servicemenu.png"><img src="docs/screenshots/servicemenu.png" alt="Service menu tab: unlock state with a power-cycle note, buttons to open EZ Adjust or In Start, and a warning about what the menu can change" width="700"></a>
-</p>
-
----
-
-### Privacy & telemetry
-
-The Privacy tab, or `/?tab=privacy`. It reports what the TV is doing rather than
-repeating its settings menu: whether the content-recognition engine is running
-and sampling frames, your advertising identifier and whether ad tracking is
-limited, and every data agreement the set records.
-
-Most of those agreements can be switched off from here. The TV keeps two
-records &mdash; the agreements, and the flags derived from them &mdash; and a
-change writes both, so it survives a reboot on firmware that rebuilds the flags
-at boot. Some agreements cover several flags, and the panel says which ones move
-together before you click.
-
-The ad & telemetry blocker holds a blackhole list over `/etc/hosts` and survives
-a reboot. Two tiers: one blocks the nine ad and diagnostics endpoints and leaves
-LG's service platform reachable, the other adds the servers the Content Store
-and firmware updates use.
-
-<p align="center">
-  <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
-</p>
-
----
-
-## Core features
-
-* **OLED panel health.** Panel hours, compensation and Pixel Refresher countdowns
-  with scheduling, completed cycle counters and failure alerts, on the OLED Care
-  tab beside the protections. Hidden on LCD/QNED sets.
-* **Service menu.** Opens LG's engineering menu on the TV without a service
-  remote, and unlocks the full version on firmware that ships it cut down. The
-  unlock needs a power cycle; sets that do not lock it say so.
-* **OLED Care tab.** What each burn-in protection does, and a switch for it.
-  Screen shift and logo dimming on any OLED; temporal peak control and global
-  stress reduction too, on webOS 4 and webOS 9 alike - the two normally
-  reachable only from the service menu, with a warning to match.
-* **HDMI 2.1 diagnostics.** Link rate, chroma format, HDCP version, cable error
-  counter, ALLM, VRR, QMS, and colorimetry. Requires `/proc/lg/hdmi20`.
-* **Magic Remote & hardware info.** Battery, model, firmware; SoC architecture,
-  OLED cell ID, and TCON firmware where the platform exposes them.
-* **Video and audio observability.** Dolby Vision / HDR / SDR detection, picture
-  mode, OLED light level, raw HDMI signal (`3840x2160 @ 120Hz`), audio output
-  routing, and active app with friendly input names (`Apple TV (HDMI2)`).
-* **Hardware diagnostics.** SoC temperature and current draw, CPU and per-core
-  load, GPU clock, memory and swap, Wi-Fi RSSI, network throughput, eMMC
-  flash wear with JEDEC health translation, and free space on the app partition.
-* **Advanced panels.** HDMI link state per port straight off the receiver
-  (resolution, refresh rate, colour depth, pixel clock), what is resident in
-  memory, and which processes are using the processor right now - measured over
-  a short window rather than read from the lifetime average `ps` reports. All
-  load on demand.
-* **Bi-directional control.** A D-pad - arrows, OK, Back and Home - to drive the TV's own interface from a browser, volume, mute, input select, media playback (play/pause/stop/skip via native remote key injection), app launching, picture presets, sound outputs, screen blanking, sleep timer, standby LED, on-screen notifications, power and restart (from the dashboard or Home Assistant). The picture presets on offer are the ones the TV will accept for whatever is playing &mdash; a Dolby Vision source has its own set.
-* **Ad & telemetry blocker.** Blackholes LG's tracking, ad and ACR
-  endpoints on the set itself by bind-mounting a hosts table over `/etc/hosts`.
-  Automatically restored on boot. Two tiers: *ads & telemetry* blocks the nine
-  ad and diagnostics hosts and leaves LG's own service platform reachable;
-  *everything* adds the ten that carry the Content Store and firmware delivery,
-  so on that tier the app store and updates may stop working. The store server
-  differs by platform &mdash; `com.webos.appInstallService` installs from
-  `lgtvsdp.com` on webOS 4 and `nextlgsdp.com` on webOS 9 &mdash; and both are
-  in that tier.
-* **Privacy panel.** Behind a toggle in the controls: whether LG's screen
-  content recognition is actually running and sampling frames, your advertising
-  identifier and whether ad tracking is limited, every data-collection
-  agreement recorded on the TV, and which of LG's collection
-  services are alive &mdash; the two the service bus starts on demand are marked
-  as such, and the two upstart supervises can be switched off for good. The agreements can be switched off from the panel and the
-  change survives a reboot; acceptance of the terms themselves is left to the
-  TV's own menus. Includes buttons to reset the advertising ID, clear ad
-  cookies, and toggle the on-TV ad blocker. Deep link: `/?tab=privacy`.
-* **Custom screen savers.** Four in place of LG's: a clock, a starfield,
-  fireworks, and one showing the set's own panel hours and refresher countdown.
-  Each can be drawn dim or bright, and all of them move so nothing marks the
-  panel. Deep link: `/?tab=screensaver`.
-* **Self-contained dashboard.** Fonts and assets are served by the TV, so the
-  page works with no internet access.
-* **Dark and light themes.** High-contrast light mode with dark text alongside
-  the default true-black OLED theme, toggled via the masthead (☾ / ☀) or `/?theme=light`.
+`/?tab=mqtt`. Broker address, credentials, topic prefix and device identity,
+with the bridge's connection state and last publish time beside them.
+[Step 3](#3-home-assistant--mqtt-optional) covers the setup.
 
 ## Requirements
 
