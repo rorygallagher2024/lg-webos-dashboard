@@ -5,7 +5,7 @@ any browser on the network, and will optionally bridge the TV into Home
 Assistant over MQTT as a single auto-discovered device with up to 69 entities.
 
 The dashboard needs nothing but the TV. Home Assistant control over MQTT is
-optional, and set up in [step 3](#3-home-assistant--mqtt-optional).
+optional, and set up in [step 4](#4-home-assistant--mqtt-optional).
 
 There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the TV.
 
@@ -29,7 +29,7 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
    entities arrive as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
-   [Step 3](#3-home-assistant--mqtt-optional) explains what MQTT is.
+   [Step 4](#4-home-assistant--mqtt-optional) explains what MQTT is.
 
 5. **Seeing what the TV is actually doing.** SoC temperature, per-core CPU
    load, memory, swap, current draw, Wi-Fi signal and throughput.
@@ -201,7 +201,7 @@ firmware update restores the LG default.
 
 `/?tab=mqtt`. Broker address, credentials, topic prefix and device identity,
 with the bridge's connection state and last publish time beside them.
-[Step 3](#3-home-assistant--mqtt-optional) covers the setup.
+[Step 4](#4-home-assistant--mqtt-optional) covers the setup.
 
 ## Requirements
 
@@ -209,7 +209,7 @@ with the bridge's connection state and last publish time beside them.
   [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
 * Nothing else on the TV for the dashboard.
 * An MQTT broker on the network, and usually Home Assistant, only if the
-  bridge in [step 3](#3-home-assistant--mqtt-optional) is wanted.
+  bridge in [step 4](#4-home-assistant--mqtt-optional) is wanted.
 
 ### Tested on
 
@@ -253,7 +253,24 @@ The TV's address is under Settings &rarr; Network on the set, or in the router's
 client list. It stands in for `<tv-ip>` below, and a static lease for it saves
 trouble later.
 
-## 2. Install the dashboard
+## 2. Access
+
+`deploy.sh` needs a root shell on the TV. It uses **SSH** when key-based login
+works and falls back to the Homebrew Channel's **telnet** otherwise, so nothing
+has to change to get started. `--telnet` forces the older path.
+
+* **SSH keys already working with the TV?** Nothing to do. Skip to step 3.
+* **Freshly rooted, telnet only?** That works too. Skip to step 3.
+* **Want to move to SSH?** Recommended, and it takes about five minutes:
+  see [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh).
+  It can be done before or after installing; `deploy.sh` works either side.
+
+Worth knowing whichever way: a rooted TV's telnet is an **unauthenticated root
+shell on port 23**. Anyone on the network gets root with no password. That comes
+from the rooting rather than from this project, but it is the largest exposure
+on the TV and worth closing when the chance comes.
+
+## 3. Install the dashboard
 
 ```bash
 ./deploy.sh <tv-ip> --persist
@@ -271,20 +288,7 @@ runs on port 8080, the controls are live, MQTT is off, and power off / reboot
 are disabled. Nothing is sent anywhere: the server talks to the TV and to
 whoever opens the page.
 
-That is a complete install. Everything below is optional.
-
-### How it reaches the TV
-
-`deploy.sh` needs a root shell on the TV and finds one on its own: **SSH** where
-key-based login works, and the Homebrew Channel's **telnet** otherwise. Neither
-has to be set up first, and `--telnet` forces the older path.
-
-Worth knowing whichever it picks: a rooted TV's telnet is an **unauthenticated
-root shell on port 23**, so anyone on the network has root without a password.
-That comes from the rooting rather than from this project, but it is the largest
-exposure on the TV and worth closing when the chance comes.
-[Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes
-about five minutes, and works before or after installing.
+That is a complete install &mdash; step 4 is optional.
 
 ### If something does not come up
 
@@ -299,7 +303,7 @@ about five minutes, and works before or after installing.
   `"panel": "lcd"` in `server/config.json` before a first deploy, or in
   `/var/lib/tvweb/config.json` on a TV that already has one.
 
-## 3. Home Assistant & MQTT (optional)
+## 4. Home Assistant & MQTT (optional)
 
 ### What these are
 
