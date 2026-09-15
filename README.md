@@ -74,15 +74,16 @@ A custom Home Assistant dashboard for an LG TV:
 
 ## Core features
 
-One tab per subject, each with a deep link. OLED Care appears on OLED sets
-only. Fonts and assets are served by the TV, so the page works with no internet
-access, and a high-contrast light theme with dark text sits alongside the
-default true-black OLED one &mdash; masthead toggle (☾ / ☀) or `/?theme=light`.
+Each has a tab of its own in the dashboard, and a deep link to it. OLED Care
+appears on OLED sets only. Fonts and assets are served by the TV, so the page
+works with no internet access, and a high-contrast light theme with dark text
+sits alongside the default true-black OLED one &mdash; masthead toggle (☾ / ☀)
+or `/?theme=light`.
 
-### Control
+### Remote control
 
-`/?tab=control`. Drives the set from a browser, including the things the remote
-does not do easily.
+The **Control** tab, `/?tab=control`. Drives the set from a browser, including
+the things the remote does not do easily.
 
 * A D-pad &mdash; arrows, OK, Back and Home &mdash; to navigate the TV's own
   interface.
@@ -94,10 +95,10 @@ does not do easily.
 * Screen blanking, sleep timer, standby LED, on-screen notifications, and power
   and restart &mdash; from here or from Home Assistant.
 
-### System
+### Telemetry and diagnostics
 
-`/?tab=system`. What the set is doing and what it is made of, most of which is
-absent from its own settings menu.
+The **System** tab, `/?tab=system`. What the set is doing and what it is made
+of, most of which is absent from its own settings menu.
 
 * SoC temperature and current draw, CPU and per-core load, GPU clock, memory and
   swap, Wi-Fi RSSI and network throughput.
@@ -120,14 +121,15 @@ absent from its own settings menu.
   <img width="432" alt="System tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
 </p>
 
-### Privacy
+### Privacy and data collection
 
-`/?tab=privacy`. Reports what the TV is doing rather than repeating its settings
-menu: whether the content-recognition engine is running and sampling frames, the
-set's advertising identifier and whether ad tracking is limited, every data
-agreement recorded on the set, and which of LG's collection services are alive
-&mdash; the two the service bus starts on demand are marked as such, and the two
-upstart supervises can be switched off for good.
+The **Privacy** tab, `/?tab=privacy`. Reports what the TV is doing rather than
+repeating its settings menu: whether the content-recognition engine is running
+and sampling frames, the set's advertising identifier and whether ad tracking
+is limited, every data agreement recorded on the set, and which of LG's
+collection services are alive &mdash; the two the service bus starts on demand
+are marked as such, and the two upstart supervises can be switched off for
+good.
 
 Most of those agreements can be switched off from here, and the advertising ID
 can be reset and its cookies cleared. The TV keeps two records &mdash; the
@@ -150,10 +152,10 @@ may stop working. The store server differs by platform
   <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
 </p>
 
-### OLED Care
+### OLED wear and burn-in protection
 
-`/?tab=oledcare`, on OLED sets. The panel's own wear figures beside what each
-burn-in protection does and a switch for it.
+The **OLED Care** tab, `/?tab=oledcare`, on OLED sets. The panel's own wear
+figures beside what each burn-in protection does and a switch for it.
 
 * Cumulative panel hours, panel maintenance and Pixel Refresher countdowns with
   scheduling, completed cycle counters and failure alerts.
@@ -170,24 +172,24 @@ burn-in protection does and a switch for it.
   <img width="429" alt="Panel life: total power-on hours, panel maintenance and Pixel Refresher countdowns" src="https://github.com/user-attachments/assets/825ef48d-9560-474c-9d3e-7feb045724b5" />
 </p>
 
-### Service menu
+### Service menu access
 
-`/?tab=servicemenu`. Opens LG's engineering menu on the TV &mdash; EZ Adjust or
-In Start &mdash; without a service remote; the TV still asks for its PIN. Newer
-firmware shows a cut-down version until it is unlocked, and the dashboard can
-unlock it: the TV has to be switched off and on again before that takes effect.
-Sets old enough not to lock it say so.
+The **Service menu** tab, `/?tab=servicemenu`. Opens LG's engineering menu on
+the TV &mdash; EZ Adjust or In Start &mdash; without a service remote; the TV
+still asks for its PIN. Newer firmware shows a cut-down version until it is
+unlocked, and the dashboard can unlock it: the TV has to be switched off and on
+again before that takes effect. Sets old enough not to lock it say so.
 
 <p align="center">
   <a href="docs/screenshots/servicemenu.png"><img src="docs/screenshots/servicemenu.png" alt="Service menu tab: unlock state with a power-cycle note, buttons to open EZ Adjust or In Start, and a warning about what the menu can change" width="700"></a>
 </p>
 
-### Screensaver
+### Screen savers
 
-`/?tab=screensaver`. Four screen savers in place of LG's: a clock, a starfield,
-fireworks, and one showing the set's own panel hours and refresher countdown.
-Each draws dim or bright, and all of them move so nothing marks the panel. A
-firmware update restores the LG default.
+The **Screensaver** tab, `/?tab=screensaver`. Four in place of LG's: a clock, a
+starfield, fireworks, and one showing the set's own panel hours and refresher
+countdown. Each draws dim or bright, and all of them move so nothing marks the
+panel. A firmware update restores the LG default.
 
 <p align="center">
   <a href="docs/screenshots/screensaver.png"><img src="docs/screenshots/screensaver.png" alt="Screensaver tab: LG default, Clock, Starfield, Fireworks and Panel vitals, with a dim and bright toggle" width="700"></a>
@@ -197,10 +199,12 @@ firmware update restores the LG default.
   <a href="docs/screenshots/screensaver-starfield.png"><img src="docs/screenshots/screensaver-starfield.png" alt="Starscape screen saver on OLED: drifting stars and meteor with ion trail" width="700"></a>
 </p>
 
-### MQTT
+### Home Assistant bridge
 
-`/?tab=mqtt`. Broker address, credentials, topic prefix and device identity,
-with the bridge's connection state and last publish time beside them.
+The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where up to
+69 entities arrive in Home Assistant as a single auto-discovered device. The tab
+holds the broker address, credentials, topic prefix and device identity, with
+the bridge's connection state and last publish time beside them.
 [Step 4](#4-home-assistant--mqtt-optional) covers the setup.
 
 ## Requirements
