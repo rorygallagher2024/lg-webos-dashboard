@@ -4,9 +4,8 @@ A server that runs **on** a rooted LG webOS TV. It serves a live dashboard to
 any browser on the network, and will optionally bridge the TV into Home
 Assistant over MQTT as a single auto-discovered device with up to 69 entities.
 
-The dashboard needs nothing but the TV. 
-
-If you use Home Assistant, you can also enable smart home control via MQTT. See  &mdash; [here](#3-home-assistant--mqtt-optional)
+The dashboard needs nothing but the TV. Home Assistant control over MQTT is
+optional, and set up in [step 3](#3-home-assistant--mqtt-optional).
 
 There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the TV.
 
@@ -208,7 +207,7 @@ with the bridge's connection state and last publish time beside them.
 
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the
   [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
-* Nothing else for the dashboard.
+* Nothing else on the TV for the dashboard.
 * An MQTT broker on the network, and usually Home Assistant, only if the
   bridge in [step 3](#3-home-assistant--mqtt-optional) is wanted.
 
@@ -236,48 +235,69 @@ Include your model, webOS version and
 
 ---
 
-## 1. Access
+## 1. Get the files
 
-`deploy.sh` needs a root shell on the TV. It uses **SSH** when key-based login
-works and falls back to the Homebrew Channel's **telnet** otherwise, so you do
-not have to change anything to get started.
+`deploy.sh` runs on a computer on the same network as the TV &mdash; macOS,
+Linux, or Windows under WSL or Git Bash &mdash; not on the TV itself.
 
-* **Already using SSH keys with your TV?** Nothing to do. Skip to step 2.
-* **Freshly rooted, telnet only?** That works too. Skip to step 2.
-* **Want to move to SSH?** Recommended, and it takes about five minutes:
-  see [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh).
-  You can do it before or after installing; `deploy.sh` works either side.
+```bash
+git clone https://github.com/rorygallagher2024/lg-webos-mqtt.git
+cd lg-webos-mqtt/server
+```
 
-Worth knowing whichever you choose: a rooted TV's telnet is an
-**unauthenticated root shell on port 23**. Anyone on your network gets
-root with no password. That comes from the rooting rather than from this
-project, but it is the largest exposure on the TV and worth closing when you
-get the chance.
+It needs `bash`. If the TV has no SSH yet, `python3` and `nc` as well: telnet
+offers no file transfer, so that path serves the files back to the TV over HTTP
+for a few seconds.
+
+The TV's address is under Settings &rarr; Network on the set, or in the router's
+client list. It stands in for `<tv-ip>` below, and a static lease for it saves
+trouble later.
 
 ## 2. Install the dashboard
 
 ```bash
-cd server
 ./deploy.sh <tv-ip> --persist
 ```
 
-Then open **`http://<tv-ip>:8080/`**.
+Then open **`http://<tv-ip>:8080/`**. The script prints the service status and
+the last few log lines as it finishes.
+
+`--persist` installs a boot hook so the server survives a reboot; leaving it off
+runs the dashboard until the TV next restarts and installs nothing that starts
+on its own.
 
 No configuration is needed for this part. Without a config file the dashboard
 runs on port 8080, the controls are live, MQTT is off, and power off / reboot
 are disabled. Nothing is sent anywhere: the server talks to the TV and to
 whoever opens the page.
 
-`--persist` installs a boot hook so it survives reboots. The script copies over
-SSH where available, falling back to telnet; `--telnet` forces the old path. The
-telnet path has to find this machine's LAN address to serve the files from; if
-it cannot, pass it as `MYIP=192.168.x.y ./deploy.sh <tv-ip>`.
-
-Panel hours, Pixel Refresher and Screen Shift are read on OLED sets only. If a
-set is detected the wrong way, add `"panel": "lcd"` or `"panel": "oled"` to
-`config.json`.
-
 That is a complete install. Everything below is optional.
+
+### How it reaches the TV
+
+`deploy.sh` needs a root shell on the TV and finds one on its own: **SSH** where
+key-based login works, and the Homebrew Channel's **telnet** otherwise. Neither
+has to be set up first, and `--telnet` forces the older path.
+
+Worth knowing whichever it picks: a rooted TV's telnet is an **unauthenticated
+root shell on port 23**, so anyone on the network has root without a password.
+That comes from the rooting rather than from this project, but it is the largest
+exposure on the TV and worth closing when the chance comes.
+[Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes
+about five minutes, and works before or after installing.
+
+### If something does not come up
+
+* **`could not work out this machine's LAN IP`.** The telnet path has to tell
+  the TV where to fetch the files from and could not find an address to offer.
+  Pass it: `MYIP=192.168.x.y ./deploy.sh <tv-ip>`.
+* **Nothing on port 8080.** On the TV, `/var/lib/tvweb/tvwebctl status` says
+  whether the server is running and `/var/lib/tvweb/tvweb.log` says why it is
+  not.
+* **Panel hours and OLED Care missing on an OLED set**, or showing on an LCD
+  one. Panel detection went the wrong way: set `"panel": "oled"` or
+  `"panel": "lcd"` in `server/config.json` before a first deploy, or in
+  `/var/lib/tvweb/config.json` on a TV that already has one.
 
 ## 3. Home Assistant & MQTT (optional)
 
@@ -326,13 +346,15 @@ rather than in the log on the TV.
 Equivalent to the above, and the better route for installing several TVs from
 one machine or for keeping the settings under version control.
 
+From `server/`, where step 1 left off:
+
 ```bash
-cp config.example.json server/config.json
+cp ../config.example.json config.json
 ```
 
-Set the broker under `mqtt` and set `enabled` to `true`, then run `deploy.sh`
-again. Leaving `device.name` and `device.model` empty makes the TV report its
-own model and firmware at runtime.
+Set the broker under `mqtt` and set `enabled` to `true`, then run
+`./deploy.sh <tv-ip> --persist` again. Leaving `device.name` and `device.model`
+empty makes the TV report its own model and firmware at runtime.
 
 `deploy.sh` only installs this file if the TV does not already have one, so it
 will not overwrite settings saved from the dashboard. To replace an existing
