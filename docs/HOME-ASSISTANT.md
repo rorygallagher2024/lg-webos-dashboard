@@ -97,7 +97,7 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_upload_rate` | Upload Rate | Live network upload throughput (`kB/s`) |
 | `sensor` | `sensor.lg_tv_flash_health` | Flash Storage Health | eMMC remaining health estimate (`>90% (Healthy)`) |
 | `sensor` | `sensor.lg_tv_flash_wear` | Flash Wear Level | JEDEC write-cycle consumption (`0–10%`) |
-| `sensor` | `sensor.lg_tv_uptime` | Uptime | TV uptime in seconds |
+| `sensor` | `sensor.lg_tv_last_restart` | Last Restart | Timestamp of the TV's last kernel boot |
 | `sensor` | `sensor.lg_tv_tvweb_version` | Server Version | Version of this server, not TV firmware (diagnostic) |
 
 ---

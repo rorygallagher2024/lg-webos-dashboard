@@ -1571,6 +1571,7 @@ function collectStats(cb) {
     }
   }
   var peInfo = getPictureEngineInfo();
+  var uptimeSec = Math.floor(parseFloat(rd('/proc/uptime') || '0'));
 
   var out = {
     ok: true,
@@ -1630,7 +1631,8 @@ function collectStats(cb) {
     coresTotal: coreSlots.length,
     mem: { total: mi.MemTotal || 0, avail: mi.MemAvailable || 0 },
     swap: { total: mi.SwapTotal || 0, free: mi.SwapFree || 0, backing: swapBacking() },
-    uptime: Math.floor(parseFloat(rd('/proc/uptime') || '0')),
+    uptime: uptimeSec,
+    lastRestart: new Date(Date.now() - uptimeSec * 1000).toISOString(),
     loadavg: (rd('/proc/loadavg') || '').split(' ').slice(0, 3),
     wifi: wifi(),
     net: rate,
@@ -4484,15 +4486,13 @@ function setupHomeAssistant() {
         }
       },
       {
-        type: 'sensor', id: 'uptime',
+        type: 'sensor', id: 'last_restart',
         payload: {
-          name: 'Uptime',
+          name: 'Last Restart',
           state_topic: telemetryTopic,
-          value_template: '{{ value_json.uptime }}',
-          unit_of_measurement: 's',
-          device_class: 'duration',
-          suggested_display_precision: 0,
-          icon: 'mdi:clock-outline'
+          value_template: '{{ value_json.lastRestart }}',
+          device_class: 'timestamp',
+          icon: 'mdi:restart'
         }
       },
       {
