@@ -6,7 +6,7 @@ Entity reference and example automations.
 
 ## Entities
 
-Once connected to your MQTT broker, Home Assistant automatically discovers **up to 72 native entities** under a single unified device:
+Once connected to your MQTT broker, Home Assistant automatically discovers these entities under a single unified device:
 
 ### Entity Selection
 
@@ -82,12 +82,12 @@ Playback reaches an HDMI source over CEC, where the TV has only one key for both
 | `sensor` | `sensor.lg_tv_panel_dimming` | Panel Dimming | Dynamic backlight/panel dimming state |
 | `sensor` | `sensor.lg_tv_audio_output` | Audio Output | Output the audio service is driving (e.g. *HDMI ARC*, *Headphone / AUX*) |
 | `sensor` | `sensor.lg_tv_active_app` | Active App | Current foreground app or friendly CEC device |
+| `sensor` | `sensor.lg_tv_play_state` | Player State | State of the TV's own media pipeline (`playing`, `paused`, `stopped`) |
 
 The six HDMI entities are published per field, and only once the set has
 reported that field. An HDMI 2.0 port reports as connected but carries none of
 the 2.1 lines, so a 2018 set such as a B8 gets none of them rather than a row
 of Unknowns and a cable error count of zero.
-| `sensor` | `sensor.lg_tv_play_state` | Player State | State of the TV's own media pipeline (`playing`, `paused`, `stopped`) |
 
 ### Hardware, Remote & System Diagnostics
 | Domain | Entity ID | Name | Description |
@@ -98,7 +98,7 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_tcon_firmware` | TCON Firmware | Timing Controller FPGA firmware version |
 | `sensor` | `sensor.lg_tv_soc_temperature` | SoC Temperature | TV processor temperature (`°C`) |
 | `sensor` | `sensor.lg_tv_soc_current` | SoC Current | Processor current draw (`mA`, CPU + Core AVS) |
-| `sensor` | `sensor.lg_tv_cpu_usage` | CPU Usage | Real-time CPU load (`%`) |
+| `sensor` | `sensor.lg_tv_cpu_load` | CPU Usage | Real-time CPU load (`%`) |
 | `sensor` | `sensor.lg_tv_gpu_clock` | GPU Clock | Real-time GPU frequency (`MHz`) |
 | `sensor` | `sensor.lg_tv_memory_usage` | Memory Usage | System RAM usage (`%`) |
 | `sensor` | `sensor.lg_tv_swap_usage` | Swap Usage | Swap usage (`%`), backed by zram or a flash partition depending on the set |
@@ -109,6 +109,7 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_upload_rate` | Upload Rate | Live network upload throughput (`kB/s`) |
 | `sensor` | `sensor.lg_tv_flash_health` | Flash Storage Health | eMMC remaining health estimate (`>90% (Healthy)`) |
 | `sensor` | `sensor.lg_tv_flash_wear` | Flash Wear Level | JEDEC write-cycle consumption (`0–10%`) |
+| `sensor` | `sensor.lg_tv_mac_address` | MAC Address | MAC address of the interface the TV is using (diagnostic) |
 | `sensor` | `sensor.lg_tv_uptime` | Uptime | When the TV's processor last booted; standby does not reset it (diagnostic) |
 | `sensor` | `sensor.lg_tv_tvweb_version` | Server Version | Version of this server, not TV firmware (diagnostic) |
 | `update` | `update.lg_tv_server_update` | Server Update | Latest release, its notes and an install button. Published only while **Check daily** is on in the dashboard's Server tab &mdash; see [Updating](../README.md#updating) |

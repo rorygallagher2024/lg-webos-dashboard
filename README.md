@@ -25,8 +25,8 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 3. **Replacing the screen saver.** A clock, a starfield, fireworks, or the
    TV's own readings, each dim or bright, in place of LG's.
 
-4. **Integrating the TV into Home Assistant.** Optional, over MQTT: up to 72
-   entities arrive as a single auto-discovered device &mdash; no YAML, no LG
+4. **Integrating the TV into Home Assistant.** Optional, over MQTT: the set
+   arrives as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
    [Step 4](#4-home-assistant--mqtt-optional) explains what MQTT is.
@@ -60,7 +60,7 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 
 ## Home Assistant (auto-discovered device via MQTT)
 
-Up to 72 native entities arrive over MQTT Discovery as a single unified device
+The TV arrives over MQTT Discovery as a single unified device
 <p align="center">
   <a href="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235"><img width="800" alt="Home Assistant MQTT entities" src="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235" /></a>
 </p>
@@ -201,8 +201,8 @@ panel. A firmware update restores the LG default.
 
 ### Home Assistant bridge
 
-The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where up to
-72 entities arrive in Home Assistant as a single auto-discovered device. The tab
+The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where it
+arrives in Home Assistant as a single auto-discovered device. The tab
 holds the broker address, credentials, topic prefix and device identity, with
 the bridge's connection state and last publish time beside them.
 [Step 4](#4-home-assistant--mqtt-optional) covers the setup.
@@ -548,7 +548,7 @@ Full detail, including the MQTT ACL guidance and optional TLS, is in
 ## Documentation
 
 * [docs/SECURITY.md](docs/SECURITY.md) &mdash; threat model, SSH migration, MQTT hardening
-* [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) &mdash; up to 72 entities, universal media player, example automations
+* [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) &mdash; the entity reference, universal media player, example automations
 * [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) &mdash; architecture, `/proc/lg` reference, platform quirks
 
 ---
