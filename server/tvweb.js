@@ -1111,8 +1111,7 @@ function injectKey(code, cb) {
     return;
   }
   function makeEv(type, c, val) {
-    var b = new Buffer(16);
-    b.fill(0);
+    var b = zeroBuffer(16);
     b.writeUInt16LE(type, 8);
     b.writeUInt16LE(c, 10);
     b.writeInt32LE(val, 12);
@@ -4555,6 +4554,15 @@ function encodeVarLength(len) {
 
 function toBuffer(data, enc) {
   return (typeof Buffer.from === 'function') ? Buffer.from(data, enc) : new Buffer(data, enc);
+}
+
+// Node 0.12 has only the constructor, and newer node logs a deprecation warning
+// (DEP0005) the first time it runs.
+function zeroBuffer(n) {
+  if (typeof Buffer.alloc === 'function') return Buffer.alloc(n);
+  var b = new Buffer(n);
+  b.fill(0);
+  return b;
 }
 
 function MiniMQTT(opts) {
