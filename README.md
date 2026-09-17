@@ -53,9 +53,9 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 ## Web dashboard
 
 <p align="center">
-  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Metrics tab: SoC temperature, system readouts, storage and display panel counters, dark theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="System tab: SoC temperature, system readouts, storage and HDMI ports, dark theme (OLED65B8SLC)" width="440"></a>
   &nbsp;
-  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, picture, sound, apps and power, light theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer, front lights and power, light theme (OLED65B8SLC)" width="440"></a>
 </p>
 
 ## Home Assistant (auto-discovered device via MQTT)
