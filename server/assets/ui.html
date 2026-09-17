@@ -197,6 +197,18 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .tabs button:hover{color:var(--w80)}
 @media (max-width:560px){ .tabs button{padding:12px 10px;letter-spacing:.1em} }
 .tabs button[aria-selected="true"]{color:var(--w100);border-bottom-color:var(--w100)}
+/* The strip scrolls when the tabs do not fit, and its scrollbar is hidden, so
+   on its own it just looks like the list ends. An arrow sits on whichever
+   side has more, over a fade of the page behind it. */
+.tabs-wrap{position:relative}
+.tabs-arrow{position:absolute;top:0;bottom:1px;z-index:2;width:36px;
+      display:flex;align-items:center;justify-content:center;
+      border:0;padding:0;min-height:0;cursor:pointer;
+      color:var(--w60);font-size:20px;letter-spacing:0;
+      background:linear-gradient(to right,var(--bg) 60%,transparent);left:0}
+.tabs-arrow.right{left:auto;right:0;background:linear-gradient(to left,var(--bg) 60%,transparent)}
+.tabs-arrow:hover{color:var(--w100)}
+.tabs-arrow[hidden]{display:none}
 #panels{margin-top:clamp(24px,3.5vw,36px)}
 /* A panel is the whole width now, so the columns come from the panel itself
    rather than from the page splitting in two. */
@@ -601,7 +613,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 
 
-<nav class="tabs" id="tabs" role="tablist">
+<div class="tabs-wrap">
+  <button type="button" class="tabs-arrow" id="tabs-prev" hidden aria-label="Scroll tabs left" onclick="scrollTabs(-1)">&#8249;</button>
+  <nav class="tabs" id="tabs" role="tablist">
   <button type="button" role="tab" data-tab="control">Control</button>
   <button type="button" role="tab" data-tab="system">System</button>
   <button type="button" role="tab" data-tab="privacy">Privacy</button>
@@ -610,7 +624,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
   <button type="button" role="tab" data-tab="server">Server</button>
-</nav>
+  </nav>
+  <button type="button" class="tabs-arrow right" id="tabs-next" hidden aria-label="Scroll tabs right" onclick="scrollTabs(1)">&#8250;</button>
+</div>
 
 <main id="panels">
 <section class="panel" id="tab-metrics" role="tabpanel" hidden>
@@ -1585,6 +1601,7 @@ async function tick() {
     isOledSet = !!d.oled;
     if (q('tab-btn-servicemenu')) q('tab-btn-servicemenu').hidden = false;
     if (q('tab-btn-oledcare')) q('tab-btn-oledcare').hidden = !isOledSet;
+    updateTabArrows();
     // If it was showing when the set turned out not to be an OLED, leave it.
     if (!isOledSet && activeTab === 'oledcare') showTab('control');
 
@@ -2397,6 +2414,8 @@ function showTab(name) {
   }
   document.querySelectorAll('#tabs button').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  const selected = document.querySelector('#tabs button[aria-selected="true"]');
+  if (selected && selected.scrollIntoView) selected.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   try { localStorage.setItem('tab', name); } catch (e) { /* private window */ }
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
@@ -2411,6 +2430,28 @@ function showTab(name) {
 
 document.querySelectorAll('#tabs button').forEach(b =>
   b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+/*
+ * Each arrow shows only while the strip has more that way. Tabs appear after
+ * the first telemetry - OLED Care and the service menu - and the row reflows
+ * on resize, so this is called from both as well as on scroll.
+ */
+function updateTabArrows() {
+  const strip = q('tabs'), prev = q('tabs-prev'), next = q('tabs-next');
+  if (!strip || !prev || !next) return;
+  const max = strip.scrollWidth - strip.clientWidth;
+  prev.hidden = strip.scrollLeft <= 1;
+  next.hidden = strip.scrollLeft >= max - 1;
+}
+
+function scrollTabs(dir) {
+  const strip = q('tabs');
+  strip.scrollBy({ left: dir * Math.max(140, strip.clientWidth * 0.6), behavior: 'smooth' });
+}
+
+q('tabs').addEventListener('scroll', updateTabArrows);
+window.addEventListener('resize', updateTabArrows);
+updateTabArrows();
 
 async function loadServiceMenu() {
   let d;
