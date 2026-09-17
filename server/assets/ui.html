@@ -391,6 +391,11 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .upd .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .upd .btns button{min-width:160px;padding:16px 22px}
 .upd #upd-msg{margin-top:12px}
+.upd-prog{margin-top:22px;max-width:520px}
+.upd-step{font-size:13px;color:var(--w80);letter-spacing:.02em;margin-bottom:12px}
+.upd-prog .track{height:4px}
+.upd-prog .track b{width:0;background:var(--w80);transition:width .3s linear,background .5s ease}
+.upd-prog.done .track b{background:var(--green)}
 /*
  * The lists run in two columns. A row is a sentence and a pill: given the full
  * width the pill ends up 400px from the text it belongs to, and capping the
@@ -1067,10 +1072,14 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
       </div>
     </div>
-    <div class="btns">
+    <div class="btns" id="upd-btns">
       <button type="button" id="upd-check" onclick="checkUpdate()">Check now</button>
       <button type="button" id="upd-install" hidden onclick="installUpdate()">Install</button>
       <button type="button" id="upd-rollback" hidden onclick="rollbackUpdate()">Roll back</button>
+    </div>
+    <div class="upd-prog" id="upd-prog" hidden>
+      <div class="upd-step" id="upd-step"></div>
+      <div class="track"><b id="upd-bar"></b></div>
     </div>
     <div class="sub" id="upd-msg"></div>
   </div>
@@ -1600,6 +1609,7 @@ async function tick() {
     // so the columns are only worth filling once that has happened.
     if (firstData) relayout(true);
   } catch (e) {
+    if (updRestarting) return;
     document.body.classList.add('stale');
     if (Date.now() - lastOk > 6000) showErr(e.message || 'TV unreachable');
   }
@@ -1623,10 +1633,17 @@ function setVersion(v) {
 
 // ---- release check and in-place upgrade ----
 let updBusy = false;
+// While an install or rollback has the server restarting: tick() should not dim
+// the page or report the TV unreachable for an absence it was told to expect.
+let updRestarting = false;
+let updInstalled = null;
+// What the last install or rollback came to, kept across re-renders until the next action.
+let updArrival = '';
 
 function renderUpdate(d) {
   const pill = q('upd-pill'), desc = q('upd-desc'), msg = q('upd-msg');
   const inst = q('upd-install'), roll = q('upd-rollback'), chk = q('upd-check');
+  updInstalled = d.installed;
   q('upd-title').textContent = 'Version ' + d.installed;
 
   const working = d.state === 'checking' || d.state === 'downloading' || d.state === 'installing';
@@ -1652,15 +1669,17 @@ function renderUpdate(d) {
 
   msg.textContent = d.state === 'error' ? (d.error || 'the check failed')
     : d.state === 'installed' ? 'Installed. The server is restarting - this page reconnects on its own.'
-    : '';
+    : updArrival;
 
   chk.disabled = working || updBusy;
   inst.hidden = !(d.available && d.writable);
   inst.disabled = working || updBusy;
   inst.textContent = 'Install v' + d.latest;
+  inst.dataset.v = d.latest || '';
   roll.hidden = !(d.rollbackTo && d.writable);
   roll.disabled = working || updBusy;
   roll.textContent = 'Roll back to v' + d.rollbackTo;
+  roll.dataset.v = d.rollbackTo || '';
 
   const vn = q('version-new');
   if (d.available) {
@@ -1675,12 +1694,122 @@ function renderUpdate(d) {
 async function loadUpdate() {
   try {
     const d = await (await fetch(api('/api/update'), { cache: 'no-store' })).json();
-    if (d && d.ok) renderUpdate(d);
+    if (d && d.ok) {
+      renderUpdate(d);
+      noteArrival(d);
+    }
   } catch (e) { /* the footer hint is not worth an error banner */ }
+}
+
+// A page that ran an install or rollback reloads into the new version with
+// ?updated= or ?rolledback=. Said once, then dropped from the address.
+function noteArrival(d) {
+  const p = new URLSearchParams(location.search);
+  const up = p.get('updated'), back = p.get('rolledback');
+  if (!up && !back) return;
+  p.delete('updated');
+  p.delete('rolledback');
+  history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
+  if (d.installed === (up || back)) {
+    updArrival = up ? 'Updated to v' + up + '.' : 'Rolled back to v' + back + '.';
+    q('upd-msg').textContent = updArrival;
+  }
+}
+
+/*
+ * The server says when it is downloading and installing, but nothing says how
+ * long its restart will take - seconds usually, up to two minutes when the
+ * watchdog has to step in - so the bar moves on time within each step and only
+ * fills once the server answers on the version it was asked for.
+ */
+const updProg = {
+  timer: null,
+  pct: 0,
+  show(on) {
+    clearInterval(this.timer);
+    q('upd-prog').classList.remove('done');
+    q('upd-prog').hidden = !on;
+    q('upd-btns').hidden = on;
+    this.set(0);
+  },
+  // Eases towards `to` without reaching it: 63% of the way there after `ms`.
+  step(label, to, ms) {
+    clearInterval(this.timer);
+    q('upd-step').textContent = label;
+    const from = this.pct, t0 = Date.now();
+    this.timer = setInterval(() => this.set(from + (to - from) * (1 - Math.exp(-(Date.now() - t0) / ms))), 250);
+  },
+  set(p) {
+    this.pct = p;
+    q('upd-bar').style.width = p + '%';
+  },
+  done(label) {
+    clearInterval(this.timer);
+    q('upd-step').textContent = label;
+    q('upd-prog').classList.add('done');
+    this.set(100);
+  }
+};
+
+// With a deadline: a wedged server still accepts connections, and a request to
+// it would otherwise wait out the browser's own timeout.
+async function fetchJson(url, opts, ms) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, Object.assign({ cache: 'no-store', signal: ctl.signal }, opts));
+    return r.ok ? await r.json() : null;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+const updControl = action => fetchJson(api('/api/control'), {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action })
+}, 120000);
+
+/*
+ * Waits for the server to answer on `version`, then reloads - this page belongs
+ * to the version that was replaced. `confirmed` is false when the request itself
+ * never came back; then the server answering on its old version, with nothing in
+ * progress, means the change did not happen.
+ */
+async function awaitRestart(version, doneLabel, param, confirmed, oldVersion) {
+  updRestarting = true;
+  // The work is done by now; what is left is waiting.
+  updProg.set(Math.max(updProg.pct, 60));
+  updProg.step('Restarting the server', 95, 20000);
+  const t0 = Date.now();
+  for (;;) {
+    await new Promise(res => setTimeout(res, 1500));
+    const d = await fetchJson(api('/api/update'), {}, 3000);
+    if (d && d.installed === version) break;
+    if (d && !confirmed && d.installed === oldVersion && !/checking|downloading|installing/.test(d.state)) {
+      updRestarting = false;
+      updBusy = false;
+      updProg.show(false);
+      renderUpdate(d);
+      q('upd-msg').textContent = 'That did not finish. The TV is still on v' + oldVersion + '.';
+      return;
+    }
+    const waited = Date.now() - t0;
+    q('upd-msg').textContent = waited > 240000 ? 'The server has not come back. See Updating in the README to roll back.'
+      : waited > 30000 ? 'Taking longer than usual - it can take up to two minutes.'
+      : '';
+  }
+  q('upd-msg').textContent = '';
+  updProg.done(doneLabel);
+  const u = new URL(location.href);
+  u.searchParams.set('tab', 'server');
+  u.searchParams.set(param, version);
+  setTimeout(() => location.replace(String(u)), 1200);
 }
 
 async function checkUpdate() {
   updBusy = true;
+  updArrival = '';
   q('upd-pill').className = 'pill idle';
   q('upd-pill').textContent = 'checking';
   q('upd-check').disabled = true;
@@ -1690,20 +1819,28 @@ async function checkUpdate() {
 }
 
 async function installUpdate() {
-  const v = q('upd-install').textContent.replace('Install ', '');
-  if (!confirm('Install ' + v + '?\n\nThe server is replaced and restarted. Settings, the ad blocker and the screen saver are kept, and the previous version stays on the TV so it can be rolled back.')) return;
+  const v = q('upd-install').dataset.v, from = updInstalled;
+  if (!confirm('Install v' + v + '?\n\nThe server is replaced and restarted. Settings, the ad blocker and the screen saver are kept, and the previous version stays on the TV so it can be rolled back.')) return;
   updBusy = true;
-  q('upd-msg').textContent = 'Downloading and installing - this takes a minute.';
-  const r = await c('update');
+  updArrival = '';
+  q('upd-msg').textContent = '';
+  updProg.show(true);
+  updProg.step('Downloading v' + v, 45, 1500);
+  let installing = false;
+  const watch = setInterval(async () => {
+    const d = await fetchJson(api('/api/update'), {}, 2500);
+    if (!installing && d && d.state === 'installing') {
+      installing = true;
+      updProg.step('Installing v' + v, 58, 1500);
+    }
+  }, 1000);
+  const r = await updControl('update');
+  clearInterval(watch);
+  if (!r || (r.ok && r.updated)) return awaitRestart(v, 'Updated to v' + v, 'updated', !!r, from);
   updBusy = false;
-  if (r && r.ok && r.updated) {
-    // Said here rather than read back: the server is already going away, so the
-    // next poll would only fail.
-    q('upd-msg').textContent = 'v' + r.latest + ' installed. The server is restarting - this page reconnects on its own.';
-    return;
-  }
-  if (r && r.ok && !r.updated) q('upd-msg').textContent = r.note || 'nothing newer to install';
-  loadUpdate();
+  updProg.show(false);
+  await loadUpdate();
+  q('upd-msg').textContent = r.ok ? (r.note || 'Nothing newer to install.') : (r.error || 'The update failed.');
 }
 
 async function toggleAutoCheck() {
@@ -1714,11 +1851,19 @@ async function toggleAutoCheck() {
 }
 
 async function rollbackUpdate() {
-  if (!confirm('Put the previous version back?')) return;
+  const v = q('upd-rollback').dataset.v, from = updInstalled;
+  if (!confirm('Put v' + v + ' back?')) return;
   updBusy = true;
-  await c('updateRollback');
+  updArrival = '';
+  q('upd-msg').textContent = '';
+  updProg.show(true);
+  updProg.step('Restoring v' + v, 45, 1500);
+  const r = await updControl('updateRollback');
+  if (!r || r.ok) return awaitRestart(v, 'Rolled back to v' + v, 'rolledback', !!r, from);
   updBusy = false;
-  loadUpdate();
+  updProg.show(false);
+  await loadUpdate();
+  q('upd-msg').textContent = r.error || 'The rollback failed.';
 }
 
 function showErr(m) { const e = q('err'); e.textContent = m; e.style.display = 'block'; }
