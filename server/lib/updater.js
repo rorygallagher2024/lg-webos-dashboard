@@ -197,6 +197,7 @@ function probeFetch(url, outFile, cb) {
         }
         if (networkFailure(bin, err, stderr)) {
           console.error('update: ' + path.basename(bin) + ': ' + execErr(err, stderr));
+          /** @type {any} */
           var off = new Error('The TV could not reach GitHub. Check it is connected to the internet.');
           off.offline = true;
           return cb(off);

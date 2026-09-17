@@ -26,7 +26,7 @@ jobs:
       - name: screen saver QML matches its declared QtQuick version
         run: ./scripts/check-screensavers.py
 
-      - name: documented entity count and deploy list match the code
+      - name: documented entity list and deploy list match the code
         run: ./scripts/check-drift.py
 
       # Preinstalled on ubuntu-latest.
