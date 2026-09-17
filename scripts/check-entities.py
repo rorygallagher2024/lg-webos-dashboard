@@ -43,7 +43,9 @@ def take(flag):
 stats_file = take('--stats')
 token = take('--token') or os.environ.get('TVWEB_TOKEN')
 tv = args[0] if args else None
-src = (pathlib.Path(__file__).parent.parent / 'server' / 'tvweb.js').read_text(encoding='utf-8')
+ha_path = pathlib.Path(__file__).parent.parent / 'server' / 'lib' / 'ha.js'
+target = ha_path if ha_path.exists() else (pathlib.Path(__file__).parent.parent / 'server' / 'tvweb.js')
+src = target.read_text(encoding='utf-8')
 
 if stats_file:
     try:

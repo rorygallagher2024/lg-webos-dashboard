@@ -21,6 +21,12 @@ var child_process = require('child_process');
 var path = require('path');
 var execFile = child_process.execFile;
 var zlib = require('zlib');
+var MiniMQTT = require('./lib/mqtt');
+var ha = require('./lib/ha');
+var updater = require('./lib/updater');
+var privacy = require('./lib/privacy');
+var oled = require('./lib/oled');
+var zeroBuffer = MiniMQTT.zeroBuffer;
 
 /*
  * Bump on release, and tag the release to match: the dashboard turns this into
@@ -211,6 +217,8 @@ var CLI_MODE = null;
     else if (a[i] === '--rollback') CLI_MODE = 'rollback';
   }
 })();
+
+updater.init({ config: CONFIG, version: TVWEB_VERSION, installDir: __dirname });
 
 // ---------------------------------------------------------------- helpers
 function rd(path) {
@@ -753,6 +761,9 @@ function lunaCached(uri, payload, ttlMs, cb) {
 
 function clearLunaCache() { lunaCache = {}; }
 
+privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
+oled.init({ luna: luna, config: CONFIG });
+
 /*
  * Platform code to the processor it always means. LG reports the code either
  * as _O22_ from the env block or o22 from /proc/lg/base/chip_name, so both
@@ -865,19 +876,7 @@ function detectDeviceInfo(cb) {
 // Keyed on both the soundOutput setting and the audio service's scenario name
 // with its mastervolume_ prefix removed - the two use the same output names,
 // except that a scenario can also name a combination.
-var SOUND_OUTPUT_MAP = {
-  tv_speaker: 'TV Speaker',
-  external_arc: 'HDMI ARC',
-  optical: 'Optical',
-  external_optical: 'Optical',
-  headphone: 'Headphone / AUX',
-  bt_soundbar: 'Bluetooth',
-  external_speaker: 'External Speaker',
-  lineout: 'Line Out',
-  soundbar: 'LG Sound Sync',
-  tv_speaker_headphone: 'TV Speaker + Headphone',
-  internal: 'TV Speaker'
-};
+var SOUND_OUTPUT_MAP = ha.SOUND_OUTPUT_MAP;
 
 function formatSoundOutput(so) {
   if (!so) return 'TV Speaker';
@@ -911,167 +910,6 @@ function refreshInstalledApps(cb) {
     }
     if (cb) cb(installedApps);
   });
-}
-
-var ADBLOCK_HOSTS_FILE = '/var/lib/tvweb/adblock_hosts';
-/*
- * Written into the table and looked for in the live /etc/hosts. Asking
- * /proc/mounts whether anything is mounted there answers a different question:
- * webosbrew bind-mounts that path itself on some installs, and this then
- * reported the blocker as on while none of these domains were in effect.
- */
-var ADBLOCK_MARKER = '# LG Ad & Telemetry Blackhole (lg-webos-mqtt)';
-var ADBLOCK_FLAG_FILE = '/var/lib/tvweb/adblock_enabled';
-/* Ad, tracking and telemetry hosts. Nothing on the TV needs to reach them. */
-var ADBLOCK_ADS = [
-  'ad.lgsmartad.com',
-  'ibis.lgappstv.com',
-  'ibs.lgappstv.com',
-  'lgsmartad.com',
-  'rdx.lgtvcommon.com',
-  'aic.lgtvcommon.com',
-  'smartclip.com',
-  'smartclip-services.com',
-  'yumenetworks.com'
-];
-
-/*
- * LG's own service platform and content delivery. These carry ads and
- * recommendations, but they carry the Content Store and firmware updates too:
- * com.webos.appInstallService on a B8 points at http://GB.lgtvsdp.com. That is
- * what the "everything" tier costs, and why it is not the default.
- */
-var ADBLOCK_PLATFORM = [
-  'lgtvsdp.com',
-  'us.lgtvsdp.com',
-  'gb.lgtvsdp.com',
-  'eu.lgtvsdp.com',
-  /* webOS 9 moved the store: a C2 on 9.2.2 installs from GB.nextlgsdp.com. */
-  'nextlgsdp.com',
-  'us.nextlgsdp.com',
-  'gb.nextlgsdp.com',
-  'eu.nextlgsdp.com',
-  'ngfts.lge.com',
-  'aic-ngfts.lge.com'
-];
-
-var ADBLOCK_DOMAINS = ADBLOCK_ADS.concat(ADBLOCK_PLATFORM);
-
-/*
- * The store's own server, as the TV has it. lgtvsdp.com on webOS 4 and
- * nextlgsdp.com on webOS 9 are both in the list above, but a set this has not
- * seen could name a third - and then the full tier would claim to block the
- * store while leaving it reachable.
- */
-function storeHost() {
-  try {
-    var j = JSON.parse(rd('/var/palm/data/com.webos.appInstallService/serverInfo') || '{}');
-    var m = /^[a-z]+:\/\/([^\/:?#]+)/i.exec(String(j.serverUrl || ''));
-    return m ? m[1].toLowerCase() : null;
-  } catch (e) { return null; }
-}
-
-function adBlockPlatform() {
-  var list = ADBLOCK_PLATFORM.slice();
-  var host = storeHost();
-  if (host && list.indexOf(host) === -1) list.push(host);
-  return list;
-}
-
-function adBlockList(mode) {
-  return mode === 'full' ? ADBLOCK_ADS.concat(adBlockPlatform()) : ADBLOCK_ADS;
-}
-
-var cachedAdBlockActive = null;
-var lastAdBlockCheck = 0;
-
-/*
- * Which tier is mounted. The flag file holds the mode; installs made before
- * there was a choice wrote '1', which was today's "full".
- */
-function adBlockMode() {
-  if (!isAdBlockActive()) return 'off';
-  var flag = rd(ADBLOCK_FLAG_FILE);
-  return flag === 'ads' ? 'ads' : 'full';
-}
-
-function isAdBlockActive() {
-  var now = Date.now();
-  if (cachedAdBlockActive !== null && (now - lastAdBlockCheck < 30000)) {
-    return cachedAdBlockActive;
-  }
-  try {
-    var hosts = fs.readFileSync('/etc/hosts', 'utf8');
-    cachedAdBlockActive = hosts.indexOf(ADBLOCK_MARKER) !== -1;
-    lastAdBlockCheck = now;
-    return cachedAdBlockActive;
-  } catch (e) {
-    return false;
-  }
-}
-
-function setAdBlock(mode, cb) {
-  var active = isAdBlockActive();
-  if (mode !== 'off') {
-    var list = adBlockList(mode);
-    var lines = [
-      '127.0.0.1\tlocalhost.localdomain\tlocalhost',
-      '::1\tlocalhost ip6-localhost ip6-loopback',
-      'fe00::0\tip6-localnet',
-      'ff00::0\tip6-mcastprefix',
-      'ff02::1\tip6-allnodes',
-      'ff02::2\tip6-allrouters',
-      '',
-      ADBLOCK_MARKER
-    ];
-    for (var i = 0; i < list.length; i++) {
-      lines.push('0.0.0.0\t' + list[i]);
-    }
-    lines.push('');
-    try {
-      /*
-       * Truncate and rewrite in place. The bind mount is to this file's inode,
-       * so switching tier while mounted takes effect immediately - and writing
-       * a new file and renaming it over this one would leave the mount showing
-       * the old contents.
-       */
-      fs.writeFileSync(ADBLOCK_HOSTS_FILE, lines.join('\n'), 'utf8');
-      fs.writeFileSync(ADBLOCK_FLAG_FILE, mode, 'utf8');
-    } catch (e) {
-      if (cb) cb({ ok: false, error: 'could not write adblock hosts: ' + e.message });
-      return;
-    }
-    /*
-     * Our table is already the live one, so rewriting it in place is the whole
-     * change and the tier switches without a remount. Anything else mounted
-     * there belongs to someone else, and a bind mount stacks on top of it.
-     */
-    if (active) {
-      cachedAdBlockActive = null;
-      cachedPrivacy = null;
-      lastStats = null;
-      if (cb) cb({ ok: true, enabled: true, mode: mode });
-      return;
-    }
-    execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 }, function (err) {
-      cachedAdBlockActive = null;
-      cachedPrivacy = null;
-      lastStats = null;
-      if (cb) cb({ ok: !err, enabled: isAdBlockActive(), mode: adBlockMode() });
-    });
-  } else if (mode === 'off' && active) {
-    try {
-      if (fs.existsSync(ADBLOCK_FLAG_FILE)) fs.unlinkSync(ADBLOCK_FLAG_FILE);
-    } catch (e) {}
-    execFile('/bin/umount', ['/etc/hosts'], { timeout: 3000 }, function (err) {
-      cachedAdBlockActive = null;
-      cachedPrivacy = null;
-      lastStats = null;
-      if (cb) cb({ ok: !err, enabled: isAdBlockActive(), mode: adBlockMode() });
-    });
-  } else {
-    if (cb) cb({ ok: true, enabled: active, mode: adBlockMode() });
-  }
 }
 
 /*
@@ -1154,391 +992,6 @@ function injectKey(code, cb) {
 }
 
 // ---------------------------------------------------------------- stats
-var cachedOled = null;
-var lastOledCheck = 0;
-
-/*
- * Not every webOS set is an OLED - LCD/QNED/NanoCell models run the same
- * firmware but have no panel-hours counter, no Off-RS compensation and no
- * Pixel Refresher. Detect once and omit the whole block rather than reporting
- * a confident 0 hours, which reads as a real measurement.
- *
- * The model name decides it: every LG OLED is named "OLED...". panelUsageTime
- * is not proof - some LCD firmware answers it anyway (seen on a 2016
- * 55UH6030), which is what used to turn those sets into false OLEDs - so it
- * only gets a say when the model name is unreadable. A "panel" in config.json
- * overrides the lot.
- */
-var isOled = null;   // null = not yet determined
-
-function detectOled(cb) {
-  if (isOled !== null) return cb(isOled);
-
-  var forced = CONFIG.panel || (CONFIG.device && CONFIG.device.panel);
-  if (forced) {
-    isOled = /oled/i.test(forced);
-    console.log('panel: ' + (isOled ? 'OLED' : 'not OLED') + ' (from config)');
-    return cb(isOled);
-  }
-  if (fs.existsSync('/var/luna/preferences/paneltype_oled')) {
-    isOled = true;
-    console.log('panel: OLED (paneltype_oled present)');
-    return cb(true);
-  }
-  luna('com.webos.service.tv.systemproperty/getSystemProperties',
-    { keys: ['panelUsageTime', 'modelName'] },
-    function (res) {
-      var model = (res && res.modelName) || (CONFIG.device && CONFIG.device.model) || '';
-      if (model) {
-        isOled = /oled/i.test(model);
-        console.log('panel: ' + (isOled ? 'OLED' : 'not OLED - panel features disabled') +
-                    ' (model ' + model + ')');
-        return cb(isOled);
-      }
-      if (res && res.panelUsageTime) {
-        isOled = true;
-        console.log('panel: OLED (detected via systemproperty panelUsageTime)');
-        return cb(true);
-      }
-      // webOS 9+ (C2/G2/etc.): check pnwash filesystem records or panelcontroller service
-      if (fs.existsSync('/mnt/lg/cmn_data/pnwash/autoOffRsLastTime') ||
-          fs.existsSync('/mnt/lg/cmn_data/pnwash/autoOffRsTime')) {
-        isOled = true;
-        console.log('panel: OLED (detected via pnwash records)');
-        return cb(true);
-      }
-      luna('com.webos.service.panelcontroller/getPanelUsageTime', { subscribe: false }, function (pcRes) {
-        isOled = !!(pcRes && pcRes.panelUsageTime);
-        console.log('panel: fallback to panelcontroller -> ' +
-                    (isOled ? 'OLED' : 'not OLED - panel features disabled'));
-        cb(isOled);
-      });
-    });
-}
-
-/*
- * The panel protections the service menu reaches, through the service that
- * owns them rather than the files underneath.
- *
- * com.webos.service.oledepl fronts eplmanager, which is the only thing on the
- * set that touches /mnt/lg/cmn_data/pnwash/gsrOff and its neighbours - setting
- * GSR through the service removes and recreates that file, so the two agree.
- *
- * The files are not a substitute for asking. socTpcStatus reads 0 on a C2
- * whether temporal peak control is on or off, so the old reading of it was
- * wrong whenever the setting was on. webOS 4 has no such service, and there
- * the files are all there is.
- */
-/*
- * The service menu.
- *
- * factorywin shows a cut-down menu unless it is told otherwise. Its own
- * condition is
- *
- *   isSimplifiedMenuMode = !factoryMode && (!readSvcMenuFlag || isSvcMenu)
- *   isSvcMenu            = svcMenuFlag && prodkey && RELEASE && !usbAuth
- *
- * so on a retail set the only lever is svcMenuFlag, a setting in the "other"
- * category: false gives the full menu. Earlier sets do not carry the setting at
- * all - a B8 has the app and no flag - and their menu was never cut down.
- *
- * The change is read when the TV starts, so it takes a power cycle.
- *
- * Opening it is a relaunch carrying irKey, which the app turns into the key
- * event the service remote would have sent. The PIN is still asked for on the
- * TV, which is as it should be.
- */
-var SERVICE_MENU_APP = 'com.webos.app.factorywin';
-var SERVICE_MENUS = { ezAdjust: 1, inStart: 1 };
-
-function serviceMenuState(cb) {
-  var present = fs.existsSync('/usr/palm/applications/' + SERVICE_MENU_APP);
-  luna('com.webos.settingsservice/getSystemSettings',
-       { category: 'other', keys: ['svcMenuFlag'] }, function (r) {
-    var flag = (r && r.returnValue === true && r.settings &&
-                typeof r.settings.svcMenuFlag !== 'undefined') ? r.settings.svcMenuFlag : null;
-    cb({
-      ok: true,
-      app: present,
-      // A set without the flag has nothing to unlock, not a locked menu.
-      lockable: flag !== null,
-      locked: (flag === null) ? null : (flag === true),
-      writable: CONFIG.allowControl
-    });
-  });
-}
-
-function setServiceMenuLock(locked, cb) {
-  luna('com.webos.settingsservice/setSystemSettings',
-       { category: 'other', settings: { svcMenuFlag: !!locked } }, function (r) {
-    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
-    serviceMenuState(function (st) {
-      cb({ ok: st.locked === !!locked, state: st,
-           error: st.locked === !!locked ? undefined : 'the setting did not take' });
-    });
-  });
-}
-
-function openServiceMenu(which, cb) {
-  var key = SERVICE_MENUS[which] ? which : 'ezAdjust';
-  luna('com.webos.applicationManager/launch',
-       { id: SERVICE_MENU_APP, params: { irKey: key } }, function (r) {
-    cb({ ok: !!(r && r.returnValue), menu: key });
-  });
-}
-
-var OLED_EPL = 'com.webos.service.oledepl';
-var OLED_SYSPROP = 'com.webos.service.tv.systemproperty';
-// null = not yet asked, false = neither service answers.
-var oledProtVia = null;
-
-function oledProtControllable() {
-  return oledProtVia === 'epl' || oledProtVia === 'sysprop';
-}
-
-/*
- * webOS 4 keeps the same two protections behind a different service, with the
- * values as the strings "true" and "false" - a B8 answers getProperties for
- * OledTPC and OledGSR and has no oledepl at all. Its own service menu reads
- * them from there, which is how this was found.
- */
-function readViaSysprop(cb) {
-  luna(OLED_SYSPROP + '/getProperties', { keys: ['OledTPC', 'OledGSR'] }, function (r) {
-    if (!r || r.returnValue !== true || typeof r.OledTPC === 'undefined') {
-      oledProtVia = false;
-      return cb(null);
-    }
-    oledProtVia = 'sysprop';
-    cb({
-      gsr: String(r.OledGSR) === 'true',
-      tpc: String(r.OledTPC) === 'true',
-      gsrStressCount: null
-    });
-  });
-}
-
-function readOledProtections(cb) {
-  if (oledProtVia === 'sysprop') return readViaSysprop(cb);
-  luna(OLED_EPL + '/getGlobalStressReduction', {}, function (gsr) {
-    if (!gsr || gsr.returnValue !== true) return readViaSysprop(cb);
-    luna(OLED_EPL + '/getTemporalPeakControl', {}, function (tpc) {
-      oledProtVia = 'epl';
-      cb({
-        gsr: gsr.enable === true,
-        gsrStressCount: (typeof gsr.stressCount === 'number') ? gsr.stressCount : null,
-        tpc: (tpc && tpc.returnValue === true) ? tpc.enable === true : null
-      });
-    });
-  });
-}
-
-function setOledProtection(which, enabled, cb) {
-  if (which !== 'gsr' && which !== 'tpc') {
-    return cb({ ok: false, error: 'unknown protection: ' + which });
-  }
-
-  function afterWrite(r) {
-    lastStats = null;
-    cachedOled = null;
-    if (!r || r.returnValue !== true) {
-      return cb({ ok: false, error: 'the TV would not change it' });
-    }
-    // Read it back: the call returns true whether or not anything moved.
-    readOledProtections(function (state) {
-      var now = state ? (which === 'gsr' ? state.gsr : state.tpc) : null;
-      cb({ ok: now === !!enabled, state: state,
-           error: now === !!enabled ? undefined : 'the setting did not take' });
-    });
-  }
-
-  // Ask first, so a set before any read still goes to the right service.
-  readOledProtections(function () {
-    if (oledProtVia === 'sysprop') {
-      var prop = {};
-      prop[which === 'gsr' ? 'OledGSR' : 'OledTPC'] = enabled ? 'true' : 'false';
-      return luna(OLED_SYSPROP + '/setProperties', prop, afterWrite);
-    }
-    if (oledProtVia !== 'epl') {
-      return cb({ ok: false, error: 'this TV does not offer the control' });
-    }
-    var method = (which === 'gsr') ? 'setGlobalStressReduction' : 'setTemporalPeakControl';
-    luna(OLED_EPL + '/' + method, { enable: !!enabled }, afterWrite);
-  });
-}
-
-function refreshOledStats(picSettings, pState, cb) {
-  var now = Date.now();
-  if (cachedOled && (now - lastOledCheck < 30000)) {
-    if (picSettings) {
-      if (picSettings.screenShift) cachedOled.screen_shift = picSettings.screenShift;
-      if (picSettings.logoLuminanceAdjust) cachedOled.logo_dimming = picSettings.logoLuminanceAdjust;
-    }
-    var pnStateCached = rd('/mnt/lg/cmn_data/pnwash/state');
-    var jobScopeCached = rd('/mnt/lg/cmn_data/pnwash/jobScope');
-    var isPnwashRunningCached = (pnStateCached && pnStateCached.indexOf('2') === 0) || (jobScopeCached === '1');
-    var isCompRunningCached = isPnwashRunningCached ||
-      (pState && pState.raw === 'Active Standby' && cachedOled.hours_until_comp === 0);
-    cachedOled.comp_status = isCompRunningCached ? 'Running' : 'Idle';
-    cachedOled.comp_status_label = isCompRunningCached ? 'Completing Panel Maintenance (Short Cycle)' : 'Idle';
-    return cb(cachedOled);
-  }
-
-  /*
-   * Deep Pixel Refresher ("Panel Wash") last run counter in PANEL HOURS:
-   * autoPnwashTime on webOS <= 8 (B8), autoJbLastTime on webOS 9+ (C2).
-   */
-  var autoPnwashRaw = rd('/mnt/lg/cmn_data/pnwash/autoPnwashTime') ||
-                      rd('/mnt/lg/cmn_data/pnwash/autoJbLastTime');
-  var lastRefresher = autoPnwashRaw ? parseInt(autoPnwashRaw, 10) : 0;
-
-  /*
-   * Last Off-RS compensation in PANEL HOURS from the filesystem:
-   * autoOffRsTime on webOS <= 8 (B8), autoOffRsLastTime on webOS 9+ (C2).
-   * Confirmed on live sets: autoOffRsTime 3426 on B8; autoOffRsLastTime 4767 on C2.
-   */
-  var autoOffRsRaw = rd('/mnt/lg/cmn_data/pnwash/autoOffRsTime') ||
-                     rd('/mnt/lg/cmn_data/pnwash/autoOffRsLastTime');
-  var fsLastCompHours = autoOffRsRaw ? parseInt(autoOffRsRaw, 10) : null;
-
-  /*
-   * Short Off-RS compensation interval:
-   * On webOS <= 8 (B8): autoOffRsIntervalHomeMode is in 10-minute units (24 = 4h).
-   * On webOS 9+ (C2): autoOffRsInterval is in whole hours (4 = 4h).
-   */
-  var compIntervalRaw = rd('/mnt/lg/cmn_data/pnwash/autoOffRsIntervalHomeMode');
-  var compIntervalUnits;
-  var compInterval;
-  if (compIntervalRaw) {
-    compIntervalUnits = parseInt(compIntervalRaw, 10);
-    if (!compIntervalUnits || compIntervalUnits <= 0) compIntervalUnits = 24;
-    compInterval = Math.round((compIntervalUnits * 10 / 60) * 10) / 10;
-  } else {
-    var compIntervalHoursRaw = rd('/mnt/lg/cmn_data/pnwash/autoOffRsInterval');
-    var hVal = compIntervalHoursRaw ? parseFloat(compIntervalHoursRaw) : 4;
-    if (!hVal || hVal <= 0) hVal = 4;
-    compInterval = hVal;
-    compIntervalUnits = Math.round(hVal * 6);
-  }
-  if (compInterval < 0.5 || compInterval > 24) compInterval = 4;
-
-  /*
-   * Deep Pixel Refresher cadence:
-   * Stored in autoJbInterval on webOS 9+ (e.g. "2000 ok"), default 2000h.
-   */
-  var autoJbIntervalRaw = rd('/mnt/lg/cmn_data/pnwash/autoJbInterval');
-  var REFRESHER_INTERVAL_HOURS = autoJbIntervalRaw ? parseInt(autoJbIntervalRaw, 10) : 2000;
-  if (!REFRESHER_INTERVAL_HOURS || REFRESHER_INTERVAL_HOURS <= 0) REFRESHER_INTERVAL_HOURS = 2000;
-
-  function finishOledStats(usageUnits, lastCompUnits, dispRes) {
-    var rawStatus = (dispRes && dispRes.status) ? dispRes.status : 'schedule';
-    var statusStr = 'Idle';
-    if (rawStatus === 'cancel_schedule') statusStr = 'Scheduled';
-    else if (rawStatus === 'processing') statusStr = 'Running';
-
-    // If both Luna calls returned null, fall back to filesystem Off-RS hours so OLED never shows 0
-    if (usageUnits === null && fsLastCompHours !== null) {
-      usageUnits = fsLastCompHours * 6;
-    }
-
-    var panelHours = (usageUnits !== null) ? Math.floor(usageUnits / 6) : 0;
-    var panelHoursExact = (usageUnits !== null) ? Math.round((usageUnits * 10 / 60) * 10) / 10 : 0;
-
-    var lastCompHours = 0;
-    var hoursSinceComp = 0;
-    if (lastCompUnits !== null) {
-      // webOS <= 8: lastCompensationTimestamp is in 10-minute units
-      lastCompHours = Math.round((lastCompUnits * 10 / 60) * 10) / 10;
-      hoursSinceComp = (usageUnits !== null) ?
-        Math.round(((usageUnits - lastCompUnits) * 10 / 60) * 10) / 10 : 0;
-    } else if (fsLastCompHours !== null) {
-      // webOS 9+: autoOffRsLastTime is in whole panel hours
-      lastCompHours = fsLastCompHours;
-      hoursSinceComp = (panelHoursExact && lastCompHours) ?
-        Math.max(0, Math.round((panelHoursExact - lastCompHours) * 10) / 10) : 0;
-    }
-    var hoursUntilComp = Math.max(0, Math.round((compInterval - hoursSinceComp) * 10) / 10);
-
-    var hoursSinceRefresher = (panelHours && lastRefresher) ? Math.max(0, panelHours - lastRefresher) : 0;
-    var hoursUntilRefresher = Math.max(0, REFRESHER_INTERVAL_HOURS - hoursSinceRefresher);
-
-    var offRsCountRaw = rd('/mnt/lg/cmn_data/pnwash/completedOffRsCount');
-    var jbCountRaw = rd('/mnt/lg/cmn_data/pnwash/completedJbCount');
-    var failAlertCountRaw = rd('/mnt/lg/cmn_data/pnwash/failAlertCount');
-    var tpcOffExists = fs.existsSync('/mnt/lg/cmn_data/pnwash/tpcOff');
-    var gsrOffExists = fs.existsSync('/mnt/lg/cmn_data/pnwash/gsrOff');
-    var socTpcRaw = rd('/mnt/lg/cmn_data/pnwash/socTpcStatus');
-
-    var offRsCycles = offRsCountRaw ? parseInt(offRsCountRaw, 10) : null;
-    var jbCycles = jbCountRaw ? parseInt(jbCountRaw, 10) : null;
-    var failCount = failAlertCountRaw ? parseInt(failAlertCountRaw, 10) : null;
-    var hasTpcMonitoring = tpcOffExists || (socTpcRaw !== null) || fs.existsSync('/mnt/lg/cmn_data/pnwash/autoOffRsInterval');
-    var asblStatus = hasTpcMonitoring ? ((tpcOffExists || socTpcRaw === '0') ? 'Disabled' : 'Active') : null;
-    var gsrStatus = hasTpcMonitoring ? (gsrOffExists ? 'Disabled' : 'Active') : null;
-
-    var pnStateRaw = rd('/mnt/lg/cmn_data/pnwash/state');
-    var jobScopeRaw = rd('/mnt/lg/cmn_data/pnwash/jobScope');
-    var isPnwashRunning = (pnStateRaw && pnStateRaw.indexOf('2') === 0) || (jobScopeRaw === '1');
-    var isCompRunning = isPnwashRunning ||
-      (pState && pState.raw === 'Active Standby' && hoursUntilComp === 0);
-    var compStatus = isCompRunning ? 'Running' : 'Idle';
-    var compStatusLabel = isCompRunning ? 'Completing Panel Maintenance (Short Cycle)' : 'Idle';
-
-    cachedOled = {
-      panel_hours: panelHours,
-      panel_hours_exact: panelHoursExact,
-      last_compensation_hours: lastCompHours,
-      hours_since_comp: hoursSinceComp,
-      hours_until_comp: hoursUntilComp,
-      comp_interval_hours: compInterval,
-      comp_interval_units: compIntervalUnits,
-      comp_cycles: offRsCycles,
-      comp_status: compStatus,
-      comp_status_label: compStatusLabel,
-      refresher_interval_hours: REFRESHER_INTERVAL_HOURS,
-      last_refresher_hours: lastRefresher,
-      hours_since_refresher: hoursSinceRefresher,
-      hours_until_refresher: hoursUntilRefresher,
-      refresher_cycles: jbCycles,
-      refresher_status: statusStr,
-      refresher_status_raw: rawStatus,
-      failure_alerts: failCount,
-      asbl_protection: asblStatus,
-      gsr_protection: gsrStatus,
-      screen_shift: (picSettings && picSettings.screenShift) ? picSettings.screenShift : 'off',
-      logo_dimming: (picSettings && picSettings.logoLuminanceAdjust) ? picSettings.logoLuminanceAdjust : 'off'
-    };
-    lastOledCheck = Date.now();
-    cb(cachedOled);
-  }
-
-  // 1. Query webOS 4-8 Luna systemproperty
-  luna('com.webos.service.tv.systemproperty/getSystemProperties',
-    { keys: ['panelUsageTime', 'lastCompensationTimestamp'] },
-    function (sysRes) {
-      var usageUnits = (sysRes && sysRes.panelUsageTime) ? parseInt(sysRes.panelUsageTime, 10) : null;
-      var lastCompUnits = (sysRes && sysRes.lastCompensationTimestamp) ? parseInt(sysRes.lastCompensationTimestamp, 10) : null;
-
-      function queryDisplayStatus(uUnits, cUnits) {
-        // Query clearPanelNoiseStatus (webOS <= 8). On webOS 9+, service does not exist and dispRes is null.
-        luna('com.webos.service.tv.display/getClearPanelNoiseStatus', {}, function (dispRes) {
-          finishOledStats(uUnits, cUnits, dispRes);
-        });
-      }
-
-      if (usageUnits !== null) {
-        queryDisplayStatus(usageUnits, lastCompUnits);
-      } else {
-        // 2. webOS 9+ (C2/G2/etc.): Query com.webos.service.panelcontroller
-        luna('com.webos.service.panelcontroller/getPanelUsageTime', { subscribe: false }, function (pcRes) {
-          if (pcRes && pcRes.panelUsageTime) {
-            usageUnits = parseInt(pcRes.panelUsageTime, 10);
-          }
-          queryDisplayStatus(usageUnits, lastCompUnits);
-        });
-      }
-    }
-  );
-}
 
 var prevNet = null;
 /* Short server-side history of SoC temperature. The dashboard's trace would
@@ -1845,11 +1298,11 @@ function collectStats(cb) {
                 out.apps = apps || [];
                 out.privacy = {
                   adblock: {
-                    enabled: isAdBlockActive(),
-                    count: ADBLOCK_DOMAINS.length
+                    enabled: privacy.isAdBlockActive(),
+                    count: privacy.ADBLOCK_DOMAINS.length
                   }
                 };
-                detectOled(function (oledPanel) {
+                oled.detectOled(function (oledPanel) {
                   /* webOS 3.x exposes no thermal sensor at all: the file simply
                      does not exist, /sys/class/thermal is empty and there is no
                      hwmon. That is different from the ~80s post-boot window where
@@ -1861,8 +1314,8 @@ function collectStats(cb) {
                     out.oled = null;
                     return flushStats(out);
                   }
-                  refreshOledStats((pic && pic.settings) ? pic.settings : null, out.powerState, function (oled) {
-                    out.oled = oled;
+                  oled.refreshOledStats((pic && pic.settings) ? pic.settings : null, out.powerState, function (oledData) {
+                    out.oled = oledData;
                     flushStats(out);
                   });
                 });
@@ -2211,389 +1664,6 @@ function hdmiInputs(cb) {
   });
 }
 
-// ---------------------------------------------------------------- privacy
-/*
- * View of LG's data collection, and the changes the platform offers an API
- * for.
- *
- * The consent flags are mirrored into /var/luna/preferences/eula, but
- * com.webos.settingsservice owns them: it regenerates that file at boot, which
- * is why editing the file looks like it works and reverts. Reads come from the
- * file because it costs no fork; writes go through the service.
- *
- * The other actions here are genuine Luna calls, not file edits: rotating the
- * advertising identifier and clearing ad cookies.
- *
- * Labels are deliberately plain. "ACR" and "LMT" mean nothing to most people,
- * so the UI is given a description for every row rather than an acronym.
- */
-
-// Only flags whose meaning is actually known are described. Anything else is
-// surfaced under its raw name rather than given an invented explanation.
-var CONSENT_LABELS = {
-  acrAllowed:              ['Screen content recognition', 'Lets LG identify what is on your screen to profile your viewing'],
-  acrGdprAllowed:          ['Screen recognition (GDPR consent)', 'The EU consent record for screen content recognition'],
-  acrAdAllowed:            ['Ads based on what you watch', 'Uses recognised screen content to target advertising'],
-  customAdAllowed:         ['Personalised advertising', 'Tailors the ads shown on your TV to you'],
-  customadsAllowed:        ['Personalised advertising (secondary flag)', 'A second personalised-advertising consent record'],
-  cookiesAllowed:          ['Advertising cookies', 'Stores cookies used for ad tracking'],
-  thirdPartySharingAllowed:['Sharing your data with other companies', 'Passes your usage data to third parties'],
-  additionalDataAllowed:   ['Additional usage data', 'Extra analytics beyond what the TV needs to work'],
-  remoteDiagAllowed:       ['Remote diagnostics upload', 'Lets LG collect and upload diagnostic reports from your TV'],
-  voiceAllowed:            ['Voice recordings', 'Allows voice data to be collected and processed'],
-  voice2Allowed:           ['Voice recordings (secondary flag)', 'A second voice-data consent record']
-};
-
-/*
- * Never offered as toggles.
- *
- * The first three record acceptance of the terms and of network use rather
- * than a collection choice, and what a set does when they are false is
- * untested. allAllowed is the Select-All: whether writing it cascades to the
- * other twenty is also untested, and a single click that silently grants
- * everything is the one failure this panel must not have.
- */
-var CONSENT_LOCKED = {
-  generalTermsAllowed: 'Acceptance of the terms themselves.',
-  networkAllowed:      'Acceptance of network use.',
-  firstUseAllowed:     'Part of first-boot setup.',
-  allAllowed:          'The Select-All. Read-only because whether writing it cascades to the ' +
-                       'other flags is untested.'
-};
-
-/*
- * /var/palm/license/eulaInfoNetwork.json maps each flag to the licence
- * documents accepting it implies. The mapping is firmware-specific - chpAllowed
- * names S_CHP on a C8 and only S_SVC on this B8 - so it is read from the set
- * rather than hardcoded.
- *
- * It is what separates an undescribed flag the TV can at least account for from
- * one it cannot. Flags in no group get no toggle: nobody can consent to
- * something neither we nor the platform can name.
- */
-var consentGroups = null;
-var consentMapFound = false;
-
-function loadConsentGroups() {
-  if (consentGroups) return consentGroups;
-  consentGroups = {};
-  try {
-    var j = JSON.parse(rd('/var/palm/license/eulaInfoNetwork.json') || '{}');
-    var list = (j.eulaMappingList && j.eulaMappingList.eulaInfo) || [];
-    for (var i = 0; i < list.length; i++) {
-      var e = list[i];
-      if (!e || !e.settingKey) continue;
-      // "mandatory" is the set that actually has to be accepted; the notice and
-      // select-all entries are the same document on every group.
-      consentGroups[e.settingKey] = (e.mandatory || e.generalSelectAll || []).slice().sort();
-      consentMapFound = true;
-    }
-  } catch (err) { /* no mapping on this set: every unlabelled flag stays read-only */ }
-  return consentGroups;
-}
-
-/*
- * The agreement documents behind the flags, read from the settings service.
- *
- * eulaStatus is the output: a C8 on 4.4.0 rebuilds every flag from the accepted
- * documents at boot, so a flag written on its own reverts there. A B8 on 4.4.3
- * does not rebuild, which is why writing flags alone appeared to work and left
- * the two records disagreeing. Writing both keeps them saying the same thing on
- * either firmware. Reported in #61.
- *
- * It also carries the titles - "S_ADG" is "Viewing Information Agreement" -
- * which is the only place on the set that names them. The file that caches this
- * does not exist on webOS 9, so it is read from the service.
- */
-function readConsentDocs(cb) {
-  luna('com.webos.settingsservice/getSystemSettings', { keys: ['eulaInfoNetwork'] }, function (r) {
-    var eln = r && r.settings && r.settings.eulaInfoNetwork;
-    cb(eln && Array.isArray(eln.eulaList) ? eln : null);
-  });
-}
-
-function acceptedSet(eln) {
-  var out = {};
-  for (var i = 0; i < eln.eulaList.length; i++) {
-    if (eln.eulaList[i].accepted) out[eln.eulaList[i].id] = true;
-  }
-  return out;
-}
-
-function docsSatisfied(need, accepted) {
-  for (var i = 0; i < need.length; i++) if (!accepted[need[i]]) return false;
-  return need.length > 0;
-}
-
-/*
- * What the TV would hold after this change. The documents move first and every
- * mapped flag is then derived from them, which is exactly what the rebuilding
- * firmware does at boot - done here so both firmwares agree immediately.
- *
- * A document needed by a flag that cannot be switched off is never withdrawn:
- * Terms of Use sits under nearly every group, and dropping it would withdraw
- * the lot.
- */
-function planConsent(key, on, flags, eln) {
-  var groups = loadConsentGroups();
-  var accepted = acceptedSet(eln);
-  var need = groups[key] || [];
-  var i, k;
-
-  if (on) {
-    for (i = 0; i < need.length; i++) accepted[need[i]] = true;
-  } else {
-    var protectedDocs = {};
-    for (k in groups) {
-      if (!groups.hasOwnProperty(k)) continue;
-      if (!CONSENT_LOCKED[k] || !flags[k]) continue;
-      for (i = 0; i < groups[k].length; i++) protectedDocs[groups[k][i]] = true;
-    }
-    for (i = 0; i < need.length; i++) {
-      if (!protectedDocs[need[i]]) delete accepted[need[i]];
-    }
-  }
-
-  var nextFlags = {}, changed = [];
-  for (k in flags) if (flags.hasOwnProperty(k)) nextFlags[k] = flags[k];
-  for (k in groups) {
-    if (!groups.hasOwnProperty(k) || !nextFlags.hasOwnProperty(k)) continue;
-    if (CONSENT_LOCKED[k]) continue;
-    /*
-     * Downward only. A flag whose agreement has just been withdrawn has to go
-     * off with it, but nothing is ever switched on as a side effect: a set
-     * whose flags were written directly before this existed has documents
-     * saying yes under flags saying no, and reconciling that upwards would
-     * turn collection back on behind the reader.
-     */
-    if (nextFlags[k] && !docsSatisfied(groups[k], accepted)) {
-      nextFlags[k] = false;
-      changed.push(k);
-    }
-  }
-  if (nextFlags[key] !== on) { nextFlags[key] = on; if (changed.indexOf(key) === -1) changed.push(key); }
-
-  var nextDocs = JSON.parse(JSON.stringify(eln));
-  for (i = 0; i < nextDocs.eulaList.length; i++) {
-    nextDocs.eulaList[i].accepted = !!accepted[nextDocs.eulaList[i].id];
-  }
-  return { flags: nextFlags, docs: nextDocs, changed: changed };
-}
-
-/*
- * Name the documents a row depends on, and the rows that move with it. A flag
- * cannot be off while an agreement it shares is accepted, so the panel says so
- * before the click rather than surprising the reader afterwards.
- */
-function annotateConsent(consent, eln) {
-  if (!consent || !eln) return;
-  var titles = {}, i;
-  for (i = 0; i < eln.eulaList.length; i++) {
-    if (eln.eulaList[i].title) titles[eln.eulaList[i].id] = eln.eulaList[i].title;
-  }
-  var groups = loadConsentGroups();
-  var rows = (consent.known || []).concat(consent.other || []);
-  var flags = {}, byKey = {};
-  for (i = 0; i < rows.length; i++) { flags[rows[i].key] = rows[i].enabled; byKey[rows[i].key] = rows[i]; }
-
-  for (i = 0; i < rows.length; i++) {
-    var row = rows[i], need = groups[row.key];
-    if (!need) continue;
-    var names = [];
-    for (var j = 0; j < need.length; j++) if (titles[need[j]]) names.push(titles[need[j]]);
-    if (names.length) {
-      row.agreements = names;
-      // Now that the documents can be named, an undescribed flag can say what
-      // it is filed under instead of that the TV would not say.
-      if (!CONSENT_LABELS[row.key]) {
-        row.detail = 'Accepted under ' + (names.length > 1
-          ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
-          : names[0]) + '.';
-      }
-    }
-    if (!row.settable || !row.enabled) continue;
-    var plan = planConsent(row.key, false, flags, eln);
-    var also = [];
-    for (var c = 0; c < plan.changed.length; c++) {
-      var k = plan.changed[c];
-      if (k === row.key || !byKey[k]) continue;
-      also.push(byKey[k].label || k);
-    }
-    if (also.length) row.sharesWith = also;
-  }
-}
-
-function consentSettable(key) {
-  if (CONSENT_LOCKED[key]) return false;
-  if (CONSENT_LABELS[key]) return true;
-  return !!loadConsentGroups()[key];
-}
-
-// Every labelled flag accepting exactly the same documents. That is the only
-// honest description available for a flag LG never published one for, and
-// naming just the first of several would pick one arbitrarily.
-function consentPeers(key, groups) {
-  var mine = groups[key], names = [];
-  if (!mine || !mine.length) return names;
-  for (var other in groups) {
-    if (!groups.hasOwnProperty(other) || other === key) continue;
-    if (!CONSENT_LABELS[other]) continue;
-    if (groups[other].join(',') === mine.join(',')) names.push('"' + CONSENT_LABELS[other][0] + '"');
-  }
-  return names;
-}
-
-/*
- * Display grouping. 21 flat rows is a list nobody reads to the end of, and the
- * groups put the flags LG never described in one place instead of scattering
- * them between ones that are explained.
- */
-var CONSENT_GROUPS = [
-  ['advertising', 'Advertising'],
-  ['watching',    'What the TV watches and hears'],
-  ['analytics',   'Analytics and sharing'],
-  ['services',    'LG services'],
-  ['unknown',     'No published description',
-   'The TV records these and LG publishes nothing about what they mean. ' +
-   'The ones it cannot tie to any agreement are left read-only.'],
-  ['platform',    'Set on the TV itself',
-   'Acceptance records rather than collection choices. Changed in the TV\'s own menus, ' +
-   'under Settings \u203a General \u203a About This TV \u203a User Agreements.']
-];
-
-var CONSENT_GROUP_OF = {
-  customAdAllowed: 'advertising',
-  customadsAllowed: 'advertising',
-  cookiesAllowed: 'advertising',
-  acrAdAllowed: 'advertising',
-
-  acrAllowed: 'watching',
-  acrGdprAllowed: 'watching',
-  voiceAllowed: 'watching',
-  voice2Allowed: 'watching',
-
-  additionalDataAllowed: 'analytics',
-  remoteDiagAllowed: 'analytics',
-  thirdPartySharingAllowed: 'analytics',
-
-  /*
-   * Named in CONSENT_NAMES, so they belong with their subject rather than
-   * under "no published description" - a row titled "LG Channels" filed as
-   * undescribed reads as an oversight. acrOn accepts the same agreement as
-   * third-party sharing; marketing has its own; chp and shopping are LG
-   * offerings a viewer opts into.
-   */
-  acrOnAllowed: 'watching',
-  marketingOnAllowed: 'advertising',
-  chpAllowed: 'services',
-  shoppingOnAllowed: 'services',
-
-  // Read-only, and structural rather than a collection choice.
-  networkAllowed: 'platform',
-  generalTermsAllowed: 'platform',
-  firstUseAllowed: 'platform',
-  allAllowed: 'platform'
-};
-
-function consentGroup(key) {
-  return CONSENT_GROUP_OF[key] || 'unknown';
-}
-
-/*
- * A name only, for flags LG publishes no description of. Deliberately separate
- * from CONSENT_LABELS: a label there means "we can say what this collects",
- * which is what makes a flag settable. Naming a row must never be what decides
- * that - a title is not an understanding of what it grants.
- *
- * Names from #61, read off the licence documents each flag accepts on a C8.
- * The descriptions offered alongside them are not taken: they assert firmware-
- * specific findings (and, for generalTermsAllowed, an untested outcome) that do
- * not hold on 4.4.3. What a flag is grouped with is derived at runtime instead.
- */
-var CONSENT_NAMES = {
-  networkAllowed:      'Network use',
-  /* webOS 9 only, and named after the TV's own eulaGroupName for each. */
-  marketingOnAllowed:  'Marketing',
-  shoppingOnAllowed:   'Shopping',
-  generalTermsAllowed: 'Terms of Use and Privacy Policy',
-  chpAllowed:          'LG Channels',
-  acrOnAllowed:        'Screen recognition (master consent)',
-  allAllowed:          'Select All'
-};
-
-/*
- * Daemons worth naming, with what they do and how the platform runs them.
- *
- * "bus" ones are started on demand by ls-hubd: asking them anything starts
- * them, this panel's own getAdid call included, so whether the process exists
- * says nothing about whether the TV chose to run it. "upstart" ones are
- * supervised jobs whose running state is real, and which initctl can hold down.
- */
-var PRIVACY_DAEMONS = {
-  acr2:       ['Content recognition service', 'Identifies what is on screen', 'bus'],
-  admanager:  ['Advertising service', 'Fetches and displays ads on the TV', 'bus'],
-  uploadd:    ['Diagnostics uploader', 'Sends diagnostic data to LG', 'upstart'],
-  rdxd:       ['Diagnostics collector', 'Gathers crash and diagnostic reports', 'upstart']
-};
-
-/*
- * Held down across reboots by the boot hook, which reads this file. Only jobs
- * upstart supervises can be held down at all - the bus starts the others back
- * up the moment anything asks them a question.
- */
-var SERVICES_FILE = '/var/lib/tvweb/services_stopped';
-var SERVICE_CONTROLLABLE = { uploadd: true, rdxd: true };
-
-function stoppedServices() {
-  var raw = rd(SERVICES_FILE), out = [];
-  if (!raw) return out;
-  var parts = raw.split('\n');
-  for (var i = 0; i < parts.length; i++) {
-    var n = parts[i].replace(/\s+/g, '');
-    if (n && SERVICE_CONTROLLABLE[n] && out.indexOf(n) === -1) out.push(n);
-  }
-  return out;
-}
-
-/*
- * Upstart's view, or nothing. webOS 9 keeps an initctl that lists no jobs at
- * all - on a C2 it answers `touch: /tmp/rdxd: Read-only file system` - so the
- * set gets no toggles there, which is the right answer: uploadd and rdxd run,
- * but not as jobs anything here can hold down.
- */
-function upstartJobs(cb) {
-  execFile('/sbin/initctl', ['list'], { timeout: 4000 }, function (err, stdout) {
-    var out = {}, lines = String(stdout || '').split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var m = /^(\S+)\s+(\S+)/.exec(lines[i]);
-      if (m) out[m[1]] = m[2].replace(/,$/, '');   // "start/running, process 123"
-    }
-    cb(out);
-  });
-}
-
-function setServiceEnabled(name, enable, cb) {
-  execFile('/sbin/initctl', [enable ? 'start' : 'stop', name], { timeout: 6000 }, function () {
-    // initctl reports failure when the job is already in the state asked for,
-    // so the job's own state decides, not the exit code.
-    upstartJobs(function (jobs) {
-      var running = String(jobs[name] || '').indexOf('start/') === 0;
-      var list = stoppedServices(), at = list.indexOf(name);
-      if (enable && at !== -1) list.splice(at, 1);
-      if (!enable && at === -1) list.push(name);
-      try {
-        if (list.length) fs.writeFileSync(SERVICES_FILE, list.join('\n') + '\n', 'utf8');
-        else if (fs.existsSync(SERVICES_FILE)) fs.unlinkSync(SERVICES_FILE);
-      } catch (e) { /* the job moved either way; only the boot hook loses out */ }
-      cachedPrivacy = null;
-      console.log('service: ' + name + ' -> ' + (enable ? 'start' : 'stop') +
-                  (running === enable ? '' : ' (did not take)'));
-      cb(running === enable
-        ? { ok: true, name: name, running: running }
-        : { ok: false, error: 'the TV did not ' + (enable ? 'start' : 'stop') + ' ' + name });
-    });
-  });
-}
 
 /*
  * Power state. tvpower reports the panel separately from the system: a set can
@@ -2634,159 +1704,10 @@ function mapPowerState(raw) {
   return { raw: raw || null, label: raw || 'Unknown', systemOn: true, screenOn: true };
 }
 
-var cachedPrivacy = null, lastPrivacyCheck = 0;
 
-/*
- * A flag with no published description. What can be said about it comes from
- * the licence mapping, and whether it can be changed follows from the same
- * place - see loadConsentGroups.
- */
-function describeUnlabelled(key, on, groups) {
-  var row = { key: key, enabled: on, settable: consentSettable(key), group: consentGroup(key) };
-  if (CONSENT_NAMES[key]) row.label = CONSENT_NAMES[key];
-  var docs = groups[key];
-  /*
-   * The document ids (S_ADG and friends) go in the payload but never on the
-   * page: LG publishes no index for them, and this TV carries no file that
-   * resolves one to a title, so on screen they are noise wearing the costume
-   * of an explanation.
-   */
-  if (docs) row.documents = docs;
-  if (CONSENT_LOCKED[key]) {
-    row.detail = CONSENT_LOCKED[key];
-    return row;
-  }
-  if (!docs) {
-    row.detail = consentMapFound
-      ? 'Tied to no agreement on this firmware.'
-      : 'This TV publishes no agreement mapping, so there is nothing to go on.';
-    return row;
-  }
-  var peers = consentPeers(key, groups);
-  row.detail = peers.length
-    ? 'Accepted under the same agreement as ' + peers.join(' and ') + '.'
-    : 'Filed under an agreement the TV does not name.';
-  return row;
-}
-
-function readConsentFlags() {
-  var raw = rd('/var/luna/preferences/eula');
-  if (!raw) return null;
-  var groups = loadConsentGroups();
-  var out = { known: [], other: [] };
-  var re = /"([a-zA-Z0-9_]+Allowed)"\s*:\s*(true|false)/g, m;
-  while ((m = re.exec(raw)) !== null) {
-    var key = m[1], on = m[2] === 'true';
-    if (CONSENT_LABELS[key]) {
-      out.known.push({ key: key, label: CONSENT_LABELS[key][0], detail: CONSENT_LABELS[key][1],
-                       enabled: on, settable: consentSettable(key),
-                       group: consentGroup(key) });
-    } else {
-      out.other.push(describeUnlabelled(key, on, groups));
-    }
-  }
-  return out;
-}
-
-function runningDaemons(cb) {
-  var held = stoppedServices();
-  upstartJobs(function (jobs) {
-    execFile('/bin/ps', ['-eo', 'args'], { timeout: 4000 }, function (err, stdout) {
-      var txt = String(stdout || ''), list = [];
-      for (var name in PRIVACY_DAEMONS) {
-        if (!PRIVACY_DAEMONS.hasOwnProperty(name)) continue;
-        var d = PRIVACY_DAEMONS[name];
-        var onDemand = d[2] === 'bus';
-        list.push({
-          name: name,
-          label: d[0],
-          detail: d[1],
-          running: txt.indexOf('/usr/sbin/' + name) !== -1,
-          onDemand: onDemand,
-          job: jobs[name] || null,
-          stoppable: !onDemand && !!SERVICE_CONTROLLABLE[name] && !!jobs[name],
-          heldDown: held.indexOf(name) !== -1
-        });
-      }
-      cb(list);
-    });
-  });
-}
-
-function collectPrivacy(cb) {
-  var now = Date.now();
-  if (cachedPrivacy && (now - lastPrivacyCheck < 20000)) return cb(cachedPrivacy);
-
-  var out = { ok: true, consent: readConsentFlags(), consentWritable: CONFIG.allowControl,
-              consentGroups: CONSENT_GROUPS };
-
-  /*
-   * Scan first. Every luna call below starts the service it asks, so a scan
-   * afterwards can only ever report acr2 and admanager as running - which is
-   * what this panel did, on every load, for as long as it has existed.
-   */
-  runningDaemons(function (daemons) {
-    out.daemons = daemons;
-    // Titles and the sharing map come from the same record the writes move, so
-    // the rest of the payload waits on it rather than racing it.
-    lunaCached('com.webos.settingsservice/getSystemSettings', { keys: ['eulaInfoNetwork'] }, 60000,
-               function (elnRes) {
-    var eln = elnRes && elnRes.settings && elnRes.settings.eulaInfoNetwork;
-    if (eln && Array.isArray(eln.eulaList)) annotateConsent(out.consent, eln);
-    luna('com.webos.service.acr/getACRSolutionStatus', {}, function (acr) {
-      // `false` here means the recognition engine is not running at all.
-      out.acr = {
-        label: 'Screen content recognition',
-        detail: 'LG calls this ACR. It samples what is on screen to work out what you are watching.',
-        active: !!(acr && acr.ACRSolutionStatus)
-      };
-      luna('com.webos.service.acr/getVideoCaptureStatus', {}, function (cap) {
-        out.acr.capturing = !!(cap && cap.status && cap.status !== 'stopped');
-        out.acr.captureState = (cap && cap.status) ? cap.status : 'unknown';
-        luna('com.webos.service.admanager/getAdid', {}, function (ad) {
-          /*
-           * getAdid does not exist on every firmware - a C8 on 4.4.0 answers
-           * `Unknown method`, a B8 on 4.4.3 answers properly. Without this the
-           * failure renders as "no identifier assigned", which is a claim about
-           * the TV rather than about the call.
-           */
-          var adOk = !!(ad && ad.returnValue !== false && ad.IFA !== undefined);
-          var id = (adOk && ad.IFA) ? String(ad.IFA) : null;
-          out.advertisingId = {
-            available: adOk,
-            label: 'Advertising identifier',
-            detail: 'A unique ID your TV hands to advertisers. Resetting it breaks the link to your past activity.',
-            /*
-             * The value is deliberately NOT returned, not even truncated. It is
-             * an identifier for this household, and the dashboard is the sort of
-             * thing that ends up in screenshots. Whether a reset worked is
-             * reported by the reset action itself, which compares before and
-             * after on the TV without either value leaving it.
-             */
-            present: !!id,
-            limitTracking: !!(ad && String(ad.LMT).toLowerCase() === 'on'),
-            limitTrackingLabel: 'Limit ad tracking',
-            limitTrackingDetail: 'When on, apps are asked not to use this ID to profile you.'
-          };
-          out.adblock = {
-            enabled: isAdBlockActive(),
-            mode: adBlockMode(),
-            count: adBlockList('full').length,
-            adCount: ADBLOCK_ADS.length,
-            platform: adBlockPlatform()
-          };
-          cachedPrivacy = out;
-          lastPrivacyCheck = Date.now();
-          cb(out);
-        });
-      });
-    });
-    });
-  });
-}
 
 // ---------------------------------------------------------------- controls
-var INPUTS = { hdmi1: 1, hdmi2: 1, hdmi3: 1, hdmi4: 1, livetv: 1 };
+var INPUTS = ha.INPUTS;
 
 // Verified against the settings service: 15 is rejected, 10 and 90 are not.
 // Set from collectStats: sets without the hardware report 65535 and get null.
@@ -3260,87 +2181,23 @@ function doControl(action, value, cb) {
     case 'toggleAdBlock':
       var abMode = String(value == null ? '' : value).toLowerCase();
       if (action === 'toggleAdBlock' || abMode === 'toggle') {
-        abMode = isAdBlockActive() ? 'off' : 'full';
+        abMode = privacy.isAdBlockActive() ? 'off' : 'full';
       } else if (abMode !== 'off' && abMode !== 'ads' && abMode !== 'full') {
         abMode = (value === true || abMode === 'on' || abMode === 'true' || abMode === '1')
           ? 'full' : 'off';
       }
-      return setAdBlock(abMode, function (res) { cb(res); });
+      return privacy.setAdBlock(abMode, function (res) { cb(res); });
 
-    /*
-     * Rotate the advertising identifier. A real Luna call, not a file edit -
-     * this is the same reset the TV's own menus perform.
-     */
     case 'resetAdId':
-      // Read before and after so the UI can say whether it actually changed,
-      // without either identifier being sent anywhere.
-      return luna('com.webos.service.admanager/getAdid', {}, function (before) {
-        var was = (before && before.IFA) ? String(before.IFA) : null;
-        luna('com.webos.service.admanager/resetIFA', {}, function (r) {
-          luna('com.webos.service.admanager/getAdid', {}, function (after) {
-            var now = (after && after.IFA) ? String(after.IFA) : null;
-            cachedPrivacy = null;
-            cb({
-              ok: !!(r && r.returnValue !== false),
-              changed: !!(was && now && was !== now)
-            });
-          });
-        });
-      });
+      return privacy.resetAdId(cb);
 
-    /*
-     * Flip one consent flag. The setter replaces the whole eulaStatus object,
-     * so the current one is read back immediately before writing rather than
-     * reused from cache - the TV's own menus change these too.
-     */
     case 'consent':
       var ckey = (value && value.key) ? String(value.key) : '';
       var cOn = !!(value && (value.enabled === true || value.enabled === 'true'));
-      if (!ckey) return cb({ ok: false, error: 'no consent flag named' });
-      if (!consentSettable(ckey)) return cb({ ok: false, error: ckey + ' is not changeable from here' });
-      return luna('com.webos.settingsservice/getSystemSettings', { keys: ['eulaStatus'] }, function (r) {
-        var cur = r && r.settings && r.settings.eulaStatus;
-        if (!cur || typeof cur !== 'object') return cb({ ok: false, error: 'could not read the consent flags' });
-        if (!cur.hasOwnProperty(ckey)) return cb({ ok: false, error: 'no such consent flag: ' + ckey });
-
-        readConsentDocs(function (eln) {
-          if (!eln) return cb({ ok: false, error: 'could not read the agreement documents' });
-          var plan = planConsent(ckey, cOn, cur, eln);
-          if (!plan.changed.length) {
-            cachedPrivacy = null;
-            return cb({ ok: true, key: ckey, enabled: cOn, changed: false });
-          }
-          luna('com.webos.settingsservice/setSystemSettings',
-               { settings: { eulaInfoNetwork: plan.docs, eulaStatus: plan.flags } }, function (w) {
-            cachedPrivacy = null;
-            if (!(w && w.returnValue)) {
-              console.log('consent: ' + ckey + ' -> ' + cOn + ' (refused)');
-              return cb({ ok: false, error: (w && w.errorText) || 'the TV refused the change' });
-            }
-            /*
-             * Read back. returnValue means the service took the call, not that
-             * it stored anything - writing the file directly looks exactly as
-             * successful and reverts at boot.
-             */
-            luna('com.webos.settingsservice/getSystemSettings', { keys: ['eulaStatus'] }, function (v) {
-              var now = v && v.settings && v.settings.eulaStatus;
-              var applied = !!(now && now[ckey] === cOn);
-              console.log('consent: ' + ckey + ' ' + cur[ckey] + ' -> ' + cOn +
-                          (plan.changed.length > 1 ? ' (with ' + (plan.changed.length - 1) + ' sharing the agreement)' : '') +
-                          (applied ? '' : ' (accepted but not applied)'));
-              cb(applied
-                ? { ok: true, key: ckey, enabled: cOn, changed: true, alsoChanged: plan.changed.length - 1 }
-                : { ok: false, error: 'the TV accepted the change without applying it' });
-            });
-          });
-        });
-      });
+      return privacy.setConsent(ckey, cOn, cb);
 
     case 'clearAdCookies':
-      return luna('com.webos.service.admanager/inactivateCookies', {}, function (r) {
-        cachedPrivacy = null;
-        cb({ ok: !!(r && r.returnValue !== false) });
-      });
+      return privacy.clearAdCookies(cb);
 
     /*
      * Sleep timer. Accepted values are off, 10, 30, 60, 90, 120 - 15 is
@@ -3388,14 +2245,14 @@ function doControl(action, value, cb) {
                   function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
 
     case 'serviceMenuLock':
-      return setServiceMenuLock(!!(value && value.locked), cb);
+      return oled.setServiceMenuLock(!!(value && value.locked), cb);
 
     case 'serviceMenuOpen':
-      return openServiceMenu(String((value && value.menu) || 'ezAdjust'), cb);
+      return oled.openServiceMenu(String((value && value.menu) || 'ezAdjust'), cb);
 
     case 'oledProtection':
       var prot = (value && typeof value === 'object') ? value : {};
-      return setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
+      return oled.setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
 
     case 'rcu':
       var rcuName = String(value || '').trim().toLowerCase();
@@ -3512,41 +2369,20 @@ function doControl(action, value, cb) {
       }, 400);
 
     case 'refresherSchedule':
-      return luna('com.webos.service.tv.display/requestClearPanelNoise', { mode: 'schedule' },
-                  function (r) {
-                    lastOledCheck = 0;
-                    lastStats = null;
-                    cb({ ok: !!(r && r.returnValue) });
-                  });
+      return oled.requestClearPanelNoise('schedule', cb);
 
     case 'refresherCancel':
-      return luna('com.webos.service.tv.display/requestClearPanelNoise', { mode: 'cancel_schedule' },
-                  function (r) {
-                    lastOledCheck = 0;
-                    lastStats = null;
-                    cb({ ok: !!(r && r.returnValue) });
-                  });
+      return oled.requestClearPanelNoise('cancel_schedule', cb);
 
     case 'updateCheck':
-      return checkForUpdate(true, function (e, summary) {
+      return updater.checkForUpdate(true, function (e, summary) {
         if (e) return cb({ ok: false, error: e.message });
         cb(summary);
       });
 
-    /*
-     * Fetches code from GitHub and installs it over this copy. Gated by
-     * allowControl along with everything else here and by nothing further: the
-     * source is one repository over verified TLS, so the most anyone who can
-     * reach this can do is move the set to the current release.
-     */
     case 'update':
-      return installUpdate(function (r) {
+      return updater.installUpdate(function (r) {
         if (r.ok && r.updated) {
-          /*
-           * Answer first, restart after: the new code only runs once the
-           * process does, and the caller needs the result before this one
-           * goes away.
-           */
           setTimeout(function () {
             if (!restartSelf()) console.error('update: no tvwebctl found - restart manually to apply');
           }, 600);
@@ -3555,10 +2391,10 @@ function doControl(action, value, cb) {
       });
 
     case 'updateAutoCheck':
-      return setAutoCheck(value === true || value === 'on' || value === 'true', cb);
+      return updater.setAutoCheck(value === true || value === 'on' || value === 'true', cb);
 
     case 'updateRollback':
-      return rollbackUpdate(function (r) {
+      return updater.rollbackUpdate(function (r) {
         if (r.ok) setTimeout(function () { restartSelf(); }, 600);
         cb(r);
       });
@@ -3568,544 +2404,7 @@ function doControl(action, value, cb) {
   }
 }
 
-// ---------------------------------------------------------------- updates
-/*
- * Release checks and in-place upgrades.
- *
- * In the server core rather than behind the dashboard or the MQTT bridge,
- * because either half can be switched off and an upgrade has to be reachable
- * from whichever is left: the dashboard, Home Assistant's update entity, or
- * `tvwebctl update` over ssh.
- */
-var UPDATE_REPO = 'rorygallagher2024/lg-webos-mqtt';
-var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases/latest';
-var UPDATE_TARBALL = 'https://codeload.github.com/' + UPDATE_REPO + '/tar.gz/refs/tags/v';
-var BOOT_HOOK = '/var/lib/webosbrew/init.d/50-tvweb';
 
-// Where the files go: wherever this copy is running from, which on a TV is
-// /var/lib/tvweb. Staging sits inside it so the swap is a rename - across
-// filesystems it would not be.
-var INSTALL_DIR = __dirname;
-var STAGE_DIR = path.join(INSTALL_DIR, '.update');
-var PREVIOUS_DIR = path.join(INSTALL_DIR, '.previous');
-
-/*
- * Where a curl or wget tends to land. One the owner installed is tried before
- * the TV's own in /usr/bin and /bin, being the newer of the two.
- * /media/developer/bin is the Homebrew Channel's own bin directory, where an
- * installed curl has been found in use.
- */
-var CLIENT_DIRS = ['/media/developer/bin', '/usr/local/bin', '/opt/bin', '/opt/usr/bin',
-                   '/var/lib/webosbrew/bin', '/home/root/bin', '/usr/bin', '/bin'];
-var fetchClient = null;   // the one that answered, remembered for the next call
-
-var UPDATE = {
-  state: 'idle',   // idle | checking | available | current | downloading | installing | installed | error
-  latest: null,
-  url: null,
-  notes: null,
-  checked: 0,
-  error: null,
-  busy: false
-};
-
-// Set by the MQTT bridge when it starts, so a check that finishes anywhere
-// reaches Home Assistant's update entity, and switching the daily check adds or
-// removes that entity.
-var mqttPublishUpdate = null;
-var mqttPublishDiscovery = null;
-
-function setUpdateState(state, err) {
-  UPDATE.state = state;
-  UPDATE.error = err || null;
-  if (mqttPublishUpdate) mqttPublishUpdate();
-}
-
-function updateSummary() {
-  return {
-    ok: true,
-    state: UPDATE.state,
-    installed: TVWEB_VERSION,
-    latest: UPDATE.latest,
-    available: !!(UPDATE.latest && verNewer(UPDATE.latest, TVWEB_VERSION)),
-    url: UPDATE.url,
-    notes: UPDATE.notes,
-    error: UPDATE.error,
-    client: fetchClient,
-    autoCheck: !!(CONFIG.update && CONFIG.update.check),
-    rollbackTo: rollbackVersion(),
-    writable: CONFIG.allowControl,
-    checkedMs: UPDATE.checked ? Date.now() - UPDATE.checked : null
-  };
-}
-
-function verParts(v) {
-  var a = String(v || '').replace(/^v/i, '').split('.');
-  return [num(a[0], 0), num(a[1], 0), num(a[2], 0)];
-}
-
-function verNewer(a, b) {
-  var x = verParts(a), y = verParts(b);
-  for (var i = 0; i < 3; i++) {
-    if (x[i] !== y[i]) return x[i] > y[i];
-  }
-  return false;
-}
-
-function findBin(name) {
-  for (var i = 0; i < CLIENT_DIRS.length; i++) {
-    var full = CLIENT_DIRS[i] + '/' + name;
-    if (fs.existsSync(full)) return full;
-  }
-  return null;
-}
-
-function execErr(err, stderr) {
-  if (err && err.killed) return 'timed out';
-  var m = String(stderr || '').split('\n')[0].trim();
-  /*
-   * Both clients are run quietly, so a failure usually arrives as nothing but
-   * an exit code - and which code it is says what went wrong: curl 60 is a
-   * certificate it would not trust, 35 a handshake it could not complete, 6 a
-   * name it could not resolve.
-   */
-  if (!m && err && err.code) return 'exited ' + err.code;
-  return m || (err && err.message) || 'failed';
-}
-
-/*
- * The status GitHub answered with, where the client got one. Both clients name
- * it on stderr:
- *   busybox wget  wget: server returned error: HTTP/1.1 404 Not Found
- *   GNU wget      ERROR 404: Not Found.
- *   curl -fS      curl: (22) The requested URL returned error: 404
- * Matched by phrase rather than by hunting for a 4xx-shaped number, which would
- * also match "Failed to connect to api.github.com port 443".
- *
- * Returns -1 for an error whose status is not in the text: GNU wget under -q
- * prints nothing at all, but both clients keep a dedicated exit code for "the
- * server answered with an error" - curl 22, wget 8.
- */
-function httpErrorStatus(err, stderr) {
-  var text = String(stderr || '');
-  var m = /returned error:?\s*(?:HTTP\/[\d.]+\s+)?([1-5]\d\d)/i.exec(text) ||
-          /\bERROR\s+([1-5]\d\d)\b/i.exec(text);
-  if (m) return parseInt(m[1], 10);
-  if (err && (err.code === 22 || err.code === 8)) return -1;
-  return 0;
-}
-
-function githubSaid(status, url) {
-  var where = String(url).replace(/^https?:\/\/[^\/]+/, '');
-  if (status === 404) {
-    return 'GitHub returned 404 for ' + where +
-           ' - no release published yet, or the repository is not visible';
-  }
-  if (status === 403 || status === 429) {
-    /*
-     * Hedged on purpose. All that is known is that something answered over
-     * HTTP, and 403 is equally what a proxy, a captive portal or a filtering
-     * resolver returns - naming only one cause would mislead as badly as the
-     * missing-client message this replaced.
-     */
-    return status + ' for ' + where +
-           ' - either the API rate limit for this address is spent (60 an hour ' +
-           'unauthenticated), or something on the network refused the request';
-  }
-  if (status > 0) return 'GitHub returned ' + status + ' for ' + where;
-  return 'GitHub answered with an error for ' + where;
-}
-
-function fetchArgs(bin, url, outFile) {
-  var ua = 'tvweb/' + TVWEB_VERSION;
-  /*
-   * -T and -U are the only timeout and user-agent flags both busybox and GNU
-   * wget accept; --timeout= is GNU's alone. GitHub refuses a request with no
-   * user agent, and both clients set one by default, but naming this one makes
-   * the TV identifiable in a rate-limit argument.
-   */
-  if (/wget$/.test(bin)) return ['-q', '-T', '30', '-U', ua, '-O', outFile || '-', url];
-  return ['-fsSL', '--max-time', '30', '-A', ua, '-o', outFile || '-', url];
-}
-
-/*
- * Fetch a URL with whichever client on this TV can reach GitHub.
- *
- * Which one that is belongs to the TV, not to this code. node 0.12's https has
- * no CA bundle worth trusting. The stock curl reaches GitHub on both sets
- * tested - 7.53.1 against OpenSSL 1.0.2p on webOS 4.4.3, 7.82.0 against
- * OpenSSL 3.0.9 on webOS 9.2.2 - but whether another firmware's does is not
- * something to assume. Probing beats hardcoding a path, and the probe is the
- * real request rather than a separate reachability check - a client that
- * returns the release JSON has proved everything that matters.
- *
- * Certificate verification is never turned off. What comes back is run as root
- * on the next restart; an unverified download would be worse than no update
- * path at all.
- */
-function probeFetch(url, outFile, cb) {
-  var list = [];
-  var configured = (CONFIG.update && CONFIG.update.client) || '';
-  if (fetchClient) list.push(fetchClient);
-  if (configured) list.push(configured);
-  for (var d = 0; d < CLIENT_DIRS.length; d++) {
-    list.push(CLIENT_DIRS[d] + '/curl');
-    list.push(CLIENT_DIRS[d] + '/wget');
-  }
-
-  var i = 0, last = '', seen = {};
-  (function next() {
-    if (i >= list.length) {
-      return cb(new Error('no HTTP client on this TV could reach GitHub' +
-                          (last ? ' (' + last + ')' : '') +
-                          '. Install a current curl or wget.'));
-    }
-    var bin = list[i++];
-    if (seen[bin] || !fs.existsSync(bin)) return next();
-    seen[bin] = 1;
-    execFile(bin, fetchArgs(bin, url, outFile),
-             { timeout: outFile ? 180000 : 45000, maxBuffer: 1024 * 1024 },
-             function (err, stdout, stderr) {
-      if (err) {
-        /*
-         * A status means this client reached GitHub and GitHub answered, so the
-         * transport works and the request is what went wrong. Trying the rest of
-         * the list would ask the same question again, and reporting it as a
-         * missing client would send someone off installing curl for nothing.
-         */
-        var status = httpErrorStatus(err, stderr);
-        if (status) {
-          fetchClient = bin;   // it works; the answer is just not the one wanted
-          return cb(new Error(githubSaid(status, url)));
-        }
-        last = path.basename(bin) + ': ' + execErr(err, stderr);
-        return next();
-      }
-      fetchClient = bin;
-      cb(null, String(stdout || ''), bin);
-    });
-  })();
-}
-
-/*
- * Ask GitHub for the latest release. `force` is a person pressing a button, and
- * only shortens the cache rather than removing it: unauthenticated API calls
- * are limited to 60 an hour from one address, and a held-down button should not
- * spend them.
- */
-function checkForUpdate(force, cb) {
-  cb = cb || function () {};
-  if (UPDATE.state === 'checking') return cb(null, updateSummary());
-  var minAge = force ? 10000 : 3600000;
-  if (UPDATE.latest && (Date.now() - UPDATE.checked) < minAge) return cb(null, updateSummary());
-
-  setUpdateState('checking');
-  probeFetch(UPDATE_API, null, function (err, body) {
-    if (err) {
-      setUpdateState('error', err.message);
-      return cb(err, updateSummary());
-    }
-    var rel = null;
-    try { rel = JSON.parse(body); } catch (e) {}
-    if (!rel || !rel.tag_name) {
-      /*
-       * Valid JSON with no tag in it is a real answer that is not a release -
-       * a rate limit, most likely - so report what it said rather than
-       * blaming the client that successfully delivered it.
-       */
-      var why = (rel && rel.message) ? rel.message : 'GitHub did not return a release';
-      setUpdateState('error', why);
-      return cb(new Error(why), updateSummary());
-    }
-    UPDATE.latest = String(rel.tag_name).replace(/^v/i, '');
-    UPDATE.url = rel.html_url || null;
-    UPDATE.notes = rel.body ? String(rel.body).slice(0, 800) : null;
-    UPDATE.checked = Date.now();
-    setUpdateState(verNewer(UPDATE.latest, TVWEB_VERSION) ? 'available' : 'current');
-    console.log('update: installed v' + TVWEB_VERSION + ', latest v' + UPDATE.latest +
-                ' (' + UPDATE.state + ', via ' + fetchClient + ')');
-    cb(null, updateSummary());
-  });
-}
-
-var updateFirstTimer = null, updateEveryTimer = null;
-
-// The daily check, off unless asked for. Rescheduled rather than set once, so
-// the dashboard's switch takes effect without a restart.
-function scheduleUpdateChecks(firstMs) {
-  if (updateFirstTimer) { clearTimeout(updateFirstTimer); updateFirstTimer = null; }
-  if (updateEveryTimer) { clearInterval(updateEveryTimer); updateEveryTimer = null; }
-  if (!(CONFIG.update && CONFIG.update.check)) return;
-  var everyH = num(CONFIG.update.intervalHours, 24);
-  if (!(everyH >= 1 && everyH <= 168)) everyH = 24;
-  if (firstMs) {
-    updateFirstTimer = setTimeout(function () {
-      updateFirstTimer = null;
-      checkForUpdate(false);
-    }, firstMs);
-  }
-  updateEveryTimer = setInterval(function () { checkForUpdate(false); }, everyH * 3600000);
-  console.log('update: checking for new releases every ' + everyH + 'h');
-}
-
-/*
- * Saved to config.json so it survives a restart, and applied in place: all it
- * changes is a timer and whether Home Assistant is offered the update entity,
- * neither of which needs the restart that broker settings do.
- */
-function setAutoCheck(on, cb) {
-  writeSettings({ update: { check: on } }, function (err) {
-    if (err) return cb({ ok: false, error: 'could not save the setting: ' + err.message });
-    CONFIG.update = CONFIG.update || {};
-    CONFIG.update.check = on;
-    scheduleUpdateChecks(0);
-    if (mqttPublishDiscovery) mqttPublishDiscovery();
-    console.log('update: daily check switched ' + (on ? 'on' : 'off'));
-    if (!on) return cb(updateSummary());
-    // Checked before answering, so the switch shows at once whether this TV
-    // can reach GitHub rather than "not checked" until the page is reloaded.
-    checkForUpdate(false, function () { cb(updateSummary()); });
-  });
-}
-
-function copyFile(src, dst) {
-  fs.writeFileSync(dst, fs.readFileSync(src));
-}
-
-function listFiles(dir, base, out) {
-  base = base || dir;
-  out = out || [];
-  var names = fs.readdirSync(dir);
-  for (var i = 0; i < names.length; i++) {
-    var full = path.join(dir, names[i]);
-    var st;
-    try { st = fs.statSync(full); } catch (e) { continue; }
-    if (st.isDirectory()) listFiles(full, base, out);
-    else out.push(path.relative(base, full));
-  }
-  return out;
-}
-
-function rmrf(dir, cb) {
-  if (!fs.existsSync(dir)) return cb();
-  execFile('/bin/rm', ['-rf', dir], { timeout: 20000 }, function () { cb(); });
-}
-
-// GitHub wraps a source tarball in one directory named for the commit, so the
-// name is not known in advance.
-function tarballTop(dir) {
-  var names = fs.readdirSync(dir);
-  for (var i = 0; i < names.length; i++) {
-    var full = path.join(dir, names[i]);
-    try {
-      if (fs.statSync(full).isDirectory()) return full;
-    } catch (e) {}
-  }
-  return null;
-}
-
-// Synchronous for the same reason as the dashboard's compression in loadUI:
-// the dashboard keeps spawning luna-send while an update downloads.
-function inflate(buf, cb) {
-  var out;
-  try { out = zlib.gunzipSync(buf); } catch (e) { return cb(e); }
-  cb(null, out);
-}
-
-function declaredVersion(file) {
-  var m = /TVWEB_VERSION\s*=\s*'([^']+)'/.exec(fs.readFileSync(file, 'utf8').slice(0, 4096));
-  return m ? m[1] : null;
-}
-
-function rollbackVersion() {
-  try {
-    return declaredVersion(path.join(PREVIOUS_DIR, 'tvweb.js'));
-  } catch (e) { return null; }
-}
-
-/*
- * Copy one file into place beside the running install. Always written under a
- * temporary name and renamed, never written over the target: busybox ash reads
- * a script as it runs, so overwriting tvwebctl would corrupt the watchdog loop
- * already executing out of it. A rename leaves that process on the old inode
- * until it next starts.
- */
-function installFile(src, dst, exec) {
-  mkdirp(path.dirname(dst));
-  var tmp = dst + '.new';
-  copyFile(src, tmp);
-  fs.chmodSync(tmp, exec ? 0755 : 0644);
-  fs.renameSync(tmp, dst);
-}
-
-function isExecutable(rel) {
-  return rel === 'tvwebctl' || /\.sh$/.test(rel);
-}
-
-/*
- * Download the latest release and install it over this one.
- *
- * The directory is updated in place rather than swapped wholesale. Everything
- * that is not code lives in here too - config.json, the adblock hosts file, the
- * staged screen saver that a boot hook bind-mounts, the list of stopped LG
- * services - and a swap has to carry every one of them across correctly or
- * silently lose it. Replacing only the files the release ships cannot lose
- * state it never touches. The replaced copies are kept in .previous for
- * `tvwebctl rollback`.
- */
-function installUpdate(cb) {
-  if (UPDATE.busy) return cb({ ok: false, error: 'an update is already running' });
-
-  /*
-   * A git checkout is updated with git. Writing release files over one would
-   * lose uncommitted work, and this is reachable from a dashboard button.
-   */
-  if (fs.existsSync(path.join(INSTALL_DIR, '..', '.git'))) {
-    return cb({ ok: false, error: 'this is a git checkout - update it with git, not from here' });
-  }
-
-  UPDATE.busy = true;
-  var done = function (r) {
-    UPDATE.busy = false;
-    if (mqttPublishUpdate) mqttPublishUpdate();
-    cb(r);
-  };
-  var fail = function (msg) {
-    setUpdateState('error', msg);
-    console.error('update: ' + msg);
-    rmrf(STAGE_DIR, function () { done({ ok: false, error: msg }); });
-  };
-
-  checkForUpdate(true, function (err) {
-    // done() rather than cb(): it clears the in-progress flag Home Assistant is
-    // watching, which a bare return would leave asserted.
-    if (err) return done({ ok: false, error: err.message });
-    var ver = UPDATE.latest;
-    // A check already in flight returns what is known so far, which on a first
-    // run is nothing.
-    if (!ver) return done({ ok: false, error: 'no release information yet - check first' });
-    if (!verNewer(ver, TVWEB_VERSION)) {
-      return done({ ok: true, updated: false, installed: TVWEB_VERSION, latest: ver,
-                    note: 'already on the latest release' });
-    }
-
-    setUpdateState('downloading');
-    rmrf(STAGE_DIR, function () {
-      try { mkdirp(STAGE_DIR); } catch (e) { return fail('could not create ' + STAGE_DIR + ': ' + e.message); }
-      var gz = path.join(STAGE_DIR, 'release.tar.gz');
-      console.log('update: downloading v' + ver);
-      probeFetch(UPDATE_TARBALL + ver, gz, function (e2) {
-        if (e2) return fail(e2.message);
-
-        /*
-         * Inflated here rather than with `tar -xz`: node's zlib is certain to
-         * be present and busybox's gzip support is not, and a truncated
-         * download fails to inflate - which is the check for an incomplete
-         * one, without trusting a content length.
-         */
-        var gzBuf;
-        try { gzBuf = fs.readFileSync(gz); } catch (e) { return fail('could not read the download: ' + e.message); }
-        inflate(gzBuf, function (e3, tarBuf) {
-          if (e3) return fail('the download did not arrive complete (' + e3.message + ')');
-          var tarBin = findBin('tar');
-          if (!tarBin) return fail('no tar on this TV to unpack the release with');
-          var tarFile = path.join(STAGE_DIR, 'release.tar');
-          try { fs.writeFileSync(tarFile, tarBuf); } catch (e) { return fail('could not stage the release: ' + e.message); }
-
-          setUpdateState('installing');
-          execFile(tarBin, ['-xf', tarFile, '-C', STAGE_DIR], { timeout: 120000 }, function (e4, so, se) {
-            if (e4) return fail('could not unpack the release: ' + execErr(e4, se));
-            var top = tarballTop(STAGE_DIR);
-            var src = top ? path.join(top, 'server') : null;
-            if (!src || !fs.existsSync(path.join(src, 'tvweb.js'))) {
-              return fail('the release tarball has no server directory in it');
-            }
-            /*
-             * The download states its own version. Checking it against the tag
-             * that was asked for catches a mangled or redirected fetch before
-             * anything is replaced.
-             */
-            var decl;
-            try { decl = declaredVersion(path.join(src, 'tvweb.js')); } catch (e) { decl = null; }
-            if (decl !== ver) {
-              return fail('the downloaded release declares v' + decl + ', not v' + ver);
-            }
-
-            var files = listFiles(src), installed = [], bad = null;
-            rmrf(PREVIOUS_DIR, function () {
-              for (var i = 0; i < files.length; i++) {
-                var rel = files[i];
-                // deploy.sh runs on a workstation, and the boot hook is placed
-                // by name somewhere else entirely - see below.
-                if (rel === 'deploy.sh' || rel === '50-tvweb.sh') continue;
-                var dst = path.join(INSTALL_DIR, rel);
-                try {
-                  if (fs.existsSync(dst)) {
-                    var keep = path.join(PREVIOUS_DIR, rel);
-                    mkdirp(path.dirname(keep));
-                    copyFile(dst, keep);
-                  }
-                  installFile(path.join(src, rel), dst, isExecutable(rel));
-                  installed.push(rel);
-                } catch (e) { bad = rel + ': ' + e.message; break; }
-              }
-              if (bad) return fail('could not install ' + bad + ' (v' + TVWEB_VERSION + ' is in .previous)');
-
-              /*
-               * The boot hook, only where one is already installed: --persist
-               * is a deliberate choice, and an upgrade that started the server
-               * at boot on a set whose owner had not asked for that would be a
-               * surprise. A hook that cannot be refreshed is not worth failing
-               * the upgrade over - the new server is already in place.
-               */
-              if (fs.existsSync(BOOT_HOOK) && fs.existsSync(path.join(src, '50-tvweb.sh'))) {
-                try {
-                  installFile(path.join(src, '50-tvweb.sh'), BOOT_HOOK, true);
-                } catch (e) {
-                  console.error('update: could not refresh the boot hook: ' + e.message);
-                }
-              }
-
-              rmrf(STAGE_DIR, function () {
-                setUpdateState('installed');
-                console.log('update: installed v' + ver + ' over v' + TVWEB_VERSION +
-                            ' (' + installed.length + ' files)');
-                done({ ok: true, updated: true, installed: TVWEB_VERSION, latest: ver,
-                       files: installed.length });
-              });
-            });
-          });
-        });
-      });
-    });
-  });
-}
-
-/*
- * Put back what the last update replaced. The copies stay where they are
- * afterwards, so rolling back twice does nothing rather than reinstating the
- * version that was just rejected.
- *
- * An update replaces tvwebctl along with everything else, so the command that
- * undoes it is the new release's copy: `rollback` has to keep its name, or an
- * install has no way back to the version it came from. .previous holds a whole
- * copy either way, so restoring it by hand is always possible - see the README.
- */
-function rollbackUpdate(cb) {
-  var was = rollbackVersion();
-  if (!was) return cb({ ok: false, error: 'nothing to roll back to' });
-  var files = listFiles(PREVIOUS_DIR);
-  for (var i = 0; i < files.length; i++) {
-    try {
-      installFile(path.join(PREVIOUS_DIR, files[i]), path.join(INSTALL_DIR, files[i]),
-                  isExecutable(files[i]));
-    } catch (e) {
-      return cb({ ok: false, error: 'could not restore ' + files[i] + ': ' + e.message });
-    }
-  }
-  console.log('update: rolled back to v' + was + ' (' + files.length + ' files)');
-  cb({ ok: true, restored: was, files: files.length });
-}
 
 // ------------------------------------------------------- external assets
 /*
@@ -4258,110 +2557,10 @@ function badTopic(v) {
   return !v || /[#+\s]/.test(v) || v.charAt(0) === '/' || v.charAt(v.length - 1) === '/';
 }
 
-var HA_CATEGORIES = [
-  { id: 'controls', name: 'Controls & Media', desc: 'Power, volume, mute, playback buttons, apps, and input sources.' },
-  { id: 'oled', name: 'OLED Care', desc: 'Panel on-time, pixel refresher countdowns, and burn-in protections.' },
-  { id: 'video', name: 'Video & HDMI Signal', desc: 'Active picture mode, dynamic range, refresh rate, VRR, ALLM, and link mode.' },
-  { id: 'system', name: 'System & Telemetry', desc: 'CPU, RAM, swap, SoC temperature, network rates, and storage health.' },
-  { id: 'diagnostics', name: 'Diagnostics & Settings', desc: 'Remote battery, audio format, standby LED, sleep timer, and ad blocker.' }
-];
-
-var HA_ENTITIES = [
-  // Controls & Media
-  { id: 'display_panel', type: 'switch', name: 'Display Panel', cat: 'controls' },
-  { id: 'mute', type: 'switch', name: 'Mute', cat: 'controls' },
-  { id: 'volume', type: 'number', name: 'Volume', cat: 'controls' },
-  { id: 'input_source', type: 'select', name: 'Input Source', cat: 'controls' },
-  { id: 'screen_notification', type: 'text', name: 'Screen Notification', cat: 'controls' },
-  { id: 'picture_mode', type: 'select', name: 'Picture Mode (Select)', cat: 'controls' },
-  { id: 'sound_output', type: 'select', name: 'Sound Output', cat: 'controls' },
-  { id: 'app', type: 'select', name: 'Application', cat: 'controls' },
-  { id: 'active_app', type: 'sensor', name: 'Active App', cat: 'controls' },
-  { id: 'play_state', type: 'sensor', name: 'Player State', cat: 'controls' },
-  { id: 'play', type: 'button', name: 'Play', cat: 'controls' },
-  { id: 'pause', type: 'button', name: 'Pause', cat: 'controls' },
-  { id: 'play_pause', type: 'button', name: 'Play / Pause', cat: 'controls' },
-  { id: 'stop', type: 'button', name: 'Stop', cat: 'controls' },
-  { id: 'screensaver', type: 'button', name: 'Screen Saver', cat: 'controls' },
-  { id: 'screen_saver_active', type: 'binary_sensor', name: 'Screen Saver Active', cat: 'controls' },
-  { id: 'screensaver_mode', type: 'select', name: 'Screen Saver Mode', cat: 'controls' },
-  { id: 'restart', type: 'button', name: 'Restart', cat: 'controls' },
-  { id: 'power_off', type: 'button', name: 'Power Off', cat: 'controls' },
-
-  // OLED Care
-  { id: 'oled_panel_hours', type: 'sensor', name: 'OLED Panel Hours', cat: 'oled' },
-  { id: 'oled_hours_since_compensation', type: 'sensor', name: 'Hours Since Compensation', cat: 'oled' },
-  { id: 'oled_hours_until_compensation', type: 'sensor', name: 'Hours Until Compensation', cat: 'oled' },
-  { id: 'oled_hours_since_refresher', type: 'sensor', name: 'Hours Since Pixel Refresher', cat: 'oled' },
-  { id: 'oled_hours_until_refresher', type: 'sensor', name: 'Hours Until Pixel Refresher', cat: 'oled' },
-  { id: 'oled_compensation_status', type: 'sensor', name: 'Compensation Status', cat: 'oled' },
-  { id: 'oled_refresher_status', type: 'sensor', name: 'Pixel Refresher Status', cat: 'oled' },
-  { id: 'oled_screen_shift', type: 'switch', name: 'Screen Shift', cat: 'oled' },
-  { id: 'oled_logo_dimming', type: 'select', name: 'Logo Luminance Adjustment', cat: 'oled' },
-  { id: 'oled_short_cycles', type: 'sensor', name: 'Compensation Cycles Completed', cat: 'oled' },
-  { id: 'oled_refresher_cycles', type: 'sensor', name: 'Pixel Refresher Cycles Completed', cat: 'oled' },
-  { id: 'oled_failure_alerts', type: 'sensor', name: 'Panel Maintenance Alerts', cat: 'oled' },
-  { id: 'oled_asbl_dimmer', type: 'binary_sensor', name: 'ASBL Dimming Active', cat: 'oled' },
-  { id: 'pixel_refresher_schedule', type: 'switch', name: 'Pixel Refresher on Next Standby', cat: 'oled' },
-  { id: 'oled_cell_type', type: 'sensor', name: 'OLED Cell Type', cat: 'oled' },
-  { id: 'tcon_firmware', type: 'sensor', name: 'T-Con Firmware', cat: 'oled' },
-
-  // Video & HDMI Signal
-  { id: 'dynamic_range', type: 'sensor', name: 'Dynamic Range', cat: 'video' },
-  { id: 'picture_mode', type: 'sensor', name: 'Picture Mode', cat: 'video' },
-  { id: 'oled_light', type: 'sensor', name: 'OLED Light', cat: 'video' },
-  { id: 'video_signal', type: 'sensor', name: 'Video Signal', cat: 'video' },
-  { id: 'hdmi_link_mode', type: 'sensor', name: 'HDMI Link Mode', cat: 'video' },
-  { id: 'hdmi_chroma', type: 'sensor', name: 'HDMI Chroma', cat: 'video' },
-  { id: 'hdmi_hdcp', type: 'sensor', name: 'HDMI HDCP Version', cat: 'video' },
-  { id: 'hdmi_cable_errors', type: 'sensor', name: 'HDMI Cable Physical Errors', cat: 'video' },
-  { id: 'hdmi_allm', type: 'binary_sensor', name: 'HDMI ALLM', cat: 'video' },
-  { id: 'hdmi_vrr', type: 'binary_sensor', name: 'HDMI VRR', cat: 'video' },
-  { id: 'video_colorimetry', type: 'sensor', name: 'Colorimetry', cat: 'video' },
-  { id: 'panel_dimming', type: 'sensor', name: 'Panel Dimming', cat: 'video' },
-  { id: 'ambient_light', type: 'sensor', name: 'Ambient Light', cat: 'video' },
-
-  // System & Telemetry
-  { id: 'soc_temperature', type: 'sensor', name: 'SoC Temperature', cat: 'system' },
-  { id: 'cpu_load', type: 'sensor', name: 'CPU Usage', cat: 'system' },
-  { id: 'memory_usage', type: 'sensor', name: 'Memory Usage', cat: 'system' },
-  { id: 'swap_usage', type: 'sensor', name: 'Swap Usage', cat: 'system' },
-  { id: 'wifi_signal', type: 'sensor', name: 'Wi-Fi Signal', cat: 'system' },
-  { id: 'download_rate', type: 'sensor', name: 'Download Rate', cat: 'system' },
-  { id: 'upload_rate', type: 'sensor', name: 'Upload Rate', cat: 'system' },
-  { id: 'flash_health', type: 'sensor', name: 'Flash Storage Health', cat: 'system' },
-  { id: 'flash_wear', type: 'sensor', name: 'Flash Wear Level', cat: 'system' },
-  { id: 'soc_current', type: 'sensor', name: 'SoC Current', cat: 'system' },
-  { id: 'soc_architecture', type: 'sensor', name: 'SoC Architecture', cat: 'system' },
-  { id: 'gpu_clock', type: 'sensor', name: 'GPU Clock', cat: 'system' },
-  { id: 'app_storage_free', type: 'sensor', name: 'App Storage Available', cat: 'system' },
-  { id: 'mac_address', type: 'sensor', name: 'MAC Address', cat: 'system' },
-  { id: 'uptime', type: 'sensor', name: 'Uptime', cat: 'system' },
-
-  // Diagnostics & Settings
-  { id: 'audio_output', type: 'sensor', name: 'Audio Output', cat: 'diagnostics' },
-  { id: 'remote_battery', type: 'sensor', name: 'Magic Remote Battery', cat: 'diagnostics' },
-  { id: 'sleep_timer', type: 'select', name: 'Sleep Timer', cat: 'diagnostics' },
-  { id: 'standby_light', type: 'switch', name: 'Standby Light', cat: 'diagnostics' },
-  { id: 'logo_light', type: 'switch', name: 'Logo Light', cat: 'diagnostics' },
-  { id: 'ad_blocker', type: 'switch', name: 'Ad Blocker', cat: 'diagnostics' },
-  { id: 'tvweb_version', type: 'sensor', name: 'tvweb Version', cat: 'diagnostics' },
-  { id: 'server_update', type: 'update', name: 'Server Update', cat: 'diagnostics' }
-];
-
-var ENTITY_CATEGORIES = {};
-for (var i = 0; i < HA_ENTITIES.length; i++) {
-  var _ent = HA_ENTITIES[i];
-  ENTITY_CATEGORIES[_ent.type + '.' + _ent.id] = _ent.cat;
-  if (!ENTITY_CATEGORIES[_ent.id]) {
-    ENTITY_CATEGORIES[_ent.id] = _ent.cat;
-  }
-}
-
-function entityCategory(e) {
-  if (!e) return 'diagnostics';
-  return ENTITY_CATEGORIES[e.type + '.' + e.id] || ENTITY_CATEGORIES[e.id] || 'diagnostics';
-}
+var HA_CATEGORIES = ha.HA_CATEGORIES;
+var HA_ENTITIES = ha.HA_ENTITIES;
+var ENTITY_CATEGORIES = ha.ENTITY_CATEGORIES;
+var entityCategory = ha.entityCategory;
 
 function validateSettings(j) {
   var m = (j && j.mqtt) || {};
@@ -4436,6 +2635,8 @@ function writeSettings(patch, cb) {
   }
   cb(null);
 }
+
+updater.init({ config: CONFIG, version: TVWEB_VERSION, installDir: __dirname, writeSettings: writeSettings });
 
 /*
  * MQTT is wired up once at startup - the client, its keepalive, the telemetry
@@ -4531,18 +2732,18 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/servicemenu') {
-    return serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
+    return oled.serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/oledcare') {
-    return readOledProtections(function (live) {
+    return oled.readOledProtections(function (live) {
       collectStats(function (st) {
-        var oled = st.oled || {};
+        var oledData = st.oled || {};
         send(res, 200, JSON.stringify({
           ok: true,
           isOled: !!st.oled,
           // Whether this set has the service the service menu goes through.
-          serviceControls: oledProtControllable(),
+          serviceControls: oled.oledProtControllable(),
           writable: CONFIG.allowControl,
           /*
            * null where the set says nothing. Without the service, all there is
@@ -4550,21 +2751,21 @@ var server = http.createServer(function (req, res) {
            * writes neither - has not said these are off, only that it does not
            * report them.
            */
-          gsr: live ? live.gsr : (oled.gsr_protection ? oled.gsr_protection === 'Active' : null),
-          tpc: live ? live.tpc : (oled.asbl_protection ? oled.asbl_protection === 'Active' : null),
+          gsr: live ? live.gsr : (oledData.gsr_protection ? oledData.gsr_protection === 'Active' : null),
+          tpc: live ? live.tpc : (oledData.asbl_protection ? oledData.asbl_protection === 'Active' : null),
           gsrStressCount: live ? live.gsrStressCount : null,
-          screenShift: oled.screen_shift || null,
-          logoDimming: oled.logo_dimming || null,
+          screenShift: oledData.screen_shift || null,
+          logoDimming: oledData.logo_dimming || null,
           // The panel's own wear figures, which belong beside the switches
           // that decide how hard it is worked.
-          panelHours: (oled.panel_hours === undefined) ? null : oled.panel_hours,
-          hoursUntilComp: (oled.hours_until_comp === undefined) ? null : oled.hours_until_comp,
-          hoursUntilRefresher: (oled.hours_until_refresher === undefined) ? null : oled.hours_until_refresher,
-          compStatus: oled.comp_status || null,
-          refresherStatus: oled.refresher_status || null,
-          compCycles: (oled.comp_cycles === undefined) ? null : oled.comp_cycles,
-          refresherCycles: (oled.refresher_cycles === undefined) ? null : oled.refresher_cycles,
-          failureAlerts: (oled.failure_alerts === undefined) ? null : oled.failure_alerts
+          panelHours: (oledData.panel_hours === undefined) ? null : oledData.panel_hours,
+          hoursUntilComp: (oledData.hours_until_comp === undefined) ? null : oledData.hours_until_comp,
+          hoursUntilRefresher: (oledData.hours_until_refresher === undefined) ? null : oledData.hours_until_refresher,
+          compStatus: oledData.comp_status || null,
+          refresherStatus: oledData.refresher_status || null,
+          compCycles: (oledData.comp_cycles === undefined) ? null : oledData.comp_cycles,
+          refresherCycles: (oledData.refresher_cycles === undefined) ? null : oledData.refresher_cycles,
+          failureAlerts: (oledData.failure_alerts === undefined) ? null : oledData.failure_alerts
         }));
       });
     });
@@ -4579,7 +2780,7 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/privacy') {
-    return collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
+    return privacy.collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
   }
 
   if (pathname === '/api/stats') {
@@ -4589,7 +2790,7 @@ var server = http.createServer(function (req, res) {
   /* Reports what is known, and never checks on its own: the dashboard polls
      this, and a poll that reached GitHub would be a request per viewer. */
   if (pathname === '/api/update') {
-    return send(res, 200, JSON.stringify(updateSummary()));
+    return send(res, 200, JSON.stringify(updater.updateSummary()));
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
@@ -4738,21 +2939,7 @@ if (!CLI_MODE && !webEnabled && !mqttEnabled) {
   process.exit(1);
 }
 
-(function checkBootAdBlock() {
-  if (CLI_MODE) return;
-  try {
-    if (fs.existsSync(ADBLOCK_FLAG_FILE) && !isAdBlockActive() && fs.existsSync(ADBLOCK_HOSTS_FILE)) {
-      execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 }, function (err) {
-        // The isAdBlockActive() above cached "not mounted" moments ago, and
-        // that answer is good for 30s - long enough to report the sinkhole off
-        // on every boot it restores.
-        cachedAdBlockActive = null;
-        cachedPrivacy = null;
-        if (!err) console.log('adblock: restored /etc/hosts bind-mount from previous boot');
-      });
-    }
-  } catch (e) {}
-})();
+privacy.checkBootAdBlock(CLI_MODE);
 
 if (CLI_MODE) {
   // A one-shot run installs a release and exits: no listener, no bridge, no
@@ -4762,284 +2949,15 @@ if (CLI_MODE) {
     console.log('tvweb listening on ' + CONFIG.host + ':' + CONFIG.port +
                 '  control=' + CONFIG.allowControl + '  power=' + CONFIG.allowPower +
                 '  auth=' + (CONFIG.token ? 'token' : 'none'));
-    detectOled(function () {});   // resolve and log panel type up front
-  detectLogoLight(function () {});
+    oled.detectOled(function () {});   // resolve and log panel type up front
+    detectLogoLight(function () {});
   });
 } else {
   console.log('web dashboard disabled (web.enabled=false) - mqtt bridge only');
-  detectOled(function () {});
+  oled.detectOled(function () {});
 }
-
-// ---------------------------------------------------------------- MiniMQTT Client (ES5)
-function encodeVarLength(len) {
-  var bytes = [];
-  do {
-    var digit = len % 128;
-    len = Math.floor(len / 128);
-    if (len > 0) digit = digit | 0x80;
-    bytes.push(digit);
-  } while (len > 0);
-  return (typeof Buffer.from === 'function') ? Buffer.from(bytes) : new Buffer(bytes);
-}
-
-function toBuffer(data, enc) {
-  return (typeof Buffer.from === 'function') ? Buffer.from(data, enc) : new Buffer(data, enc);
-}
-
-// Node 0.12 has only the constructor, and newer node logs a deprecation warning
-// (DEP0005) the first time it runs.
-function zeroBuffer(n) {
-  if (typeof Buffer.alloc === 'function') return Buffer.alloc(n);
-  var b = new Buffer(n);
-  b.fill(0);
-  return b;
-}
-
-function MiniMQTT(opts) {
-  this.opts = opts || {};
-  this.client = null;
-  this.connected = false;
-  this.packetId = 1;
-  this.buffer = toBuffer([]);
-  this.pingTimer = null;
-  this.retryTimer = null;
-  this.subscriptions = [];
-  this.listeners = {};
-}
-
-MiniMQTT.prototype.on = function(event, fn) {
-  this.listeners[event] = this.listeners[event] || [];
-  this.listeners[event].push(fn);
-};
-
-MiniMQTT.prototype.emit = function(event, a, b) {
-  var list = this.listeners[event] || [];
-  for (var i = 0; i < list.length; i++) list[i](a, b);
-};
-
-MiniMQTT.prototype.connect = function() {
-  var self = this;
-  if (this.client) return;
-  clearTimeout(this.retryTimer);
-
-  /*
-   * Start each connection on an empty buffer. A drop mid-packet - a broker
-   * restart, a Wi-Fi blip - leaves a partial packet here, and the new
-   * connection's CONNACK would be appended to that fragment. The parser reads
-   * the remaining length from the fragment's bytes, waits for a packet that
-   * never completes, and the client stays unconnected: publish() then silently
-   * returns and the bridge goes quiet until the process restarts.
-   */
-  this.buffer = toBuffer([]);
-
-  /*
-   * Plain TCP by default, since that is what a typical home broker listens on.
-   * With mqtt.tls set, connect over TLS instead - otherwise the username and
-   * password cross the LAN in cleartext inside every CONNECT packet, and a
-   * reconnect loop resends them every few seconds.
-   */
-  var socket;
-  if (this.opts.tls) {
-    socket = tls.connect({
-      host: this.opts.host,
-      port: this.opts.port || 8883,
-      servername: this.opts.host,
-      // Self-signed broker certs are common on home networks. Turning this
-      // off keeps the traffic encrypted but stops authenticating the broker,
-      // so only do it on a network you trust.
-      rejectUnauthorized: this.opts.tlsRejectUnauthorized !== false
-    });
-  } else {
-    socket = net.createConnection({ host: this.opts.host, port: this.opts.port || 1883 });
-  }
-  this.client = socket;
-
-  socket.on(self.opts.tls ? 'secureConnect' : 'connect', function() {
-    var protoName = toBuffer([0, 4, 77, 81, 84, 84]); // 'MQTT'
-    var protoLevel = toBuffer([4]); // 3.1.1
-    var flags = 0x02; // CleanSession
-    if (self.opts.will) {
-      flags |= 0x04; // Will flag
-      if (self.opts.will.retain) flags |= 0x20;
-    }
-    if (self.opts.username) flags |= 0x80;
-    if (self.opts.password) flags |= 0x40;
-
-    var flagBuf = toBuffer([flags]);
-    var keepAlive = toBuffer([0, 60]); // 60s
-    var varHeader = Buffer.concat([protoName, protoLevel, flagBuf, keepAlive]);
-
-    var payloads = [];
-    var cid = self.opts.clientId || ('lgtv_' + Math.random().toString(16).slice(2, 8));
-    var cidBuf = toBuffer(cid, 'utf8');
-    var cidLen = toBuffer([cidBuf.length >> 8, cidBuf.length & 0xff]);
-    payloads.push(cidLen, cidBuf);
-
-    if (self.opts.will) {
-      var wtBuf = toBuffer(self.opts.will.topic, 'utf8');
-      payloads.push(toBuffer([wtBuf.length >> 8, wtBuf.length & 0xff]), wtBuf);
-      var wmBuf = toBuffer(self.opts.will.payload || '', 'utf8');
-      payloads.push(toBuffer([wmBuf.length >> 8, wmBuf.length & 0xff]), wmBuf);
-    }
-
-    if (self.opts.username) {
-      var uBuf = toBuffer(self.opts.username, 'utf8');
-      payloads.push(toBuffer([uBuf.length >> 8, uBuf.length & 0xff]), uBuf);
-    }
-    if (self.opts.password) {
-      var pBuf = toBuffer(self.opts.password, 'utf8');
-      payloads.push(toBuffer([pBuf.length >> 8, pBuf.length & 0xff]), pBuf);
-    }
-
-    var payload = Buffer.concat(payloads);
-    var remLen = encodeVarLength(varHeader.length + payload.length);
-    var packet = Buffer.concat([toBuffer([0x10]), remLen, varHeader, payload]);
-    socket.write(packet);
-  });
-
-  socket.on('data', function(chunk) {
-    self.buffer = Buffer.concat([self.buffer, chunk]);
-    self._parse();
-  });
-
-  socket.on('close', function() {
-    var wasConnected = self.connected;
-    self.connected = false;
-    self.client = null;
-    clearInterval(self.pingTimer);
-    if (wasConnected) {
-      console.log('mqtt: disconnected from ' + self.opts.host + ':' + (self.opts.port || (self.opts.tls ? 8883 : 1883)));
-      self.emit('close');
-    }
-    self.retryTimer = setTimeout(function() { self.connect(); }, 5000);
-  });
-
-  socket.on('error', function(err) {
-    self.emit('error', err);
-    if (self.client) {
-      self.client.destroy();
-    }
-  });
-};
-
-MiniMQTT.prototype._parse = function() {
-  while (this.buffer.length >= 2) {
-    var packetType = this.buffer[0] >> 4;
-    var flags = this.buffer[0] & 0x0f;
-    var multiplier = 1, remLen = 0, idx = 1, digit;
-    do {
-      if (idx >= this.buffer.length) return; // wait for more data
-      digit = this.buffer[idx++];
-      remLen += (digit & 127) * multiplier;
-      multiplier *= 128;
-    } while ((digit & 128) !== 0);
-
-    var totalLen = idx + remLen;
-    if (this.buffer.length < totalLen) return; // wait for full packet
-
-    var packetBody = this.buffer.slice(idx, totalLen);
-    this.buffer = this.buffer.slice(totalLen);
-
-    if (packetType === 2) { // CONNACK
-      var returnCode = packetBody[1];
-      if (returnCode === 0) {
-        this.connected = true;
-        var self = this;
-        clearInterval(this.pingTimer);
-        this.pingTimer = setInterval(function() {
-          if (self.client && self.connected) {
-            self.client.write(toBuffer([0xc0, 0x00])); // PINGREQ
-          }
-        }, 30000);
-        // Resubscribe to all saved subscriptions
-        for (var i = 0; i < this.subscriptions.length; i++) {
-          this._sendSubscribe(this.subscriptions[i]);
-        }
-        this.emit('connect');
-      } else {
-        this.emit('error', new Error('CONNACK rejected with code ' + returnCode));
-      }
-    } else if (packetType === 3) { // PUBLISH
-      var qos = (flags >> 1) & 0x03;
-      var tLen = (packetBody[0] << 8) | packetBody[1];
-      var topic = packetBody.slice(2, 2 + tLen).toString('utf8');
-      var pOffset = 2 + tLen;
-      if (qos > 0) {
-        /*
-         * Subscriptions are made at QoS 0 and a broker may not deliver above
-         * the granted QoS, so this should never arrive. If one does, a QoS 1
-         * message left unacknowledged is redelivered on a timer for as long as
-         * the session lasts, so answer it rather than drop it silently.
-         */
-        if (qos === 1 && this.client) {
-          this.client.write(toBuffer([0x40, 0x02, packetBody[pOffset], packetBody[pOffset + 1]]));
-        }
-        pOffset += 2;   // past the packet identifier
-      }
-      var payload = packetBody.slice(pOffset).toString('utf8');
-      this.emit('message', topic, payload);
-    }
-  }
-};
-
-MiniMQTT.prototype._sendSubscribe = function(topic) {
-  if (!this.client || !this.connected) return;
-  var pid = this.packetId++;
-  if (this.packetId > 65535) this.packetId = 1;
-  var pidBuf = toBuffer([pid >> 8, pid & 0xff]);
-  var tBuf = toBuffer(topic, 'utf8');
-  var tLen = toBuffer([tBuf.length >> 8, tBuf.length & 0xff]);
-  var qosBuf = toBuffer([0]);
-  var payload = Buffer.concat([pidBuf, tLen, tBuf, qosBuf]);
-  var remLen = encodeVarLength(payload.length);
-  var packet = Buffer.concat([toBuffer([0x82]), remLen, payload]);
-  this.client.write(packet);
-};
-
-MiniMQTT.prototype.subscribe = function(topic) {
-  if (this.subscriptions.indexOf(topic) === -1) {
-    this.subscriptions.push(topic);
-  }
-  this._sendSubscribe(topic);
-};
-
-MiniMQTT.prototype.publish = function(topic, message, retain) {
-  if (!this.client || !this.connected) return;
-  var firstByte = 0x30 | (retain ? 0x01 : 0x00);
-  var tBuf = toBuffer(topic, 'utf8');
-  var tLen = toBuffer([tBuf.length >> 8, tBuf.length & 0xff]);
-  var mBuf = toBuffer(typeof message === 'string' ? message : JSON.stringify(message), 'utf8');
-  var remLen = encodeVarLength(tLen.length + tBuf.length + mBuf.length);
-  var packet = Buffer.concat([toBuffer([firstByte]), remLen, tLen, tBuf, mBuf]);
-  this.client.write(packet);
-};
-
-MiniMQTT.prototype.disconnect = function() {
-  if (this.client && this.connected) {
-    try {
-      this.client.write(toBuffer([0xe0, 0x00])); // DISCONNECT
-    } catch (e) {}
-    this.connected = false;
-    try {
-      this.client.end();
-    } catch (e) {}
-  }
-};
 
 // ---------------------------------------------------------------- Home Assistant Integration
-/*
- * Home Assistant logs an error for every select state outside that entity's
- * own option list, and the TV reports plenty a list cannot hold: a launched
- * app where an input is expected, an HDR picture mode, an input where an app
- * is expected. Anything not offered is published as "None", which the MQTT
- * select reads as unknown (it resets on a case-insensitive "none") instead
- * of logging.
- */
-function selectState(expr, options) {
-  var quoted = [];
-  for (var i = 0; i < options.length; i++) quoted.push('\'' + options[i] + '\'');
-  return '{{ (' + expr + ') if (' + expr + ') in [' + quoted.join(', ') + '] else \'None\' }}';
-}
 
 /*
  * What the dashboard reports about the bridge. The MQTT client is wired up
@@ -5110,973 +3028,52 @@ function setupHomeAssistant() {
   MQTT_STATUS.tls = useTls;
   mqttStatus('connecting', '');
 
-  /*
-   * Entities published under a different component than they are now. Home
-   * Assistant keys a discovered entity on its config topic, so a sensor that
-   * became a switch is not replaced by the switch - it is left behind, still
-   * holding the last value it was sent.
-   */
-  var RETIRED_ENTITIES = [
-    { type: 'sensor', id: 'oled_screen_shift' },
-    { type: 'sensor', id: 'oled_logo_dimming' }
-  ];
-
   function publishDiscovery() {
-    for (var r = 0; r < RETIRED_ENTITIES.length; r++) {
-      mqttClient.publish(discPfx + '/' + RETIRED_ENTITIES[r].type + '/' + devId + '/' +
-                         RETIRED_ENTITIES[r].id + '/config', '', true);
-    }
-    var entities = [
-      {
-        type: 'sensor', id: 'soc_temperature',
-        payload: {
-          name: 'SoC Temperature',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.temp }}',
-          unit_of_measurement: '°C',
-          device_class: 'temperature',
-          state_class: 'measurement'
-        }
-      },
-      {
-        type: 'sensor', id: 'cpu_load',
-        payload: {
-          name: 'CPU Usage',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.load }}',
-          unit_of_measurement: '%',
-          state_class: 'measurement',
-          icon: 'mdi:cpu-64-bit'
-        }
-      },
-      {
-        type: 'sensor', id: 'memory_usage',
-        payload: {
-          name: 'Memory Usage',
-          state_topic: telemetryTopic,
-          value_template: '{{ ((value_json.mem.total - value_json.mem.avail) / value_json.mem.total * 100) | round(1) if value_json.mem.total > 0 else 0 }}',
-          unit_of_measurement: '%',
-          icon: 'mdi:memory'
-        }
-      },
-      {
-        type: 'sensor', id: 'swap_usage',
-        payload: {
-          name: 'Swap Usage',
-          state_topic: telemetryTopic,
-          value_template: '{{ ((value_json.swap.total - value_json.swap.free) / value_json.swap.total * 100) | round(1) if value_json.swap.total > 0 else 0 }}',
-          unit_of_measurement: '%',
-          icon: 'mdi:server'
-        }
-      },
-      {
-        type: 'sensor', id: 'wifi_signal',
-        payload: {
-          name: 'Wi-Fi Signal',
-          state_topic: telemetryTopic,
-          // none, not 0: a wired set has no signal to report, and 0 dBm would
-          // enter the history as though it had been measured.
-          value_template: '{{ value_json.wifi.level if value_json.wifi else none }}',
-          unit_of_measurement: 'dBm',
-          device_class: 'signal_strength',
-          state_class: 'measurement'
-        }
-      },
-      {
-        type: 'sensor', id: 'download_rate',
-        payload: {
-          name: 'Download Rate',
-          state_topic: telemetryTopic,
-          value_template: '{{ (value_json.net.rx / 1024) | round(1) if value_json.net else 0 }}',
-          unit_of_measurement: 'kB/s',
-          icon: 'mdi:download-network'
-        }
-      },
-      {
-        type: 'sensor', id: 'upload_rate',
-        payload: {
-          name: 'Upload Rate',
-          state_topic: telemetryTopic,
-          value_template: '{{ (value_json.net.tx / 1024) | round(1) if value_json.net else 0 }}',
-          unit_of_measurement: 'kB/s',
-          icon: 'mdi:upload-network'
-        }
-      },
-      {
-        type: 'sensor', id: 'flash_health',
-        payload: {
-          name: 'Flash Storage Health',
-          state_topic: telemetryTopic,
-          /* pre_eol_info, not the inverted wear band: emmc.health is derived
-             from the same register as emmc.wear, so the two sensors were
-             reporting one number twice. The name still fits - Normal, Warning
-             and Urgent are exactly a health status. */
-          value_template: '{{ value_json.emmc.eol }}',
-          icon: 'mdi:harddisk'
-        }
-      },
-      {
-        type: 'sensor', id: 'flash_wear',
-        payload: {
-          name: 'Flash Wear Level',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.emmc.wear }}',
-          icon: 'mdi:wrench-clock'
-        }
-      },
-      {
-        type: 'sensor', id: 'active_app',
-        payload: {
-          name: 'Active App',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.display_title or value_json.app_name or value_json.app }}',
-          icon: 'mdi:television-play'
-        }
-      },
-      {
-        type: 'sensor', id: 'play_state',
-        payload: {
-          name: 'Player State',
-          state_topic: telemetryTopic,
-          // Absent on a set whose media service does not answer, rather than
-          // reported as stopped - nothing playing and nothing to ask are
-          // different things. On an external input this tracks the HDMI
-          // pipeline rather than the source's own transport state.
-          value_template: '{{ value_json.media.state if value_json.media else None }}',
-          icon: 'mdi:play-pause'
-        }
-      },
-      {
-        type: 'sensor', id: 'dynamic_range',
-        payload: {
-          name: 'Dynamic Range',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.picture.dynamicRange if value_json.picture else "SDR" }}',
-          icon: 'mdi:video-vintage'
-        }
-      },
-      {
-        type: 'sensor', id: 'picture_mode',
-        payload: {
-          name: 'Picture Mode',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.picture.mode if value_json.picture else "Unknown" }}',
-          icon: 'mdi:palette'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_light',
-        payload: {
-          name: 'OLED Light',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.picture.backlight if value_json.picture else 0 }}',
-          unit_of_measurement: '%',
-          icon: 'mdi:brightness-6'
-        }
-      },
-      {
-        type: 'sensor', id: 'video_signal',
-        payload: {
-          name: 'Video Signal',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.signal or "Internal / Standby" }}',
-          icon: 'mdi:video-input-hdmi'
-        }
-      },
-      {
-        type: 'sensor', id: 'hdmi_link_mode',
-        payload: {
-          name: 'HDMI Link Protocol',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.hdmi_diag.phy_mode if value_json.hdmi_diag and value_json.hdmi_diag.phy_mode else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:video-input-hdmi'
-        }
-      },
-      {
-        type: 'sensor', id: 'hdmi_chroma',
-        payload: {
-          name: 'HDMI Chroma Format',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.hdmi_diag.chroma if value_json.hdmi_diag and value_json.hdmi_diag.chroma else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:palette'
-        }
-      },
-      {
-        type: 'sensor', id: 'hdmi_hdcp',
-        payload: {
-          name: 'HDMI HDCP Version',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.hdmi_diag.hdcp if value_json.hdmi_diag and value_json.hdmi_diag.hdcp else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:lock-check'
-        }
-      },
-      {
-        type: 'sensor', id: 'hdmi_cable_errors',
-        payload: {
-          name: 'HDMI Cable Bit Errors',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.hdmi_diag.phy_errors if value_json.hdmi_diag and value_json.hdmi_diag.phy_errors is not none else none }}',
-          state_class: 'measurement',
-          entity_category: 'diagnostic',
-          icon: 'mdi:alert-outline'
-        }
-      },
-      {
-        type: 'binary_sensor', id: 'hdmi_allm',
-        payload: {
-          name: 'Auto Low Latency Mode (ALLM)',
-          state_topic: telemetryTopic,
-          value_template: '{{ ("ON" if value_json.hdmi_diag.allm else "OFF") if value_json.hdmi_diag and value_json.hdmi_diag.allm is not none else none }}',
-          icon: 'mdi:gamepad-variant'
-        }
-      },
-      {
-        type: 'binary_sensor', id: 'hdmi_vrr',
-        payload: {
-          name: 'Variable Refresh Rate (VRR)',
-          state_topic: telemetryTopic,
-          value_template: '{{ ("ON" if value_json.hdmi_diag.vrr else "OFF") if value_json.hdmi_diag and value_json.hdmi_diag.vrr is not none else none }}',
-          icon: 'mdi:speedometer'
-        }
-      },
-      {
-        type: 'sensor', id: 'video_colorimetry',
-        payload: {
-          name: 'Video Color Space',
-          state_topic: telemetryTopic,
-          // none, not "BT.709": defaulting to a colour space states a fact
-          // about the signal that was never read, and states it wrongly on
-          // anything wide-gamut. A set that does not report one reports none.
-          value_template: '{{ value_json.picture_engine.colorimetry if value_json.picture_engine and value_json.picture_engine.colorimetry else none }}',
-          icon: 'mdi:palette-swatch'
-        }
-      },
-      {
-        type: 'sensor', id: 'audio_output',
-        payload: {
-          name: 'Audio Output',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.audio_output or "Internal" }}',
-          icon: 'mdi:speaker'
-        }
-      },
-      {
-        type: 'sensor', id: 'soc_current',
-        payload: {
-          name: 'SoC Current',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.power.current_ma if value_json.power else 0 }}',
-          unit_of_measurement: 'mA',
-          device_class: 'current',
-          state_class: 'measurement',
-          icon: 'mdi:current-ac'
-        }
-      },
-      {
-        type: 'sensor', id: 'uptime',
-        payload: {
-          name: 'Uptime',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.bootTime }}',
-          device_class: 'timestamp',
-          entity_category: 'diagnostic',
-          icon: 'mdi:clock-start'
-        }
-      },
-      {
-        /*
-         * This server's own version, not the TV's - the device's sw_version
-         * already carries the firmware. The id stays tvweb_version: it is the
-         * unique_id an existing install is already discovered under, and
-         * changing it would orphan that entity and register a second one.
-         * Diagnostic: it belongs beside the firmware, not among the readings.
-         */
-        type: 'sensor', id: 'tvweb_version',
-        payload: {
-          name: 'Server Version',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.tvwebVersion }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:tag-outline'
-        }
-      },
-      {
-        /*
-         * For the wake_on_lan.send_magic_packet action the Home Assistant
-         * guide sets up, where the address is currently left to the reader.
-         * Diagnostic: it belongs on the device page beside the firmware, and
-         * it is read once rather than watched.
-         */
-        type: 'sensor', id: 'mac_address',
-        payload: {
-          name: 'MAC Address',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.mac if value_json.mac else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:ethernet'
-        }
-      },
-      {
-        type: 'sensor', id: 'remote_battery',
-        payload: {
-          name: 'Remote Battery',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.remote.battery if value_json.remote and value_json.remote.battery is not none else none }}',
-          unit_of_measurement: '%',
-          device_class: 'battery',
-          state_class: 'measurement',
-          entity_category: 'diagnostic',
-          icon: 'mdi:remote'
-        }
-      },
-      {
-        type: 'sensor', id: 'soc_architecture',
-        payload: {
-          name: 'SoC Architecture',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.hardware.soc_arch if value_json.hardware and value_json.hardware.soc_arch else "Unknown" }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:cpu-64-bit'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_cell_type',
-        payload: {
-          name: 'OLED Cell Info',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.panel_silicon.cell if value_json.panel_silicon and value_json.panel_silicon.cell else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:monitor-cell'
-        }
-      },
-      {
-        type: 'sensor', id: 'tcon_firmware',
-        payload: {
-          name: 'TCON Firmware',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.panel_silicon.tcon_firmware if value_json.panel_silicon and value_json.panel_silicon.tcon_firmware else none }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:chip'
-        }
-      },
-      {
-        type: 'switch', id: 'display_panel',
-        payload: {
-          name: 'OLED Display Panel',
-          command_topic: cmdScreenTopic,
-          state_topic: stateScreenTopic,
-          payload_on: 'ON',
-          payload_off: 'OFF',
-          icon: 'mdi:television-ambient-light'
-        }
-      },
-      {
-        type: 'switch', id: 'mute',
-        payload: {
-          name: 'Mute',
-          command_topic: cmdMuteTopic,
-          state_topic: telemetryTopic,
-          value_template: '{{ \'ON\' if value_json.muted else \'OFF\' }}',
-          payload_on: 'ON',
-          payload_off: 'OFF',
-          icon: 'mdi:volume-mute'
-        }
-      },
-      {
-        type: 'number', id: 'volume',
-        payload: {
-          name: 'Volume',
-          command_topic: cmdVolTopic,
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.volume }}',
-          min: 0,
-          max: 100,
-          step: 1,
-          icon: 'mdi:volume-high'
-        }
-      },
-      {
-        type: 'select', id: 'input_source',
-        payload: {
-          name: 'Input Source',
-          command_topic: cmdInputTopic,
-          state_topic: telemetryTopic,
-          value_template: selectState('value_json.app', Object.keys(INPUTS)),
-          options: Object.keys(INPUTS),
-          icon: 'mdi:video-input-hdmi'
-        }
-      },
-      {
-        type: 'text', id: 'screen_notification',
-        payload: {
-          name: 'Screen Notification',
-          command_topic: cmdToastTopic,
-          icon: 'mdi:message-text-outline',
-          mode: 'text'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_panel_hours',
-        payload: {
-          name: 'OLED Panel Hours',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.panel_hours if value_json.oled else 0 }}',
-          unit_of_measurement: 'h',
-          state_class: 'total_increasing',
-          icon: 'mdi:timer-outline'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_hours_since_compensation',
-        payload: {
-          name: 'OLED Hours Since Short Cycle',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.hours_since_comp if value_json.oled else 0 }}',
-          unit_of_measurement: 'h',
-          state_class: 'measurement',
-          icon: 'mdi:progress-clock'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_hours_until_compensation',
-        payload: {
-          name: 'OLED Hours Until Short Cycle',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.hours_until_comp if value_json.oled else 0 }}',
-          unit_of_measurement: 'h',
-          state_class: 'measurement',
-          icon: 'mdi:timer-sand'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_hours_since_refresher',
-        payload: {
-          name: 'OLED Hours Since Pixel Refresher',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.hours_since_refresher if value_json.oled else 0 }}',
-          unit_of_measurement: 'h',
-          state_class: 'measurement',
-          icon: 'mdi:history'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_hours_until_refresher',
-        payload: {
-          name: 'OLED Hours Until Pixel Refresher',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.hours_until_refresher if value_json.oled else 0 }}',
-          unit_of_measurement: 'h',
-          state_class: 'measurement',
-          icon: 'mdi:update'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_compensation_status',
-        payload: {
-          name: 'OLED Compensation Status',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.comp_status if value_json.oled else "Unknown" }}',
-          icon: 'mdi:autorenew'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_refresher_status',
-        payload: {
-          name: 'Pixel Refresher Status',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.refresher_status if value_json.oled else "Unknown" }}',
-          icon: 'mdi:television-shimmer'
-        }
-      },
-      {
-        /*
-         * Both of these are settings rather than readings, so they carry their
-         * own state and need no separate sensor. The panel protections beside
-         * them - ASBL, GSR - are hardware behaviour and stay read-only.
-         */
-        type: 'switch', id: 'oled_screen_shift',
-        payload: {
-          name: 'OLED Screen Shift',
-          command_topic: pfx + '/command/screenShift',
-          state_topic: telemetryTopic,
-          value_template: '{{ ("ON" if value_json.oled.screen_shift == "on" else "OFF") if value_json.oled and value_json.oled.screen_shift else none }}',
-          payload_on: 'on',
-          payload_off: 'off',
-          state_on: 'ON',
-          state_off: 'OFF',
-          icon: 'mdi:arrow-all'
-        }
-      },
-      {
-        type: 'select', id: 'oled_logo_dimming',
-        payload: {
-          name: 'OLED Logo Dimming',
-          command_topic: pfx + '/command/logoDimming',
-          state_topic: telemetryTopic,
-          // LG calls the strongest setting "strong"; the TV's own menu shows it
-          // as High, and so does the dashboard.
-          options: ['Off', 'Light', 'High'],
-          command_template: '{{ {"Off":"off","Light":"light","High":"strong"}[value] }}',
-          value_template: '{{ {"off":"Off","light":"Light","strong":"High"}.get(value_json.oled.logo_dimming, "Off") if value_json.oled and value_json.oled.logo_dimming else none }}',
-          icon: 'mdi:television-guide'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_short_cycles',
-        payload: {
-          name: 'OLED Short Cycles Completed',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.comp_cycles if value_json.oled and value_json.oled.comp_cycles is not none else none }}',
-          state_class: 'total_increasing',
-          entity_category: 'diagnostic',
-          icon: 'mdi:counter'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_refresher_cycles',
-        payload: {
-          name: 'OLED Refresher Cycles Completed',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.refresher_cycles if value_json.oled and value_json.oled.refresher_cycles is not none else none }}',
-          state_class: 'total_increasing',
-          entity_category: 'diagnostic',
-          icon: 'mdi:counter'
-        }
-      },
-      {
-        type: 'sensor', id: 'oled_failure_alerts',
-        payload: {
-          name: 'OLED Compensation Failures',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.oled.failure_alerts if value_json.oled and value_json.oled.failure_alerts is not none else 0 }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:alert-circle-outline'
-        }
-      },
-      {
-        type: 'binary_sensor', id: 'oled_asbl_dimmer',
-        payload: {
-          name: 'OLED ASBL Protection',
-          state_topic: telemetryTopic,
-          value_template: '{{ "ON" if value_json.oled and value_json.oled.asbl_protection == "Active" else "OFF" }}',
-          entity_category: 'diagnostic',
-          icon: 'mdi:shield-check'
-        }
-      },
-      {
-        type: 'switch', id: 'pixel_refresher_schedule',
-        payload: {
-          name: 'Schedule Pixel Refresher',
-          command_topic: pfx + '/command/refresher',
-          state_topic: telemetryTopic,
-          value_template: '{{ \'ON\' if value_json.oled and value_json.oled.refresher_status == \'Scheduled\' else \'OFF\' }}',
-          payload_on: 'schedule',
-          payload_off: 'cancel',
-          icon: 'mdi:television-shimmer'
-        }
-      },
-      {
-        type: 'select', id: 'picture_mode',
-        payload: {
-          name: 'Picture Mode',
-          command_topic: pfx + '/command/picture_mode',
-          state_topic: telemetryTopic,
-          value_template: '{{ value_json.picture.mode_raw if value_json.picture else "standard" }}',
-          /* The settable modes depend on the dynamic range of what is playing,
-             so this is whatever the TV last said it would accept. Discovery is
-             republished when that set changes - see publishTelemetry. */
-          options: lastPicModes.length
-            ? lastPicModes.map(function (m) { return m.value; })
-            : ['expert1', 'expert2', 'cinema', 'game', 'standard', 'eco', 'sports'],
-          icon: 'mdi:image-filter-black-white'
-        }
-      },
-      {
-        type: 'select', id: 'sound_output',
-        payload: {
-          name: 'Sound Output',
-          command_topic: pfx + '/command/sound_output',
-          state_topic: telemetryTopic,
-          value_template: selectState('value_json.sound.output_raw if value_json.sound else "tv_speaker"',
-                                      Object.keys(SOUND_OUTPUT_MAP)),
-          options: Object.keys(SOUND_OUTPUT_MAP),
-          icon: 'mdi:speaker'
-        }
-      },
-      {
-        type: 'select', id: 'app',
-        payload: (function () {
-          /*
-           * Full app ids on both sides: listApps and telemetry's app_id report
-           * com.webos.app.livetv, and launch wants that same id back, so the
-           * option list needs no translation in either direction.
-           */
-          var opts = ['com.webos.app.livetv', 'youtube.leanback.v4', 'netflix', 'amazon', 'spotify-beehive', 'com.apple.appletv'];
-          var merged = {};
-          for (var o = 0; o < opts.length; o++) merged[opts[o]] = 1;
-          for (var a = 0; a < installedApps.length; a++) merged[installedApps[a].id] = 1;
-          var appOptions = Object.keys(merged);
-          return {
-            name: 'Launch App',
-            command_topic: pfx + '/command/launch_app',
-            state_topic: telemetryTopic,
-            value_template: selectState('value_json.app_id', appOptions),
-            options: appOptions,
-            icon: 'mdi:apps'
-          };
-        })()
-      },
-      {
-        /*
-         * Sleep timer. 15 is not an accepted value even though it looks like
-         * one - the settings service rejects it. Valid: off, 10, 30, 60, 90, 120.
-         */
-        type: 'sensor', id: 'gpu_clock',
-        payload: {
-          name: 'GPU Clock', state_topic: telemetryTopic,
-          value_template: '{{ value_json.gpuMhz if value_json.gpuMhz else none }}',
-          unit_of_measurement: 'MHz', state_class: 'measurement', icon: 'mdi:expansion-card'
-        }
-      },
-      {
-        type: 'sensor', id: 'panel_dimming',
-        payload: {
-          name: 'Panel Dimming', state_topic: telemetryTopic,
-          value_template: '{{ value_json.dimming }}', icon: 'mdi:brightness-auto'
-        }
-      },
-      {
-        type: 'sensor', id: 'app_storage_free',
-        payload: {
-          name: 'App Storage Free', state_topic: telemetryTopic,
-          value_template: '{{ (value_json.appStorage.freeMb / 1024) | round(1) if value_json.appStorage else none }}',
-          unit_of_measurement: 'GB', state_class: 'measurement', icon: 'mdi:harddisk'
-        }
-      },
-      {
-        type: 'sensor', id: 'ambient_light',
-        payload: {
-          name: 'Ambient Light', state_topic: telemetryTopic,
-          value_template: '{{ value_json.lightSensor.lux if value_json.lightSensor else none }}',
-          device_class: 'illuminance', state_class: 'measurement', icon: 'mdi:brightness-5'
-        }
-      },
-      {
-        type: 'select', id: 'sleep_timer',
-        payload: {
-          name: 'Sleep Timer',
-          command_topic: pfx + '/command/sleepTimer',
-          state_topic: telemetryTopic,
-          options: ['Off', '10 min', '30 min', '60 min', '90 min', '120 min'],
-          command_template: '{{ {"Off":"off","10 min":"10","30 min":"30","60 min":"60","90 min":"90","120 min":"120"}[value] }}',
-          value_template: '{{ {"off":"Off","10":"10 min","30":"30 min","60":"60 min","90":"90 min","120":"120 min"}.get(value_json.sleepTimer, "Off") }}',
-          icon: 'mdi:timer-outline'
-        }
-      },
-      {
-        type: 'switch', id: 'standby_light',
-        payload: {
-          name: 'Standby LED',
-          command_topic: pfx + '/command/standbyLight',
-          state_topic: telemetryTopic,
-          value_template: '{{ "ON" if value_json.lights and value_json.lights.standby else "OFF" }}',
-          payload_on: 'on',
-          payload_off: 'off',
-          state_on: 'ON',
-          state_off: 'OFF',
-          icon: 'mdi:led-on'
-        }
-      },
-      {
-        type: 'switch', id: 'logo_light',
-        payload: {
-          name: 'Logo Light',
-          command_topic: pfx + '/command/logoLight',
-          state_topic: telemetryTopic,
-          value_template: '{{ "ON" if value_json.lights and value_json.lights.logo else "OFF" }}',
-          payload_on: 'on',
-          payload_off: 'off',
-          state_on: 'ON',
-          state_off: 'OFF',
-          icon: 'mdi:television-ambient-light'
-        }
-      },
-      {
-        type: 'button', id: 'screensaver',
-        payload: {
-          name: 'Start Screensaver',
-          command_topic: pfx + '/command/screensaver',
-          payload_press: 'press',
-          icon: 'mdi:television-shimmer'
-        }
-      },
-      {
-        /*
-         * The other half of that button. turnOnScreenSaver reports success
-         * whether or not anything answered the request, so this is the only
-         * confirmation that one is actually on screen.
-         */
-        type: 'binary_sensor', id: 'screen_saver_active',
-        payload: {
-          name: 'Screen Saver',
-          state_topic: telemetryTopic,
-          value_template: '{{ "ON" if value_json.screenSaver else "OFF" }}',
-          icon: 'mdi:television-shimmer'
-        }
-      },
-      {
-        type: 'select', id: 'screensaver_mode',
-        payload: {
-          name: 'Screen Saver',
-          command_topic: pfx + '/command/screensaverMode',
-          state_topic: telemetryTopic,
-          options: ['LG default', 'Clock', 'Starfield', 'Fireworks', 'Panel vitals'],
-          command_template: '{{ {"LG default":"stock","Clock":"clock","Starfield":"starfield","Fireworks":"fireworks","Panel vitals":"vitals"}[value] }}',
-          value_template: '{{ {"stock":"LG default","clock":"Clock","starfield":"Starfield","fireworks":"Fireworks","vitals":"Panel vitals"}.get(value_json.screensaverMode, "LG default") }}',
-          icon: 'mdi:television-shimmer'
-        }
-      },
-      {
-        type: 'switch', id: 'ad_blocker',
-        payload: {
-          name: 'Ad & Telemetry Blocker',
-          command_topic: pfx + '/command/adblock',
-          state_topic: telemetryTopic,
-          value_template: '{{ "ON" if value_json.privacy and value_json.privacy.adblock and value_json.privacy.adblock.enabled else "OFF" }}',
-          payload_on: 'ON',
-          payload_off: 'OFF',
-          icon: 'mdi:shield-check'
-        }
-      },
-      {
-        type: 'button', id: 'play',
-        payload: {
-          name: 'Play',
-          command_topic: pfx + '/command/playback',
-          payload_press: 'play',
-          icon: 'mdi:play'
-        }
-      },
-      {
-        type: 'button', id: 'pause',
-        payload: {
-          name: 'Pause',
-          command_topic: pfx + '/command/playback',
-          payload_press: 'pause',
-          icon: 'mdi:pause'
-        }
-      },
-      {
-        type: 'button', id: 'play_pause',
-        payload: {
-          name: 'Play / Pause',
-          command_topic: pfx + '/command/playback',
-          payload_press: 'playPause',
-          icon: 'mdi:play-pause'
-        }
-      },
-      {
-        type: 'button', id: 'stop',
-        payload: {
-          name: 'Stop',
-          command_topic: pfx + '/command/playback',
-          payload_press: 'stop',
-          icon: 'mdi:stop'
-        }
-      }
-    ];
+    ha.clearRetired(function (topic, payload, retain) {
+      mqttClient.publish(topic, payload, retain);
+    }, discPfx, devId);
 
-    entities.push({
-      type: 'update', id: 'server_update',
-      payload: {
-        name: 'Server Update',
-        state_topic: updateTopic,
-        command_topic: pfx + '/command/update',
-        payload_install: 'install',
-        icon: 'mdi:package-up'
-      }
+    var entities = ha.buildEntities({
+      pfx: pfx,
+      telemetryTopic: telemetryTopic,
+      statusTopic: statusTopic,
+      stateScreenTopic: stateScreenTopic,
+      cmdScreenTopic: cmdScreenTopic,
+      cmdMuteTopic: cmdMuteTopic,
+      cmdVolTopic: cmdVolTopic,
+      cmdInputTopic: cmdInputTopic,
+      cmdToastTopic: cmdToastTopic,
+      updateTopic: updateTopic,
+      installedApps: installedApps,
+      pictureModes: lastPicModes,
+      allowPower: CONFIG.allowPower
     });
 
-    if (CONFIG.allowPower) {
-      entities.push({
-        type: 'button', id: 'restart',
-        payload: {
-          name: 'Restart TV',
-          command_topic: pfx + '/command/reboot',
-          device_class: 'restart',
-          icon: 'mdi:restart'
-        }
-      });
-      entities.push({
-        type: 'button', id: 'power_off',
-        payload: {
-          name: 'Power Off TV',
-          command_topic: pfx + '/command/powerOff',
-          icon: 'mdi:power'
-        }
-      });
-    }
-
-    /*
-     * Panel-lifecycle entities only exist on OLED. On an LCD/QNED set the
-     * counters simply are not there, and publishing them would give Home
-     * Assistant a permanently "unknown" sensor - or worse, a confident 0 that
-     * looks like a real reading. Retained discovery configs are cleared so
-     * they disappear from HA rather than lingering as orphans.
-     */
-    // Each of these has one field behind it, and is published only once this
-    // set has reported that field - see hdmiSeen.
-    /*
-     * Entities this set cannot answer for.
-     *
-     * Publishing one anyway leaves Home Assistant with a sensor that reads
-     * "unknown" for the life of the install - or worse, a confident 0 that
-     * looks like a real measurement. A retained empty config removes one that
-     * a previous run published, so a set that loses a capability (or a config
-     * that renames the device) does not leave orphans behind holding their
-     * last value.
-     *
-     * Order matters only for the OLED rule last: its log line counts what it
-     * withheld, after the rules above have taken their own.
-     */
-    var HDMI_DIAG_ONLY = {
-      hdmi_link_mode: 'phy_mode', hdmi_chroma: 'chroma', hdmi_hdcp: 'hdcp',
-      hdmi_cable_errors: 'phy_errors', hdmi_allm: 'allm', hdmi_vrr: 'vrr'
-    };
-
-    var OLED_ONLY = {
-      oled_panel_hours: 1, oled_hours_since_compensation: 1,
-      oled_hours_until_compensation: 1, oled_compensation_status: 1,
-      oled_hours_since_refresher: 1,
-      oled_hours_until_refresher: 1, oled_refresher_status: 1,
-      oled_short_cycles: 1, oled_refresher_cycles: 1,
-      oled_failure_alerts: 1, oled_asbl_dimmer: 1,
-      oled_cell_type: 1, tcon_firmware: 1,
-      oled_screen_shift: 1, oled_logo_dimming: 1,
-      pixel_refresher_schedule: 1
-    };
-
-    /*
-     * The component is part of the discovery topic, so the clear has to use
-     * the entity's own type: clearing homeassistant/sensor/... for something
-     * published as a switch removes nothing and leaves the switch stranded.
-     */
-    function withhold(matches) {
-      var kept = [], dropped = 0;
-      for (var w = 0; w < entities.length; w++) {
-        if (matches(entities[w])) {
-          mqttClient.publish(discPfx + '/' + entities[w].type + '/' + devId + '/' +
-                             entities[w].id + '/config', '', true);
-          dropped++;
-        } else {
-          kept.push(entities[w]);
-        }
+    entities = ha.filterWithholds(entities, {
+      discPfx: discPfx,
+      devId: devId,
+      publishFn: function (topic, payload, retain) {
+        mqttClient.publish(topic, payload, retain);
+      },
+      capabilities: {
+        hasRemoteInfo: !!readRemoteInfo(),
+        hasPnwash: fs.existsSync('/mnt/lg/cmn_data/pnwash/completedOffRsCount'),
+        hasCell: !!(HARDWARE_INFO && HARDWARE_INFO.cell),
+        hasHdmiProc: fs.existsSync('/proc/lg/hdmi20'),
+        hasMediaState: hasMediaState,
+        hasHdrStatus: fs.existsSync('/proc/lg/pe/hdr_status'),
+        socArch: HARDWARE_INFO && HARDWARE_INFO.socArch,
+        hasLogoLight: hasLogoLight,
+        thermalPresent: THERMAL_PRESENT,
+        emmcWearPresent: EMMC_WEAR_PRESENT,
+        hasLightSensor: hasLightSensor,
+        updateCheck: !!(CONFIG.update && CONFIG.update.check),
+        hdmiSeen: hdmiSeen,
+        hasGpuClock: gpuClockMhz() !== null,
+        isOled: oled.getIsOled(),
+        userEntities: (CONFIG.mqtt && CONFIG.mqtt.entities) || {}
       }
-      entities = kept;
-      return dropped;
-    }
-
-    // Matcher for the common case: withhold these entities by id.
-    function byId() {
-      var set = {}, a;
-      for (a = 0; a < arguments.length; a++) set[arguments[a]] = 1;
-      return function (e) { return set[e.id] === 1; };
-    }
-
-    // Magic Remote battery, on a set that only ever sees an IR remote.
-    if (!readRemoteInfo()) withhold(byId('remote_battery'));
-
-    // OLED cycle counters and failure alerts, on older sets with no pnwash files.
-    if (!fs.existsSync('/mnt/lg/cmn_data/pnwash/completedOffRsCount')) {
-      withhold(byId('oled_short_cycles', 'oled_refresher_cycles', 'oled_failure_alerts'));
-    }
-
-    // Panel silicon, where panelcontroller does not report the cell.
-    if (!HARDWARE_INFO.cell) withhold(byId('oled_cell_type', 'tcon_firmware'));
-
-    // HDMI 2.1 diagnostics, on platforms with no /proc/lg/hdmi20 at all.
-    if (!fs.existsSync('/proc/lg/hdmi20')) {
-      withhold(function (e) { return e.id.indexOf('hdmi_') === 0; });
-    }
-
-    // Play state, on a set whose media service never answers - webOS 9 has no
-    // com.webos.service.acb at all.
-    if (!hasMediaState) withhold(byId('play_state'));
-
-    if (!fs.existsSync('/proc/lg/pe/hdr_status')) withhold(byId('video_colorimetry'));
-
-    if (!HARDWARE_INFO.socArch) withhold(byId('soc_architecture'));
-
-    /*
-     * The ambient light entity on sets without the sensor. They still answer
-     * getLightSensorData, reporting 65535, so it would sit at "unknown"
-     * forever rather than simply not existing.
-     */
-    if (hasLogoLight === false) withhold(byId('logo_light'));
-
-    // No thermal sensor at all (webOS 3.x).
-    if (!THERMAL_PRESENT) withhold(byId('soc_temperature'));
-
-    // eMMC wear counters, absent on webOS 3.x.
-    if (!EMMC_WEAR_PRESENT) withhold(byId('flash_health', 'flash_wear'));
-
-    if (!hasLightSensor) withhold(byId('ambient_light'));
-
-    // Without the daily check nothing learns what the latest release is, and
-    // the entity would read unknown for good. Withheld rather than left out, so
-    // switching the check off removes it.
-    if (!(CONFIG.update && CONFIG.update.check)) withhold(byId('server_update'));
-
-    /*
-     * HDMI diagnostics this set has never reported. A B8 has no FRL link, no
-     * chroma report, no PHY error counter and no VRR hardware, and each of
-     * these has one field behind it - see hdmiSeen.
-     */
-    withhold(function (e) {
-      var needs = HDMI_DIAG_ONLY[e.id];
-      return !!needs && !hdmiSeen[needs];
     });
-
-    /*
-     * GPU clock, on sets whose kernel does not expose the PLL output in
-     * /proc/lg/sys/status (such as webOS 9+ / C2).
-     */
-    if (gpuClockMhz() === null) withhold(byId('gpu_clock'));
-
-    /*
-     * Panel dimming. OLED sets control light per subpixel rather than via
-     * backlight zones, so it is withheld on OLED. On LCD/QNED the entity stays
-     * registered; the template returns null until the first telemetry tick.
-     */
-    if (isOled === true) withhold(byId('panel_dimming'));
-
-    // Panel-lifecycle entities, on anything that is not an OLED. Reporting
-    // 0 hours would read as a real measurement.
-    if (isOled === false) {
-      console.log('mqtt: not an OLED panel, withheld ' +
-                  withhold(function (e) { return OLED_ONLY[e.id] === 1; }) +
-                  ' panel entities');
-    }
-
-    /*
-     * Entity customisation. Drop any entity whose category has been turned off
-     * in settings, or which is explicitly named in the disabled list.
-     * Withheld rather than omitted so Home Assistant unregisters the entity.
-     */
-    var userEnts = (CONFIG.mqtt && CONFIG.mqtt.entities) || {};
-    var userWithheld = withhold(function (e) {
-      var cat = entityCategory(e);
-      if (userEnts[cat] === false) return true;
-      var dis = userEnts.disabled;
-      if (dis && (dis.indexOf(e.id) !== -1 || dis.indexOf(e.type + '.' + e.id) !== -1)) return true;
-      return false;
-    });
-    if (userWithheld > 0) {
-      console.log('mqtt: user configuration withheld ' + userWithheld + ' entities');
-    }
 
     for (var i = 0; i < entities.length; i++) {
       var item = entities[i];
@@ -6101,19 +3098,19 @@ function setupHomeAssistant() {
    */
   function publishUpdate() {
     if (!mqttClient.connected) return;
+    var upd = updater.UPDATE;
     mqttClient.publish(updateTopic, JSON.stringify({
       installed_version: TVWEB_VERSION,
-      latest_version: UPDATE.latest || null,
+      latest_version: upd.latest || null,
       title: 'Server',
-      release_url: UPDATE.url || null,
+      release_url: upd.url || null,
       // Home Assistant caps this at 255 characters and drops the message
       // whole if it is longer.
-      release_summary: UPDATE.notes ? UPDATE.notes.slice(0, 255) : null,
-      in_progress: !!UPDATE.busy
+      release_summary: upd.notes ? upd.notes.slice(0, 255) : null,
+      in_progress: !!upd.busy
     }), true);
   }
-  mqttPublishUpdate = publishUpdate;
-  mqttPublishDiscovery = publishDiscovery;
+  updater.setPublishHandler(publishUpdate, publishDiscovery);
 
   var lastPicSig = '';
   var lastCapSig = '';
@@ -6182,7 +3179,7 @@ function setupHomeAssistant() {
     // first connect it would otherwise still be undetermined.
     // The app select's options come from listApps, which on a first connect
     // has not been scanned yet - without this it publishes the fallback list.
-    detectOled(function () {
+    oled.detectOled(function () {
       detectLogoLight(function () {
         refreshInstalledApps(function () { publishDiscovery(); });
       });
@@ -6358,7 +3355,7 @@ if (!CLI_MODE) {
 
   // Not at startup: a reboot brings the whole house back at once, and nothing
   // about this is urgent.
-  scheduleUpdateChecks(120000);
+  updater.scheduleUpdateChecks(120000);
 }
 
 /*
@@ -6369,21 +3366,21 @@ if (!CLI_MODE) {
  * "no restart needed" rather than as a failure.
  */
 if (CLI_MODE === 'check') {
-  checkForUpdate(true, function (err, summary) {
+  updater.checkForUpdate(true, function (err, summary) {
     if (err) { console.error(err.message); process.exit(1); }
     console.log('installed v' + TVWEB_VERSION + ', latest v' + summary.latest +
                 (summary.available ? ' - update available' : ' - up to date'));
     process.exit(0);
   });
 } else if (CLI_MODE === 'update') {
-  installUpdate(function (r) {
+  updater.installUpdate(function (r) {
     if (!r.ok) { console.error(r.error); process.exit(1); }
     if (!r.updated) { console.log(r.note + ' (v' + r.installed + ')'); process.exit(3); }
     console.log('installed v' + r.latest + ' over v' + r.installed + ', ' + r.files + ' files');
     process.exit(0);
   });
 } else if (CLI_MODE === 'rollback') {
-  rollbackUpdate(function (r) {
+  updater.rollbackUpdate(function (r) {
     if (!r.ok) { console.error(r.error); process.exit(1); }
     console.log('restored v' + r.restored + ', ' + r.files + ' files');
     process.exit(0);

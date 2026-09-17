@@ -24,7 +24,9 @@ problems = []
 
 def entity_count():
     """Discovery configs published on a fully-capable set with allowPower on."""
-    src = (root / 'server' / 'tvweb.js').read_text(encoding='utf-8')
+    ha_path = root / 'server' / 'lib' / 'ha.js'
+    target = ha_path if ha_path.exists() else (root / 'server' / 'tvweb.js')
+    src = target.read_text(encoding='utf-8')
     start = src.index('var entities = [')
     open_at = start + src[start:].index('[')
     depth = 0
@@ -76,12 +78,15 @@ def check_deploy():
         return set()
     listed = set(m.group(1).replace('\\\n', ' ').split())
     on_disk = set()
-    for f in (root / 'server' / 'assets').rglob('*'):
-        if f.is_file():
-            on_disk.add(str(f.relative_to(root / 'server')))
+    scan_dirs = [root / 'server' / 'assets', root / 'server' / 'lib']
+    for d in scan_dirs:
+        if d.exists():
+            for f in d.rglob('*'):
+                if f.is_file():
+                    on_disk.add(str(f.relative_to(root / 'server')))
     for missing in sorted(on_disk - listed):
         problems.append('server/deploy.sh: %s is not in FILES, so it is never installed' % missing)
-    for gone in sorted(f for f in listed - on_disk if f.startswith('assets/')):
+    for gone in sorted(f for f in listed - on_disk if f.startswith('assets/') or f.startswith('lib/')):
         problems.append('server/deploy.sh: FILES lists %s, which does not exist' % gone)
     return on_disk
 

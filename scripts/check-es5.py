@@ -177,5 +177,13 @@ def check(path):
     return len(hits)
 
 
-targets = [pathlib.Path(a) for a in sys.argv[1:]] or [pathlib.Path('server/tvweb.js')]
+if len(sys.argv) > 1:
+    targets = [pathlib.Path(a) for a in sys.argv[1:]]
+else:
+    root = pathlib.Path(__file__).resolve().parent.parent
+    targets = [root / 'server' / 'tvweb.js']
+    lib_dir = root / 'server' / 'lib'
+    if lib_dir.exists():
+        targets.extend(sorted(lib_dir.glob('*.js')))
+
 sys.exit(1 if sum(check(t) for t in targets) else 0)
