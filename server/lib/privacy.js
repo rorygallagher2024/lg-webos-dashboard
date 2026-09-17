@@ -33,6 +33,16 @@ var ADBLOCK_PLATFORM = [
 
 var ADBLOCK_DOMAINS = ADBLOCK_ADS.concat(ADBLOCK_PLATFORM);
 
+/*
+ * The Homebrew Channel blackholes LG's update servers when its own flag file is
+ * there, in a table it bind-mounts at boot - and it does that before running the
+ * hooks that mount this one over the top (its startup.sh blocks at line 62 and
+ * runs run-parts at 136). Switching this blocker on would otherwise switch its
+ * update blocking off, silently, so its hosts go into this table too.
+ */
+var HBC_BLOCK_UPDATES_FLAG = '/var/luna/preferences/webosbrew_block_updates';
+var HBC_UPDATE_HOSTS = ['snu.lge.com', 'su-dev.lge.com', 'su.lge.com', 'su-ssl.lge.com'];
+
 var CONSENT_LABELS = {
   acrAllowed:              ['Screen content recognition', 'Lets LG identify what is on your screen to profile your viewing'],
   acrGdprAllowed:          ['Screen recognition (GDPR consent)', 'The EU consent record for screen content recognition'],
@@ -174,26 +184,39 @@ function adBlockMode() {
   return flag === 'ads' ? 'ads' : 'full';
 }
 
+// Both families for every name. A sinkhole with no AAAA record leaves the
+// resolver to ask DNS for one, and the connection goes through on IPv6.
+function sinkhole(lines, host) {
+  lines.push('0.0.0.0\t' + host);
+  lines.push('::\t' + host);
+}
+
+function adBlockHostsTable(mode) {
+  var list = adBlockList(mode);
+  var lines = [
+    '127.0.0.1\tlocalhost.localdomain\tlocalhost',
+    '::1\tlocalhost ip6-localhost ip6-loopback',
+    'fe00::0\tip6-localnet',
+    'ff00::0\tip6-mcastprefix',
+    'ff02::1\tip6-allnodes',
+    'ff02::2\tip6-allrouters',
+    '',
+    ADBLOCK_MARKER
+  ];
+  for (var i = 0; i < list.length; i++) sinkhole(lines, list[i]);
+  if (fs.existsSync(HBC_BLOCK_UPDATES_FLAG)) {
+    lines.push('', '# Blocked by the Homebrew Channel; kept so this table does not undo it');
+    for (var u = 0; u < HBC_UPDATE_HOSTS.length; u++) sinkhole(lines, HBC_UPDATE_HOSTS[u]);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 function setAdBlock(mode, cb) {
   var active = isAdBlockActive();
   if (mode !== 'off') {
-    var list = adBlockList(mode);
-    var lines = [
-      '127.0.0.1\tlocalhost.localdomain\tlocalhost',
-      '::1\tlocalhost ip6-localhost ip6-loopback',
-      'fe00::0\tip6-localnet',
-      'ff00::0\tip6-mcastprefix',
-      'ff02::1\tip6-allnodes',
-      'ff02::2\tip6-allrouters',
-      '',
-      ADBLOCK_MARKER
-    ];
-    for (var i = 0; i < list.length; i++) {
-      lines.push('0.0.0.0\t' + list[i]);
-    }
-    lines.push('');
     try {
-      fs.writeFileSync(ADBLOCK_HOSTS_FILE, lines.join('\n'), 'utf8');
+      fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(mode), 'utf8');
       fs.writeFileSync(ADBLOCK_FLAG_FILE, mode, 'utf8');
     } catch (e) {
       if (cb) cb({ ok: false, error: 'could not write adblock hosts: ' + e.message });
@@ -616,6 +639,7 @@ module.exports = {
   ADBLOCK_ADS: ADBLOCK_ADS,
   ADBLOCK_PLATFORM: ADBLOCK_PLATFORM,
   ADBLOCK_DOMAINS: ADBLOCK_DOMAINS,
+  adBlockHostsTable: adBlockHostsTable,
   CONSENT_LABELS: CONSENT_LABELS,
   CONSENT_LOCKED: CONSENT_LOCKED,
   CONSENT_GROUPS: CONSENT_GROUPS
