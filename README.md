@@ -445,23 +445,38 @@ ssh root@<tv-ip> /var/lib/tvweb/tvwebctl status    # start | stop | restart | st
 
 ### Updating
 
+How depends on the install. One with a **Server** tab in its dashboard updates
+itself; an older one is updated by deploying again, after which it has the tab.
+
+**With the Server tab.** **Check now** looks for a newer release, **Install**
+puts it on and restarts the server, and **Roll back** returns to the version it
+replaced. Home Assistant offers the same install while the
+[daily check](#checking-automatically) is on. Over ssh:
+
 ```bash
 ssh root@<tv-ip> /var/lib/tvweb/tvwebctl update           # install the latest release
 ssh root@<tv-ip> /var/lib/tvweb/tvwebctl update --check   # report without installing
 ssh root@<tv-ip> /var/lib/tvweb/tvwebctl rollback         # put the previous version back
 ```
 
-The dashboard's System tab does the same: the installed version, a **Check now**
-button and an **Install** button once a newer release exists. Home Assistant gets
-it as an update entity, with the release notes and an install button, when the
-daily check below is on. Re-running `deploy.sh` still works, and is still the way
-to install something unreleased.
+**Without it, or for something unreleased,** pull the latest code into the clone
+from [step 1](#1-get-the-files) and deploy again, with the flags used the first
+time:
 
-An upgrade downloads the release tarball, replaces the files the release ships
-and restarts. `config.json`, the ad blocker's hosts file, the staged screen saver
-and the list of stopped LG services are left alone; the replaced version stays in
-`/var/lib/tvweb/.previous` for `tvwebctl rollback`. The boot hook is refreshed
-only where one is already installed.
+```bash
+cd lg-webos-mqtt/server
+git pull
+./deploy.sh <tv-ip> --persist
+```
+
+Only the server's own files are replaced: the TV keeps its settings, ad blocker,
+screen saver and stopped services.
+
+An in-place upgrade downloads the release tarball, replaces the files the
+release ships and restarts. `config.json`, the ad blocker's hosts file, the
+staged screen saver and the list of stopped LG services are left alone; the
+replaced version stays in `/var/lib/tvweb/.previous` for `tvwebctl rollback`.
+The boot hook is refreshed only where one is already installed.
 
 The download goes through curl or wget on the TV. The TV's own `/usr/bin/curl`
 reaches GitHub on the sets tested; where it cannot, the check says so and nothing
