@@ -285,7 +285,7 @@ function installFile(src, dst, exec) {
   mkdirp(path.dirname(dst));
   var tmp = dst + '.new';
   copyFile(src, tmp);
-  fs.chmodSync(tmp, exec ? 0755 : 0644);
+  fs.chmodSync(tmp, exec ? parseInt('755', 8) : parseInt('644', 8));
   fs.renameSync(tmp, dst);
 }
 

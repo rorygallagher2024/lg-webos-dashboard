@@ -1082,7 +1082,7 @@ function collectStats(cb) {
                   out.privacy = {
                     adblock: {
                       enabled: privacyModule ? privacyModule.isAdBlockActive() : false,
-                      count: privacyModule ? privacyModule.ADBLOCK_DOMAINS.length : 0
+                      count: (privacyModule && privacyModule.ADBLOCK_DOMAINS) ? privacyModule.ADBLOCK_DOMAINS.length : 0
                     }
                   };
                   if (!oledModule) {
@@ -1174,6 +1174,7 @@ module.exports = {
   num: num,
   meminfo: meminfo,
   emmcInfo: emmcInfo,
+  onlineCpus: onlineCpus,
   socMhz: socMhz,
   gpuClockMhz: gpuClockMhz,
   swapBacking: swapBacking,

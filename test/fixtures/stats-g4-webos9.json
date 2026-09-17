@@ -1,0 +1,371 @@
+{
+  "ok": true,
+  "time": 1789670135343,
+  "tvwebVersion": "0.36.0",
+  "device": {
+    "id": "lg_tv",
+    "name": "LG OLED65G4",
+    "model": "OLED65G4"
+  },
+  "system": {
+    "webos": "9.2.0",
+    "firmware": "03.20.14"
+  },
+  "hardware": {
+    "webos": "9.2.0",
+    "soc_arch": "Alpha 9 Gen 5 (O22)",
+    "ram": "4GB",
+    "refresh_rate": "120 Hz",
+    "eye_sensor": null
+  },
+  "panel_silicon": null,
+  "remote": null,
+  "temp": 54,
+  "temps": [
+    54,
+    53,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    53,
+    54,
+    53,
+    54,
+    53,
+    53,
+    53,
+    54,
+    53,
+    53,
+    54,
+    53,
+    53,
+    53,
+    53,
+    52,
+    53,
+    53,
+    53,
+    53,
+    54,
+    53,
+    53,
+    53,
+    53,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    55,
+    55,
+    55,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54,
+    54
+  ],
+  "load": 9,
+  "loadPeak": 9,
+  "mhz": 1200,
+  "cores": [
+    9,
+    8
+  ],
+  "coresTotal": 4,
+  "mem": {
+    "total": 2023560,
+    "avail": 426208
+  },
+  "swap": {
+    "total": 614396,
+    "free": 534556,
+    "backing": "zram"
+  },
+  "uptime": 12030,
+  "bootTime": "2026-09-17T15:15:05.207Z",
+  "loadavg": [
+    "10.15",
+    "10.23",
+    "10.27"
+  ],
+  "wifi": {
+    "link": 76,
+    "level": -63
+  },
+  "net": {
+    "rx": 16508,
+    "tx": 784
+  },
+  "netTotal": {
+    "rx": 222716251,
+    "tx": 48169914,
+    "iface": "wlan0"
+  },
+  "mac": "00:51:ed:99:7e:20",
+  "emmc": {
+    "life": "0-10%",
+    "wear": "0-10%",
+    "health": ">90% (Healthy)",
+    "eol": "Normal"
+  },
+  "signal": "3840x2160 @ 60Hz",
+  "hdmi_diag": {
+    "phy_mode": "FRL 40Gbps",
+    "chroma": "4:4:4",
+    "hdcp": "2.3",
+    "phy_errors": 0,
+    "allm": "ON",
+    "vrr": "G-SYNC"
+  },
+  "picture_engine": null,
+  "colorimetry": null,
+  "power": {
+    "cpu_ma": 21,
+    "core_ma": 97,
+    "current_ma": 118
+  },
+  "inputs": {
+    "hdmi1": "HDMI 1",
+    "hdmi2": "Apple TV",
+    "hdmi3": "HDMI 3",
+    "hdmi4": "HDMI 4"
+  },
+  "powerState": {
+    "raw": "Screen Off",
+    "label": "Screen off",
+    "systemOn": true,
+    "screenOn": false
+  },
+  "screenSaver": false,
+  "screensaverMode": "stock",
+  "screensaverLevel": "dim",
+  "sleepTimer": "off",
+  "lights": {
+    "standby": false,
+    "logo": false,
+    "powerOn": false,
+    "hasLogo": false
+  },
+  "gpuMhz": 390,
+  "ssid": "NETGEAR51-5G",
+  "dimming": "dynamic",
+  "lightSensor": null,
+  "backlight": 100,
+  "appStorage": {
+    "totalMb": 4329,
+    "usedMb": 2205,
+    "freeMb": 2108,
+    "pct": 51
+  },
+  "volume": 7,
+  "muted": false,
+  "audio_output": "Headphone / AUX",
+  "sound": {
+    "output": "Headphone / AUX",
+    "output_raw": "headphone",
+    "mode": "standard"
+  },
+  "media": {
+    "state": "playing",
+    "playerType": "external input",
+    "fullScreen": true
+  },
+  "app": "hdmi2",
+  "app_id": "com.webos.app.hdmi2",
+  "app_name": "Apple TV",
+  "display_title": "Apple TV (HDMI2)",
+  "picture": {
+    "dynamicRange": "Dolby Vision",
+    "mode": "Dolby Vision Cinema",
+    "mode_raw": "dolbyHdrCinema",
+    "backlight": 50,
+    "energySaving": "off",
+    "screenShift": "off",
+    "logoLuminanceAdjust": "off",
+    "modes": [
+      {
+        "value": "dolbyHdrVivid",
+        "label": "Dolby Vision Vivid"
+      },
+      {
+        "value": "dolbyHdrStandard",
+        "label": "Dolby Vision Standard"
+      },
+      {
+        "value": "dolbyHdrCinemaBright",
+        "label": "Dolby Vision Cinema Bright"
+      },
+      {
+        "value": "dolbyHdrCinema",
+        "label": "Dolby Vision Cinema"
+      },
+      {
+        "value": "dolbyHdrGame",
+        "label": "Dolby Vision Game"
+      }
+    ]
+  },
+  "apps": [
+    {
+      "id": "com.webos.app.accessibility",
+      "title": "Accessibility"
+    },
+    {
+      "id": "com.webos.app.btspeakerapp",
+      "title": "Bluetooth Audio Playback"
+    },
+    {
+      "id": "com.webos.app.connectionwizard",
+      "title": "Device Connector"
+    },
+    {
+      "id": "com.webos.app.igallery",
+      "title": "GALLERY"
+    },
+    {
+      "id": "org.webosbrew.hbchannel",
+      "title": "Homebrew Channel"
+    },
+    {
+      "id": "lgchannels.uk",
+      "title": "LG Channels"
+    },
+    {
+      "id": "com.webos.app.discovery",
+      "title": "LG Content Store"
+    },
+    {
+      "id": "com.webos.app.remoteservice",
+      "title": "LG Remote Service"
+    },
+    {
+      "id": "webos.day",
+      "title": "LG Streaming Week"
+    },
+    {
+      "id": "com.webos.app.livetv",
+      "title": "Live TV"
+    },
+    {
+      "id": "com.webos.app.multiview",
+      "title": "Multi-view"
+    },
+    {
+      "id": "com.webos.app.music",
+      "title": "Music"
+    },
+    {
+      "id": "com.webos.app.notificationcenter",
+      "title": "Notifications"
+    },
+    {
+      "id": "com.webos.app.photovideo",
+      "title": "Photo & Video"
+    },
+    {
+      "id": "com.webos.app.recordings",
+      "title": "Recordings"
+    },
+    {
+      "id": "com.webos.app.miracast",
+      "title": "Screen Share"
+    },
+    {
+      "id": "com.webos.app.amazon-echo",
+      "title": "Set Up TV for Amazon Alexa"
+    },
+    {
+      "id": "com.webos.app.google-home",
+      "title": "Set Up TV for Google Assistant"
+    },
+    {
+      "id": "spotify-beehive",
+      "title": "Spotify - Music and Podcasts"
+    },
+    {
+      "id": "com.webos.app.livemenu",
+      "title": "TV Guide"
+    },
+    {
+      "id": "com.webos.app.scheduler",
+      "title": "TV Scheduler"
+    },
+    {
+      "id": "com.webos.app.tvuserguide",
+      "title": "User Guide"
+    },
+    {
+      "id": "com.webos.app.browser",
+      "title": "Web Browser"
+    }
+  ],
+  "privacy": {
+    "adblock": {
+      "enabled": true,
+      "count": 19
+    }
+  },
+  "capabilities": {
+    "oled": true,
+    "thermal": true,
+    "emmcWear": true
+  },
+  "oled": {
+    "panel_hours": 3470,
+    "panel_hours_exact": 3470.8,
+    "last_compensation_hours": 3464.2,
+    "hours_since_comp": 6.7,
+    "hours_until_comp": 0,
+    "comp_interval_hours": 4,
+    "comp_interval_units": 24,
+    "comp_cycles": null,
+    "comp_status": "Idle",
+    "comp_status_label": "Idle",
+    "refresher_interval_hours": 2000,
+    "last_refresher_hours": 2026,
+    "hours_since_refresher": 1444,
+    "hours_until_refresher": 556,
+    "refresher_cycles": null,
+    "refresher_status": "Idle",
+    "refresher_status_raw": "schedule",
+    "failure_alerts": null,
+    "asbl_protection": null,
+    "gsr_protection": null,
+    "screen_shift": "off",
+    "logo_dimming": "off"
+  }
+}

@@ -1,8 +1,4 @@
-# The checks that need nothing but the repository.
-#
-# scripts/check-entities.py is deliberately absent: it resolves every entity's
-# template against a live /api/stats, so it needs a TV on the network or a
-# recorded payload. Run it by hand against the set before a release.
+# Offline checks that need nothing but the repository (and Node for tests/types).
 name: checks
 
 on:
@@ -36,3 +32,12 @@ jobs:
       # Preinstalled on ubuntu-latest.
       - name: shell scripts
         run: shellcheck server/deploy.sh server/tvwebctl server/50-tvweb.sh tvstats.sh
+
+      - name: TypeScript type check
+        run: npm ci && npx tsc
+
+      - name: unit tests
+        run: node test/run-all.js
+
+      - name: entity templates resolve against fixture
+        run: ./scripts/check-entities.py --stats test/fixtures/stats-b8-webos4.json

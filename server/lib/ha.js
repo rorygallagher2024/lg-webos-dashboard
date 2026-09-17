@@ -180,7 +180,8 @@ function buildEntities(opts) {
   var installedApps = opts.installedApps || [];
   var lastPicModes = opts.pictureModes || [];
 
-var entities = [
+  /** @type {any[]} */
+  var entities = [
       {
         type: 'sensor', id: 'soc_temperature',
         payload: {

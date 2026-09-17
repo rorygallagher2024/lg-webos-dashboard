@@ -36,6 +36,7 @@ var zeroBuffer = MiniMQTT.zeroBuffer;
 var TVWEB_VERSION = '0.36.0';
 
 // ---------------------------------------------------------------- config
+/** @type {any} */
 var CONFIG = {
   // The dashboard. Turn this off if you drive everything from Home Assistant:
   // it is an unauthenticated control endpoint unless `token` is set, and an
@@ -165,9 +166,9 @@ function loadConfig() {
          * secret. Use a dedicated, ACL-restricted broker user.
          */
         try {
-          var mode = fs.statSync(paths[i]).mode & 0777;
-          if (mode !== 0600) {
-            fs.chmodSync(paths[i], 0600);
+          var mode = fs.statSync(paths[i]).mode & parseInt('777', 8);
+          if (mode !== parseInt('600', 8)) {
+            fs.chmodSync(paths[i], parseInt('600', 8));
             console.log('tightened permissions on ' + paths[i] + ' to 0600');
           }
         } catch (e) {
@@ -956,7 +957,7 @@ function writeSettings(patch, cb) {
   try {
     var tmp = CONFIG_FILE + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(file, null, 2), 'utf8');
-    fs.chmodSync(tmp, 0600);
+    fs.chmodSync(tmp, parseInt('600', 8));
     fs.renameSync(tmp, CONFIG_FILE);   // atomic: never leave a half-written config
   } catch (err) {
     return cb(err);
