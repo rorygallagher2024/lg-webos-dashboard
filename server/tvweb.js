@@ -3812,6 +3812,14 @@ function tarballTop(dir) {
   return null;
 }
 
+// Synchronous for the same reason as the dashboard's compression in loadUI:
+// the dashboard keeps spawning luna-send while an update downloads.
+function inflate(buf, cb) {
+  var out;
+  try { out = zlib.gunzipSync(buf); } catch (e) { return cb(e); }
+  cb(null, out);
+}
+
 function declaredVersion(file) {
   var m = /TVWEB_VERSION\s*=\s*'([^']+)'/.exec(fs.readFileSync(file, 'utf8').slice(0, 4096));
   return m ? m[1] : null;
@@ -3905,7 +3913,7 @@ function installUpdate(cb) {
          */
         var gzBuf;
         try { gzBuf = fs.readFileSync(gz); } catch (e) { return fail('could not read the download: ' + e.message); }
-        zlib.gunzip(gzBuf, function (e3, tarBuf) {
+        inflate(gzBuf, function (e3, tarBuf) {
           if (e3) return fail('the download did not arrive complete (' + e3.message + ')');
           var tarBin = findBin('tar');
           if (!tarBin) return fail('no tar on this TV to unpack the release with');
@@ -4092,12 +4100,17 @@ var ASSET_CACHE = {};
   try {
     UI_HTML = fs.readFileSync(f, 'utf8');
     console.log('assets: serving ui.html from ' + f);
-    zlib.gzip(UI_HTML, function (err, gzipped) {
-      if (!err && gzipped) {
-        UI_HTML_GZ = gzipped;
-        console.log('assets: pre-compressed ui.html (' + UI_HTML.length + ' -> ' + gzipped.length + ' bytes)');
-      }
-    });
+    /*
+     * On this thread rather than zlib's worker pool. Node 0.12's process
+     * spawning can deadlock (see lunaCached), and startup launches luna-send
+     * repeatedly while an async compression would still be running: the one
+     * startup seen to stall, on a B8 straight after an update, stopped with
+     * this compression unfinished.
+     */
+    try {
+      UI_HTML_GZ = zlib.gzipSync(UI_HTML);
+      console.log('assets: pre-compressed ui.html (' + UI_HTML.length + ' -> ' + UI_HTML_GZ.length + ' bytes)');
+    } catch (ze) {}
   } catch (e) {
     console.error('assets: could not read ui.html: ' + e.message);
   }
