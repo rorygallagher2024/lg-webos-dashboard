@@ -21,8 +21,8 @@ jobs:
       - name: ES5 only in the on-TV server
         run: ./scripts/check-es5.py
 
-      - name: tvweb.js parses
-        run: node --check server/tvweb.js
+      - name: tvweb.js and lib modules parse
+        run: node --check server/tvweb.js && for f in server/lib/*.js; do node --check "$f"; done
 
       - name: dashboard reaches for no missing element
         run: ./scripts/check-ui-ids.py

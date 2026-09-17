@@ -57,7 +57,7 @@ FILES="tvweb.js tvwebctl assets/ui.html assets/fonts/Outfit.ttf assets/fonts/Man
 assets/fonts/OFL-Outfit.txt assets/fonts/OFL-Manrope.txt \
 assets/screensavers/clock.qml assets/screensavers/fireworks.qml \
 assets/screensavers/starfield.qml assets/screensavers/vitals.qml assets/screensavers/star.png \
-lib/mqtt.js lib/ha.js lib/updater.js lib/privacy.js lib/oled.js"
+lib/mqtt.js lib/ha.js lib/updater.js lib/privacy.js lib/oled.js lib/screensavers.js lib/telemetry.js"
 
 # ---------------------------------------------------------------- ssh path
 deploy_ssh() {
@@ -150,7 +150,7 @@ mkdir -p /var/lib/tvweb/assets/fonts /var/lib/tvweb/assets/screensavers /var/lib
 wget -q -O /var/lib/tvweb/tvweb.js http://$MYIP:$PORT/tvweb.js && echo "tvweb.js \$(wc -c < /var/lib/tvweb/tvweb.js) bytes"
 wget -q -O /var/lib/tvweb/assets/ui.html http://$MYIP:$PORT/assets/ui.html && echo "ui.html \$(wc -c < /var/lib/tvweb/assets/ui.html) bytes"
 wget -q -O /var/lib/tvweb/tvwebctl http://$MYIP:$PORT/tvwebctl
-for f in mqtt.js ha.js updater.js privacy.js oled.js; do
+for f in mqtt.js ha.js updater.js privacy.js oled.js screensavers.js telemetry.js; do
   wget -q -O /var/lib/tvweb/lib/\$f http://$MYIP:$PORT/lib/\$f
 done
 echo "lib: \$(ls /var/lib/tvweb/lib | wc -l) files"

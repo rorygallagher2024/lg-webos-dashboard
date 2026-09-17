@@ -12,8 +12,6 @@
 
 var http = require('http');
 var fs = require('fs');
-var THERMAL_PRESENT = fs.existsSync('/proc/lg/pm/temperature');
-var EMMC_WEAR_PRESENT = fs.existsSync('/sys/block/mmcblk0/device/life_time');
 var url = require('url');
 var net = require('net');
 var tls = require('tls');
@@ -26,6 +24,8 @@ var ha = require('./lib/ha');
 var updater = require('./lib/updater');
 var privacy = require('./lib/privacy');
 var oled = require('./lib/oled');
+var screensavers = require('./lib/screensavers');
+var telemetry = require('./lib/telemetry');
 var zeroBuffer = MiniMQTT.zeroBuffer;
 
 /*
@@ -221,498 +221,9 @@ var CLI_MODE = null;
 updater.init({ config: CONFIG, version: TVWEB_VERSION, installDir: __dirname });
 
 // ---------------------------------------------------------------- helpers
-function rd(path) {
-  try { return fs.readFileSync(path, 'utf8').trim(); }
-  catch (e) { return null; }
-}
-
 function num(v, dflt) {
   var n = parseInt(v, 10);
   return isNaN(n) ? dflt : n;
-}
-
-function meminfo() {
-  var out = {}, raw = rd('/proc/meminfo');
-  if (!raw) return out;
-  var lines = raw.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    var m = lines[i].match(/^(\w+):\s+(\d+)/);
-    if (m) out[m[1]] = parseInt(m[2], 10);
-  }
-  return out;
-}
-
-var EOL_MAP = { 1: 'Normal', 2: 'Warning', 3: 'Urgent' };
-var EMMC_CACHE = null;
-
-/* eMMC DEVICE_LIFE_TIME_EST: 0x01 = 0-10% of rated write cycles used (>90% health remaining). */
-function emmcInfo() {
-  if (EMMC_CACHE) return EMMC_CACHE;
-  var raw = rd('/sys/block/mmcblk0/device/life_time');
-  var eolRaw = rd('/sys/block/mmcblk0/device/pre_eol_info');
-  /*
-   * Both nodes are absent on webOS 3.x. Reporting a healthy drive because the
-   * wear counter could not be read is the same mistake as rendering 0 C for a
-   * missing thermal sensor: it states as fact something never measured.
-   */
-  // The kernel prints pre_eol_info as 0x%02X, so parse the value rather than
-  // match its text: '0x01' and '01' both mean Normal. 0x00 is "not defined".
-  var eol = EOL_MAP[parseInt(eolRaw, 16)] || 'unknown';
-  if (!raw) {
-    EMMC_CACHE = { life: 'unknown', wear: 'unknown', health: 'unknown', eol: eol };
-    return EMMC_CACHE;
-  }
-
-  var parts = raw.split(/\s+/), wearList = [], minHealth = 100;
-  for (var i = 0; i < parts.length; i++) {
-    var n = parseInt(parts[i], 16);
-    if (!n) continue;
-    if (n >= 11) {
-      wearList.push('>100%');
-      minHealth = 0;
-    } else {
-      wearList.push(((n - 1) * 10) + '-' + (n * 10) + '%');
-      var rem = 100 - (n * 10);
-      if (rem < minHealth) minHealth = rem;
-    }
-  }
-  /*
-   * The controller reports a band per region, and on a healthy drive they are
-   * all the same - "0-10% / 0-10%" is one fact stated twice, and it wrapped to
-   * two lines in the dashboard's cell. Collapse them when they agree; a drive
-   * whose regions have diverged still shows every band, which is the case
-   * where the detail earns its space.
-   */
-  var uniqWear = [];
-  for (var u = 0; u < wearList.length; u++) {
-    if (uniqWear.indexOf(wearList[u]) === -1) uniqWear.push(wearList[u]);
-  }
-  var wearStr = uniqWear.length ? uniqWear.join(' / ') : '0-10%';
-  // The wear band inverted. Kept for anyone templating on it; nothing in this
-  // project presents it, because next to `wear` it is the same fact twice.
-  var healthStr = (minHealth >= 90) ? '>90% (Healthy)' : (minHealth + '% remaining');
-  EMMC_CACHE = {
-    life: wearStr,    // backwards-compatible with old HA discovery template
-    wear: wearStr,
-    health: healthStr,
-    eol: eol
-  };
-  return EMMC_CACHE;
-}
-
-/*
- * Which CPUs are actually running. The TV parks cores under light load, but
- * /proc/lg/pm/status keeps a slot in its load vector for every core whether
- * or not it is online - a parked one reads 0, or holds whatever it last
- * reported before it went down. Observed on a G4: "load: 13 11 11 29" while
- * only cpu0-2 were online, so that trailing 29 belonged to a core that had
- * stopped. Publishing those next to live figures invents cores.
- *
- * /sys/devices/system/cpu/online is the authoritative list and gives indices
- * ("0-1", "0,2-3"), which matters because a slot's position is its core
- * number. cpu_num in the LG file is only a count, so it stands in when sysfs
- * is unavailable and the cores are assumed to be the lowest indices.
- */
-function onlineCpus(status) {
-  var raw = rd('/sys/devices/system/cpu/online');
-  if (raw) {
-    var idx = [], parts = raw.trim().split(',');
-    for (var i = 0; i < parts.length; i++) {
-      var range = parts[i].split('-');
-      var lo = parseInt(range[0], 10);
-      var hi = range.length > 1 ? parseInt(range[1], 10) : lo;
-      if (isNaN(lo) || isNaN(hi)) continue;
-      for (var c = lo; c <= hi; c++) idx.push(c);
-    }
-    if (idx.length) return idx;
-  }
-  var m = (status || '').match(/cpu_num:\s*(\d+)/);
-  if (!m) return null;                      // no idea which are live
-  var n = parseInt(m[1], 10), out = [];
-  for (var k = 0; k < n; k++) out.push(k);
-  return out;
-}
-
-/*
- * webOS 4.x reports this in kHz (1200000), webOS 9+ in MHz (1200), so a fixed
- * divisor turns a 1.2 GHz SoC into "1 MHz" on the newer sets. No TV SoC runs
- * anywhere near 10 GHz, so a value above that is taken as the kHz form.
- *
- * Only those two conventions have been seen, so the result is bounded rather
- * than trusted: a set reporting Hz would land far outside a plausible clock,
- * and nothing is better than a confident wrong figure.
- */
-function socMhz() {
-  var v = num(rd('/proc/lg/pm/frequency'), 0);
-  if (!v || v < 0) return null;
-  var mhz = Math.round(v > 10000 ? v / 1000 : v);
-  return (mhz >= 100 && mhz <= 10000) ? mhz : null;
-}
-
-/*
- * What swap is actually backed by. The B8 swaps to zram, but this is not
- * universal: a G4 swaps to a flash partition (/dev/f2io-0) and leaves zram0
- * present with disksize 0. Calling both "zram" understated the cost, since
- * compressed RAM costs no writes and a partition wears the eMMC.
- *
- * The largest device wins, which is the one carrying the pages.
- */
-var SWAP_BACKING_CACHE = null;
-
-function swapBacking() {
-  if (SWAP_BACKING_CACHE !== null) return SWAP_BACKING_CACHE;
-  var raw = rd('/proc/swaps');
-  if (!raw) return null;
-  var lines = raw.split('\n'), best = null, bestSize = -1;
-  for (var i = 1; i < lines.length; i++) {          // row 0 is the header
-    var f = lines[i].replace(/\s+/g, ' ').trim().split(' ');
-    if (f.length < 3 || !f[0]) continue;
-    var size = parseInt(f[2], 10);
-    if (isNaN(size) || size <= bestSize) continue;
-    bestSize = size;
-    best = /zram/i.test(f[0]) ? 'zram' : (f[1] === 'file' ? 'file' : 'flash');
-  }
-  SWAP_BACKING_CACHE = best;
-  return best;
-}
-
-function wifi() {
-  var raw = rd('/proc/net/wireless');
-  if (!raw) return null;
-  var lines = raw.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i].indexOf('wlan0') !== -1) {
-      var f = lines[i].replace(/\s+/g, ' ').trim().split(' ');
-      var link = parseFloat(f[2]), level = parseFloat(f[3]);
-      /*
-       * A wired set still has a wlan0 row, reading zero across the board
-       * because the radio is not associated. Reporting that as 0 dBm states a
-       * measurement that was never taken - the same mistake as 0 C for a
-       * missing thermal sensor.
-       */
-      if (!link && !level) return null;
-      // webOS 9+ (C2) exposes signal as unsigned in /proc/net/wireless:
-      // 181 means -75 dBm. iw confirms: "signal: -75 dBm".
-      if (level > 127) level = level - 256;
-      return { link: link, level: level };
-    }
-  }
-  return null;
-}
-
-/*
- * Live first, then busiest. Ranking on byte count alone would keep choosing a
- * link that has since been unplugged: a set moved from Wi-Fi to ethernet has
- * a dormant wlan0 holding more lifetime bytes than eth0 will accumulate for
- * days, and its idle counters would report zero throughput on a busy TV -
- * which is the fault this replaced, in a new form.
- *
- * A kernel too old to publish operstate or carrier leaves every interface
- * unranked, and the busiest still wins.
- */
-function ifaceRank(name) {
-  var st = rd('/sys/class/net/' + name + '/operstate');
-  if (st) {
-    st = st.trim();
-    if (st === 'up') return 2;
-    if (st === 'down') return 0;
-    return 1;                                       // "unknown" is not "down"
-  }
-  var car = rd('/sys/class/net/' + name + '/carrier');
-  if (!car) return 1;
-  return car.trim() === '1' ? 2 : 0;
-}
-
-/*
- * The address a magic packet has to be sent to. Waking a set is the one thing
- * this server cannot do - it is not running when the TV is off - so the README
- * documents Wake-on-LAN for it and leaves the address for the reader to find
- * in the TV's menus. The set knows it.
- *
- * Read for whichever interface the throughput came from, so a TV on Wi-Fi
- * reports its Wi-Fi address rather than a wired one with nothing plugged in.
- * An all-zero address is a placeholder for an interface that has none.
- */
-var MAC_CACHE = {};
-
-function macAddress(iface) {
-  if (!iface) return null;
-  if (MAC_CACHE[iface]) return MAC_CACHE[iface];
-  var raw = rd('/sys/class/net/' + iface + '/address');
-  if (!raw) return null;
-  var mac = raw.trim().toLowerCase();
-  if (!/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(mac)) return null;
-  if (mac === '00:00:00:00:00:00') return null;
-  MAC_CACHE[iface] = mac;
-  return mac;
-}
-
-/*
- * Whichever interface is actually carrying traffic. This matched wlan0 alone,
- * so every wired set reported zero throughput forever - the counters it wanted
- * were on eth0. Loopback is excluded.
- */
-function netBytes() {
-  var raw = rd('/proc/net/dev');
-  if (!raw) return null;
-  var lines = raw.split('\n'), best = null;
-  for (var i = 0; i < lines.length; i++) {
-    // Split on the first colon only: the counters follow it, and a long byte
-    // count can run straight up against it with no space.
-    var idx = lines[i].indexOf(':');
-    if (idx === -1) continue;                       // the two header rows
-    var name = lines[i].slice(0, idx).replace(/\s+/g, '');
-    if (!name || name === 'lo') continue;
-    var f = lines[i].slice(idx + 1).replace(/\s+/g, ' ').trim().split(' ');
-    var rx = parseInt(f[0], 10), tx = parseInt(f[8], 10);
-    if (isNaN(rx) || isNaN(tx)) continue;
-    var rank = ifaceRank(name);
-    if (!best || rank > best.rank || (rank === best.rank && rx > best.rx)) {
-      best = { iface: name, rank: rank, rx: rx, tx: tx, t: Date.now() };
-    }
-  }
-  return best;
-}
-
-function getVideoSignal() {
-  for (var p = 0; p < 4; p++) {
-    var raw = rd('/proc/lg/hdmi20/port' + p + '/status');
-    if (!raw) continue;
-    var isConn = /connected:\s*on/i.test(raw) || /PHY\s+Lock\[1\]/i.test(raw);
-    var w = null, h = null, hz = '';
-    var wMatch = raw.match(/horizontal-active:\s*(\d+)/);
-    var hMatch = raw.match(/vertical-active:\s*(\d+)/);
-    var hzMatch = raw.match(/pixel-clock-V:\s*(\d+)\s*Hz/);
-    if (wMatch && hMatch) {
-      w = wMatch[1];
-      h = hMatch[1];
-      if (hzMatch) hz = ' @ ' + hzMatch[1] + 'Hz';
-    } else {
-      var sigM = raw.match(/Sig:\s*\[(\d+)\](?:\(\d+\))?x\[(\d+)\](?:\(\d+\))?@\[(\d+)\]\s*Hz/i);
-      if (sigM && parseInt(sigM[1], 10) > 0) {
-        w = sigM[1];
-        h = sigM[2];
-        hz = ' @ ' + sigM[3] + 'Hz';
-        isConn = true;
-      }
-    }
-    if (isConn) {
-      if (w && h) return w + 'x' + h + hz;
-      return 'Connected';
-    }
-  }
-  return null;
-}
-
-var cachedRemote = null;
-var lastRemoteCheck = 0;
-
-function readRemoteInfo() {
-  var now = Date.now();
-  if (cachedRemote && (now - lastRemoteCheck < 30000)) return cachedRemote;
-  var raw = rd('/mnt/lg/cmn_data/mrcu/mrcu1.info');
-  if (!raw) return cachedRemote || null;
-  var bMatch = raw.match(/Battery\s*=\s*(\d+)/i);
-  var nMatch = raw.match(/Name\s*=\s*([^\r\n]+)/i);
-  var macMatch = raw.match(/BDAddr\s*=\s*([^\r\n]+)/i);
-  var fwMatch = raw.match(/fwVer\s*=\s*([^\r\n]+)/i);
-  if (!bMatch && !nMatch) return cachedRemote || null;
-  cachedRemote = {
-    battery: bMatch ? parseInt(bMatch[1], 10) : null,
-    model: nMatch ? nMatch[1].trim() : null,
-    mac: macMatch ? macMatch[1].trim() : null,
-    firmware: fwMatch ? fwMatch[1].trim() : null,
-    paired: true
-  };
-  lastRemoteCheck = Date.now();
-  return cachedRemote;
-}
-
-function getActiveHdmiDiagnostics() {
-  for (var p = 0; p < 4; p++) {
-    var raw = rd('/proc/lg/hdmi20/port' + p + '/status');
-    if (!raw) continue;
-    var isConn = /connected:\s*on/i.test(raw) || /PHY\s+Lock\[1\]/i.test(raw) || /is5Vconnected\[1\]/i.test(raw);
-    if (!isConn) continue;
-
-    var phyMatch = raw.match(/PHY Mode\[([^\]]+)\]/i);
-    var fmtMatch = raw.match(/Video Format\[([^\]]+)\]/i);
-    var hdcpMatch = raw.match(/Current HDCP Auth Version => (HDCP\w+)/i);
-    var errMatch = raw.match(/PHY Error Count\s*:\s*(\d+)/i);
-    var allmMatch = raw.match(/isAllm\[(\d+)\]/i);
-    var vrrMatch = raw.match(/isFreeSync\[(\d+)\]/i);
-    var vrrMinMax = raw.match(/VRR Min\[(\d+)\]\/Max\[(\d+)\]/i);
-    var qmsMatch = raw.match(/QMSMode\[(\d+)\]/i);
-
-    var phyMode = null;
-    if (phyMatch) {
-      var rawPhy = phyMatch[1].trim();
-      if (/FRL 12G 4L/i.test(rawPhy)) phyMode = 'FRL 48 Gbps';
-      else if (/FRL 10G 4L/i.test(rawPhy)) phyMode = 'FRL 40 Gbps';
-      else if (/FRL 8G 4L/i.test(rawPhy)) phyMode = 'FRL 32 Gbps';
-      else if (/FRL 6G 4L/i.test(rawPhy)) phyMode = 'FRL 24 Gbps';
-      else if (/FRL 6G 3L/i.test(rawPhy)) phyMode = 'FRL 18 Gbps';
-      else if (/FRL 3G 3L/i.test(rawPhy)) phyMode = 'FRL 9 Gbps';
-      else if (/3G/i.test(rawPhy)) phyMode = 'TMDS (3G)';
-      else if (/6G/i.test(rawPhy)) phyMode = 'TMDS (6G)';
-      else phyMode = rawPhy;
-    }
-
-    var format = null;
-    if (fmtMatch) {
-      var rawFmt = fmtMatch[1].trim();
-      if (rawFmt === 'R444') format = 'RGB 4:4:4';
-      else if (rawFmt === 'Y444') format = 'YCbCr 4:4:4';
-      else if (rawFmt === 'Y422') format = 'YCbCr 4:2:2';
-      else if (rawFmt === 'Y420') format = 'YCbCr 4:2:0';
-      else format = rawFmt;
-    }
-
-    var hdcp = null;
-    if (hdcpMatch) {
-      var rawHdcp = hdcpMatch[1].trim();
-      if (rawHdcp === 'HDCP23') hdcp = 'HDCP 2.3';
-      else if (rawHdcp === 'HDCP22') hdcp = 'HDCP 2.2';
-      else if (rawHdcp === 'HDCP14') hdcp = 'HDCP 1.4';
-      else if (rawHdcp === 'HDCP0') hdcp = 'None';
-      else hdcp = rawHdcp;
-    }
-
-    var isVrr = (vrrMatch && vrrMatch[1] === '1') ||
-                (vrrMinMax && (parseInt(vrrMinMax[1], 10) > 0 || parseInt(vrrMinMax[2], 10) > 0));
-
-    /*
-     * Null where the line is absent, not 0 or false. An HDMI 2.0 port has a
-     * status file and reports as connected, but carries none of the 2.1 lines:
-     * a B8 gives the port number and nothing else. Defaulting meant a cable
-     * error count of 0 and a VRR of OFF on a set with no counter and no VRR
-     * hardware, which reads as a measurement rather than as silence.
-     */
-    return {
-      port: p,
-      phy_mode: phyMode,
-      chroma: format,
-      hdcp: hdcp,
-      phy_errors: errMatch ? parseInt(errMatch[1], 10) : null,
-      allm: allmMatch ? (allmMatch[1] === '1') : null,
-      vrr: (vrrMatch || vrrMinMax) ? !!isVrr : null,
-      qms: qmsMatch ? (qmsMatch[1] === '1') : null
-    };
-  }
-  return null;
-}
-
-function getPictureEngineInfo() {
-  var raw = rd('/proc/lg/pe/hdr_status');
-  if (!raw) return null;
-  var colMatch = raw.match(/colorimetry:\s*([^,\}]+)/i);
-  var hdrMatch = raw.match(/hdrStatus:\s*([^\(,\}]+)/i);
-  var peakMatch = raw.match(/peakLuminance:\s*(\d+)/i);
-
-  var colorimetry = null;
-  if (colMatch) {
-    var rawCol = colMatch[1].trim().toLowerCase();
-    if (rawCol === 'bt709') colorimetry = 'BT.709';
-    else if (rawCol === 'bt2020') colorimetry = 'BT.2020';
-    else if (rawCol === 'bt601') colorimetry = 'BT.601';
-    else colorimetry = colMatch[1].trim();
-  }
-
-  return {
-    colorimetry: colorimetry,
-    hdr_mode: hdrMatch ? hdrMatch[1].trim() : null,
-    peak_luminance: peakMatch ? parseInt(peakMatch[1], 10) : null
-  };
-}
-
-var PIC_MODE_MAP = {
-  dolbyHdrVivid: 'Dolby Vision Vivid',
-  dolbyHdrCinemaBright: 'Dolby Vision Cinema Bright',
-  dolbyHdrCinema: 'Dolby Vision Cinema',
-  dolbyHdrCinemaHome: 'Dolby Vision Cinema Home',
-  dolbyHdrStandard: 'Dolby Vision Standard',
-  dolbyHdrGame: 'Dolby Vision Game',
-  hdrCinema: 'HDR Cinema',
-  hdrCinemaHome: 'HDR Cinema Home',
-  hdrStandard: 'HDR Standard',
-  hdrGame: 'HDR Game',
-  cinema: 'Cinema',
-  personalized: 'Personalized',   // reported by webOS 22 sets
-  expert1: 'ISF Expert (Bright)',
-  expert2: 'ISF Expert (Dark)',
-  game: 'Game',
-  standard: 'Standard',
-  eco: 'Eco',
-  technicolor: 'Technicolor',
-  technicolorHdr: 'Technicolor HDR',
-  hdrEffect: 'HDR Effect',
-  vivid: 'Vivid',
-  normal: 'Standard'
-};
-
-/*
- * Which picture modes the set will accept right now.
- *
- * They depend on the dynamic range of what is playing: under Dolby Vision the
- * only settable modes are the dolbyHdr* ones, and setting an SDR mode is
- * refused with "There is No matched extended item: pictureMode". A fixed list
- * therefore offers buttons that cannot work - which is what the dashboard used
- * to do, showing SDR modes against Dolby Vision content.
- *
- * getSystemSettingValues marks the currently selectable ones visible:true, and
- * that set changes with the source, so it is read rather than assumed.
- */
-var lastPicModes = [];
-
-function pictureModes(cb) {
-  lunaCached('com.webos.service.settings/getSystemSettingValues',
-    { category: 'picture', key: 'pictureMode' }, 10000, function (res) {
-      var arr = (res && res.values && res.values.arrayExt) || [];
-      var out = [];
-      for (var i = 0; i < arr.length; i++) {
-        if (arr[i].visible === true && arr[i].active !== false) {
-          out.push({ value: arr[i].value, label: formatPicMode(arr[i].value) });
-        }
-      }
-      if (out.length) lastPicModes = out;
-      cb(out);
-    });
-}
-
-function formatPicMode(mode) {
-  if (!mode) return 'Standard';
-  return PIC_MODE_MAP[mode] || mode;
-}
-
-function formatDynamicRange(dr) {
-  if (!dr || dr === 'sdr') return 'SDR';
-  if (dr === 'dolbyHdr') return 'Dolby Vision';
-  if (dr === 'hdr') return 'HDR';
-  if (dr === 'technicolorHdr') return 'Technicolor HDR';
-  return String(dr).toUpperCase();
-}
-
-var inputNameMap = {};
-var lastInputScan = 0;
-
-function refreshInputNames(cb) {
-  if (Date.now() - lastInputScan < 60000 && Object.keys(inputNameMap).length > 0) {
-    if (cb) cb(inputNameMap);
-    return;
-  }
-  luna('com.webos.service.eim/getAllInputStatus', {}, function (res) {
-    if (res && res.devices && res.devices.length) {
-      for (var i = 0; i < res.devices.length; i++) {
-        var d = res.devices[i];
-        if (d.appId && d.label) {
-          var shortId = String(d.appId).replace('com.webos.app.', '');
-          inputNameMap[shortId] = d.label;
-        }
-      }
-      lastInputScan = Date.now();
-    }
-    if (cb) cb(inputNameMap);
-  });
 }
 
 var TOAST_SOURCE = 'com.webos.app.home';
@@ -738,7 +249,7 @@ function luna(uri, payload, cb, appId) {
 
 /*
  * Cache for luna reads whose answers do not change between dashboard ticks.
- * Every luna() call is a fork+exec, and collectStats made ten of them per
+ * Every luna() call is a fork+exec, and telemetry made ten of them per
  * collection at a 2s tick - roughly five forks a second with the dashboard
  * open. Node 0.12's spawn path can deadlock under that (see the watchdog note
  * in tvwebctl), so set-and-forget settings are now read once per TTL.
@@ -761,155 +272,43 @@ function lunaCached(uri, payload, ttlMs, cb) {
 
 function clearLunaCache() { lunaCache = {}; }
 
-privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
-oled.init({ luna: luna, config: CONFIG });
+/*
+ * Power state. tvpower reports the panel separately from the system: a set can
+ * be "Active" with the screen lit, or "ScreenOff" with the system running and
+ * the panel blanked - which is exactly what the Screen Off control does. The
+ * dashboard previously showed neither, so blanking the panel changed nothing
+ * on screen and the source kept reading as though something were displayed.
+ */
+var POWER_STATES = {
+  'active':        ['On', true,  true],
+  'screenoff':     ['Screen off', true,  false],
+  'activestandby': ['Standby', false, false],
+  'suspend':       ['Standby', false, false],
+  'poweroff':      ['Off', false, false],
+  'prepared':      ['Starting up', true, false],
+  // tvpower reports a running screen saver as a power state of its own.
+  'screensaver':   ['Screen Saver', true,  true]
+};
 
 /*
- * Platform code to the processor it always means. LG reports the code either
- * as _O22_ from the env block or o22 from /proc/lg/base/chip_name, so both
- * normalise to one key.
+ * Whether a screen saver is on screen. tvpower reports it as a power state of
+ * its own, which is the only source that tracks it: the foreground app does
+ * not change - the screen saver draws over whatever is running - and the
+ * running-apps list keeps the screen saver app long after it has gone.
  *
- * O24 is deliberately absent. It is the 2024 platform, and unlike the earlier
- * ones it does not name a single processor - a G4 on O24 is an Alpha 11, a C4
- * on O24 is an Alpha 9 Gen 7 - so any one name here would be wrong on half the
- * sets that report it. An unmapped code falls through to the bare code, which
- * reads "O24" rather than the raw "_O24_" that was reaching the sensor.
+ * Measured on a B8: "Screen Saver" while one draws, "Active" once a key
+ * dismisses it.
  */
-var SOC_ARCH = {
-  O22: 'Alpha 9 Gen 5 (O22)',
-  O20: 'Alpha 9 Gen 3 (O20)',
-  O18: 'Alpha 9 Gen 1 (O18)',
-  M16P: 'Alpha 7 (M16P)',
-  M16PLUS: 'Alpha 7 (M16P)'
-};
-
-function socArchName(raw) {
-  if (!raw) return null;
-  var key = String(raw).replace(/^_+|_+$/g, '').toUpperCase();
-  if (!key) return null;
-  return SOC_ARCH[key] || key;
+function isScreenSaver(ps) {
+  return !!(ps && String(ps.raw || '').toLowerCase().replace(/[\s_-]/g, '') === 'screensaver');
 }
 
-function detectWebosVersion(sdkVersion) {
-  var raw = rd('/etc/issue') || rd('/etc/issue.net') || '';
-  var m = raw.match(/webOS(?:\s+TV)?\s+([\d\.]+)/i);
-  if (m) return m[1];
-  var sf = rd('/etc/starfish-release') || '';
-  var sm = sf.match(/release\s+([\d\.]+)/i);
-  if (sm) return sm[1];
-  if (sdkVersion) return String(sdkVersion);
-  return null;
-}
-
-var HARDWARE_INFO = {
-  webos: null,
-  socArch: null,
-  ram: null,
-  refreshRate: null,
-  eyeSensor: null,
-  cell: null,
-  tconFirmware: null,
-  tconModule: null
-};
-
-function detectHardwareInfo(sdkVersion, cb) {
-  HARDWARE_INFO.webos = detectWebosVersion(sdkVersion);
-  var envRaw = rd('/var/luna/preferences/environmentCondition');
-  if (envRaw) {
-    try {
-      var env = JSON.parse(envRaw);
-      var bStr = env.boardTypeStr || env.socChip || rd('/proc/lg/base/chip_name') || '';
-      if (bStr) {
-        bStr = bStr.trim();
-        HARDWARE_INFO.socArch = socArchName(bStr);
-      }
-      if (env.ddrSize) HARDWARE_INFO.ram = env.ddrSize;
-      if (env.panelOutputFrameRate) HARDWARE_INFO.refreshRate = env.panelOutputFrameRate + ' Hz';
-      if (env.digitalEyeMode) HARDWARE_INFO.eyeSensor = env.digitalEyeMode;
-      else if (env.isDigitalEye === 'true') HARDWARE_INFO.eyeSensor = 'Digital Eye';
-    } catch (e) {}
-  }
-  if (!HARDWARE_INFO.socArch) {
-    // Same codes, lower case and without the underscores: "o24".
-    var chip = rd('/proc/lg/base/chip_name');
-    if (chip) HARDWARE_INFO.socArch = socArchName(chip.trim());
-  }
-
-  // Query panelcontroller (webOS 9+)
-  luna('com.webos.service.panelcontroller/getOledCellInfo', {}, function (cellRes) {
-    if (cellRes && cellRes.cellInfo) HARDWARE_INFO.cell = cellRes.cellInfo;
-    luna('com.webos.service.panelcontroller/getOledTconInfo', {}, function (tconRes) {
-      if (tconRes && tconRes.tconParamForInstart) {
-        HARDWARE_INFO.tconFirmware = tconRes.tconParamForInstart.tconFpgaFirmwareVer || null;
-        HARDWARE_INFO.tconModule = tconRes.tconParamForInstart.tconModuleInfo || null;
-      }
-      if (cb) cb();
-    });
-  });
-}
-
-function detectDeviceInfo(cb) {
-  luna('com.webos.service.tv.systemproperty/getSystemProperties',
-    { keys: ['modelName', 'firmwareVersion', 'boardType', 'sdkVersion'] },
-    function (res) {
-      if (res && res.modelName) {
-        if (!CONFIG.device.model || CONFIG.device.model === 'OLED65B8SLC' || CONFIG.device.model === 'webOS TV') {
-          CONFIG.device.model = res.modelName;
-        }
-        if (!CONFIG.device.name || CONFIG.device.name === 'LG webOS TV' || CONFIG.device.name === 'LG OLED B8 TV') {
-          CONFIG.device.name = 'LG ' + res.modelName;
-        }
-        if (res.firmwareVersion) {
-          CONFIG.device.sw_version = res.firmwareVersion;
-        }
-        console.log('device detected: ' + (CONFIG.device.name || 'LG TV') + ' (model: ' + CONFIG.device.model + ') fw: ' + (res.firmwareVersion || '?'));
-      }
-      if (!CONFIG.device.name) CONFIG.device.name = 'LG webOS TV';
-      if (!CONFIG.device.model) CONFIG.device.model = 'webOS TV';
-      detectHardwareInfo((res && res.sdkVersion) || null, function () {
-        if (cb) cb();
-      });
-    }
-  );
-}
-
-// Keyed on both the soundOutput setting and the audio service's scenario name
-// with its mastervolume_ prefix removed - the two use the same output names,
-// except that a scenario can also name a combination.
-var SOUND_OUTPUT_MAP = ha.SOUND_OUTPUT_MAP;
-
-function formatSoundOutput(so) {
-  if (!so) return 'TV Speaker';
-  return SOUND_OUTPUT_MAP[so] || so;
-}
-
-var installedApps = [];
-var lastAppsScan = 0;
-
-function refreshInstalledApps(cb) {
-  var now = Date.now();
-  if (installedApps.length > 0 && (now - lastAppsScan < 300000)) {
-    if (cb) cb(installedApps);
-    return;
-  }
-  luna('com.webos.applicationManager/listApps', {}, function (res) {
-    if (res && Array.isArray(res.apps)) {
-      var list = [];
-      for (var i = 0; i < res.apps.length; i++) {
-        var a = res.apps[i];
-        if (a && a.id && a.visible !== false && a.id.indexOf('com.webos.app.container') !== 0) {
-          list.push({
-            id: a.id,
-            title: a.title || a.id
-          });
-        }
-      }
-      list.sort(function (x, y) { return String(x.title || '').localeCompare(String(y.title || '')); });
-      installedApps = list;
-      lastAppsScan = Date.now();
-    }
-    if (cb) cb(installedApps);
-  });
+function mapPowerState(raw) {
+  var key = String(raw || '').toLowerCase().replace(/[\s_-]/g, '');
+  var m = POWER_STATES[key];
+  if (m) return { raw: raw, label: m[0], systemOn: m[1], screenOn: m[2] };
+  // Unknown state: report it verbatim rather than guessing at a friendly name.
+  return { raw: raw || null, label: raw || 'Unknown', systemOn: true, screenOn: true };
 }
 
 /*
@@ -991,1065 +390,31 @@ function injectKey(code, cb) {
   }
 }
 
-// ---------------------------------------------------------------- stats
-
-var prevNet = null;
-/* Short server-side history of SoC temperature. The dashboard's trace would
-   otherwise start empty on every load and take minutes to say anything. */
-var TEMP_HISTORY_MAX = 120;
-var tempHistory = [];
-function pushTemp(t) {
-  if (typeof t !== 'number' || isNaN(t) || t <= 0) return;   // 0 = sensor not ready
-  tempHistory.push(t);
-  if (tempHistory.length > TEMP_HISTORY_MAX) tempHistory.shift();
-}
-/*
- * Boot time, as an instant rather than a counter.
- *
- * uptime is floored to the second and the clock it is subtracted from moves in
- * milliseconds, so recomputing this every publish would shift it by a second
- * each time — a new Home Assistant state every 10s for a figure that changes
- * only when the TV restarts. Republish only when the computed instant moves
- * further than that jitter: 30s also absorbs the clock stepping when NTP lands,
- * which on a cold boot is after the first telemetry has gone out.
- */
-var bootEpoch = 0;
-function bootTime(uptimeSec) {
-  var computed = Date.now() - uptimeSec * 1000;
-  if (Math.abs(computed - bootEpoch) > 30000) bootEpoch = computed;
-  return new Date(bootEpoch).toISOString();
-}
-
-var lastStats = null;
-var lastStatsTime = 0;
-var isCollecting = false;
-var statsWaiters = [];
-
-function collectStats(cb) {
-  var now = Date.now();
-  // Return cached result if fresh (< 1.5 seconds old)
-  if (lastStats && (now - lastStatsTime < 1500)) {
-    return cb(lastStats);
-  }
-
-  // Queue callback and serialize execution
-  statsWaiters.push(cb);
-  if (isCollecting) return;
-  isCollecting = true;
-
-  var safetyTimeout = setTimeout(function () {
-    if (isCollecting) {
-      console.log('warning: stats collection safety timeout reached');
-      flushStats(lastStats || { ok: false, error: 'timeout' });
-    }
-  }, 4500);
-
-  function flushStats(result) {
-    clearTimeout(safetyTimeout);
-    lastStats = result;
-    lastStatsTime = Date.now();
-    isCollecting = false;
-    var waiters = statsWaiters.slice(0);
-    statsWaiters = [];
-    for (var w = 0; w < waiters.length; w++) {
-      try { waiters[w](result); } catch (e) {}
-    }
-  }
-
-  var mi = meminfo();
-  var status = rd('/proc/lg/pm/status') || '';
-  var coreMatch = status.match(/load:\s*([\d\s]+)/);
-  var coreSlots = coreMatch ? coreMatch[1].trim().split(/\s+/).map(Number) : [];
-  var liveCpus = onlineCpus(status);
-  var coreLoads = [];
-  if (liveCpus) {
-    for (var ci = 0; ci < liveCpus.length; ci++) {
-      if (liveCpus[ci] < coreSlots.length) coreLoads.push(coreSlots[liveCpus[ci]]);
-    }
-  } else {
-    coreLoads = coreSlots;
-  }
-  var cpuAvsMatch = status.match(/cpuavs_current\(mA\):\s*(\d+)/);
-  var coreAvsMatch = status.match(/coreavs_current\(mA\):\s*(\d+)/);
-  var cpuMa = cpuAvsMatch ? parseInt(cpuAvsMatch[1], 10) : null;
-  var coreMa = coreAvsMatch ? parseInt(coreAvsMatch[1], 10) : null;
-  var totalMa = (cpuMa !== null && coreMa !== null) ? (cpuMa + coreMa) : null;
-
-  var n = netBytes();
-  var rate = null;
-  // Same interface both samples, or the delta is between two different NICs -
-  // switching from Wi-Fi to ethernet would otherwise report one huge burst.
-  if (n && prevNet && n.iface === prevNet.iface && n.t > prevNet.t && n.rx >= prevNet.rx) {
-    var dt = (n.t - prevNet.t) / 1000;
-    rate = { rx: Math.round((n.rx - prevNet.rx) / dt), tx: Math.round((n.tx - prevNet.tx) / dt) };
-  }
-  if (n) prevNet = n;
-
-  var hdmiDiag = getActiveHdmiDiagnostics();
-  if (hdmiDiag) {
-    for (var hf in hdmiDiag) {
-      if (hf !== 'port' && hdmiDiag[hf] !== null) hdmiSeen[hf] = true;
-    }
-  }
-  var peInfo = getPictureEngineInfo();
-  var uptimeSec = Math.floor(parseFloat(rd('/proc/uptime') || '0'));
-
-  var out = {
-    ok: true,
-    time: Date.now(),
-    tvwebVersion: TVWEB_VERSION,
-    device: {
-      id: CONFIG.device.id || 'lg_tv',
-      name: CONFIG.device.name || 'LG webOS TV',
-      model: CONFIG.device.model || 'webOS TV'
-    },
-    system: {
-      webos: HARDWARE_INFO.webos,
-      firmware: CONFIG.device.sw_version || null
-    },
-    hardware: {
-      webos: HARDWARE_INFO.webos,
-      soc_arch: HARDWARE_INFO.socArch,
-      ram: HARDWARE_INFO.ram,
-      refresh_rate: HARDWARE_INFO.refreshRate,
-      eye_sensor: HARDWARE_INFO.eyeSensor
-    },
-    panel_silicon: HARDWARE_INFO.cell ? {
-      cell: HARDWARE_INFO.cell,
-      tcon_firmware: HARDWARE_INFO.tconFirmware,
-      tcon_module: HARDWARE_INFO.tconModule
-    } : null,
-    remote: readRemoteInfo(),
-    /*
-     * The thermal sensor is not populated immediately after boot: for roughly
-     * the first 80 seconds /proc/lg/pm/temperature reads a literal 0, which is
-     * not a measurement. Reporting it would put a false 0C spike into Home
-     * Assistant's history on every reboot, so treat 0 as "not ready yet".
-     */
-    temp: (function () {
-      var t = num(rd('/proc/lg/pm/temperature'), null);
-      // Anything <= 0 is the sensor not being ready, not a reading. Matches the
-      // guard in pushTemp, so the reported value and the history agree.
-      return (t !== null && t > 0) ? t : null;
-    })(),
-    temps: null,   // filled in below from the ring buffer
-    /*
-     * Across the whole processor, not the busiest core.
-     * /proc/lg/pm/current_load is the peak: measured on a B8 it matched
-     * max(cores) on every sample, so a single busy core reported the set as
-     * pegged while three others idled. It is still reported, as loadPeak.
-     */
-    load: coreLoads.length
-      ? Math.round(coreLoads.reduce(function (a, b) { return a + b; }, 0) / coreLoads.length)
-      : num(rd('/proc/lg/pm/current_load'), null),
-    loadPeak: coreLoads.length
-      ? Math.max.apply(null, coreLoads)
-      : num(rd('/proc/lg/pm/current_load'), null),
-    mhz: socMhz(),
-    cores: coreLoads,
-    // Total slots, so the dashboard can say how many are parked rather than
-    // leaving the figure count changing with no explanation.
-    coresTotal: coreSlots.length,
-    mem: { total: mi.MemTotal || 0, avail: mi.MemAvailable || 0 },
-    swap: { total: mi.SwapTotal || 0, free: mi.SwapFree || 0, backing: swapBacking() },
-    uptime: uptimeSec,
-    bootTime: bootTime(uptimeSec),
-    loadavg: (rd('/proc/loadavg') || '').split(' ').slice(0, 3),
-    wifi: wifi(),
-    net: rate,
-    /*
-     * Cumulative counters for the interface the rate came from, so the two
-     * always describe the same link. Kernel counters, so they reset at boot
-     * and start from zero on whichever interface is in use - Wi-Fi or wired.
-     */
-    netTotal: n ? { rx: n.rx, tx: n.tx, iface: n.iface } : null,
-    mac: n ? macAddress(n.iface) : null,
-    emmc: emmcInfo(),
-    signal: getVideoSignal(),
-    hdmi_diag: hdmiDiag,
-    picture_engine: peInfo,
-    colorimetry: peInfo ? peInfo.colorimetry : null,
-    power: {
-      cpu_ma: cpuMa,
-      core_ma: coreMa,
-      current_ma: totalMa
-    },
-    inputs: inputNameMap
-  };
-
-  pushTemp(out.temp);   // pushTemp already ignores non-numbers
-  out.temps = tempHistory.slice();
-
-  // Refresh input names if cache expired
-  refreshInputNames();
-
-  // Chained Luna queries: power -> sound -> soundSettings -> foregroundApp -> picture settings -> apps
-  luna('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
-    out.powerState = mapPowerState(pw && pw.state);
-    out.screenSaver = isScreenSaver(out.powerState);
-    out.screensaverMode = screensaverMode();
-    out.screensaverLevel = screensaverLevel();
-  lunaCached('com.webos.service.settings/getSystemSettings',
-       { category: 'time', keys: ['sleepTimer'] }, 30000, function (tm) {
-    out.sleepTimer = (tm && tm.settings && tm.settings.sleepTimer) || 'off';
-  lunaCached('com.webos.service.settings/getSystemSettings',
-       { category: 'option', keys: ['standByLight', 'logoLight', 'powerOnLight'] }, 60000, function (op) {
-    var os = (op && op.settings) || {};
-    out.lights = {
-      standby: os.standByLight === 'on',
-      logo: os.logoLight === 'on',
-      powerOn: os.powerOnLight === 'on',
-      hasLogo: hasLogoLight === true
-    };
-    out.gpuMhz = gpuClockMhz();
-  lunaCached('com.palm.connectionmanager/getStatus', {}, 60000, function (cm) {
-    // Network name, so the Wi-Fi figures say which network they refer to.
-    var w = cm && cm.wifi;
-    out.ssid = (w && w.ssid) ? w.ssid : null;
-  lunaCached('com.webos.service.tv.display/getDimmingStatus', {}, 15000, function (dim) {
-    // ABL / logo dimming activity. OLED only in practice.
-    out.dimming = (dim && dim.status) || null;
-  lunaCached('com.webos.service.tv.display/getLightSensorData', {}, 30000, function (ls) {
-    /*
-     * Ambient light sensor. Not every set has one: a model without it still
-     * answers, reporting 65535 (0xFFFF) for every channel. Treat that as
-     * absent rather than publishing a nonsense lux figure.
-     */
-    var lux = null, sd = (ls && ls.sensorData) || [];
-    for (var li = 0; li < sd.length; li++) {
-      if (sd[li].property === 'visibleLuminance' || sd[li].property === 'luminance') {
-        if (sd[li].value !== 65535 && sd[li].value !== null) lux = sd[li].value;
-      }
-    }
-    out.lightSensor = (lux === null) ? null : { lux: lux };
-    if (out.lightSensor) hasLightSensor = true;
-    out.backlight = (ls && typeof ls.backlightValue === 'number') ? ls.backlightValue : null;
-  appStorage(function (st) {
-    out.appStorage = st;
-  lunaCached('com.webos.audio/getSoundOut', {}, 10000, function (sound) {
-    if (sound) {
-      out.volume = sound.volume;
-      out.muted = !!sound.muted;
-      /*
-       * The audio scenario names the output the way the audio service does -
-       * "mastervolume_headphone" - which is an internal identifier, not a
-       * reading. The prefix is the volume domain, and the rest is the same
-       * output name the sound setting uses.
-       */
-      out.audio_output = sound.scenario ?
-        formatSoundOutput(String(sound.scenario).replace(/^mastervolume_/, '')) : 'Internal';
-    }
-    lunaCached('com.webos.service.settings/getSystemSettings',
-      { category: 'sound', keys: ['soundOutput', 'soundMode'] }, 15000,
-      function (snd) {
-        var rawSnd = (snd && snd.settings && snd.settings.soundOutput) ? snd.settings.soundOutput : (sound && sound.scenario ? sound.scenario : 'tv_speaker');
-        out.sound = {
-          output: formatSoundOutput(rawSnd),
-          output_raw: rawSnd,
-          mode: (snd && snd.settings && snd.settings.soundMode) || 'standard'
-        };
-        /*
-         * The TV's own media pipeline. applicationManager says which app is in
-         * front; this says what that app's player is doing.
-         *
-         * It describes the TV, not the source: with an external input it reads
-         * "playing" for as long as the HDMI pipeline is up, whatever the box on
-         * the other end is doing. Useful for the built-in apps, not a transport
-         * state for anything on HDMI.
-         */
-        lunaCached('com.webos.service.acb/getForegroundAppInfo', {}, 4000, function (acb) {
-        var pipe = (acb && Array.isArray(acb.acbs)) ? acb.acbs[0] : null;
-        if (pipe && pipe.playStateNow) {
-          out.media = {
-            state: String(pipe.playStateNow),
-            playerType: pipe.playerType || null,
-            fullScreen: pipe.isFullScreen !== false
-          };
-          hasMediaState = true;
-        }
-        lunaCached('com.webos.applicationManager/getForegroundAppInfo', {}, 4000, function (app) {
-          if (app && app.appId) {
-            var shortApp = String(app.appId).replace('com.webos.app.', '');
-            out.app = shortApp;
-            out.app_id = app.appId;
-            out.app_name = inputNameMap[shortApp] || shortApp;
-            out.display_title = (inputNameMap[shortApp] && inputNameMap[shortApp] !== shortApp) ?
-              (inputNameMap[shortApp] + ' (' + shortApp.toUpperCase() + ')') : shortApp;
-          }
-          lunaCached('com.webos.service.settings/getSystemSettings',
-            { category: 'picture', keys: ['backlight', 'pictureMode', 'energySaving', 'screenShift', 'logoLuminanceAdjust'] },
-            10000, function (pic) {
-              if (pic && pic.settings) {
-                var rawDr = (pic.dimension && pic.dimension.dynamicRange) ? pic.dimension.dynamicRange : 'sdr';
-                out.picture = {
-                  dynamicRange: formatDynamicRange(rawDr),
-                  mode: formatPicMode(pic.settings.pictureMode),
-                  mode_raw: pic.settings.pictureMode || 'standard',
-                  backlight: num(pic.settings.backlight, 50),
-                  energySaving: pic.settings.energySaving || 'off',
-                  screenShift: pic.settings.screenShift || 'off',
-                  logoLuminanceAdjust: pic.settings.logoLuminanceAdjust || 'off',
-                  modes: []
-                };
-              }
-              pictureModes(function (modes) {
-              if (out.picture) out.picture.modes = modes;
-              refreshInstalledApps(function (apps) {
-                out.apps = apps || [];
-                out.privacy = {
-                  adblock: {
-                    enabled: privacy.isAdBlockActive(),
-                    count: privacy.ADBLOCK_DOMAINS.length
-                  }
-                };
-                oled.detectOled(function (oledPanel) {
-                  /* webOS 3.x exposes no thermal sensor at all: the file simply
-                     does not exist, /sys/class/thermal is empty and there is no
-                     hwmon. That is different from the ~80s post-boot window where
-                     the file exists but reads 0, so report it as a capability and
-                     let the UI say "none" rather than imply a pending reading. */
-                  out.capabilities = { oled: oledPanel, thermal: THERMAL_PRESENT,
-                                       emmcWear: EMMC_WEAR_PRESENT };
-                  if (!oledPanel) {
-                    out.oled = null;
-                    return flushStats(out);
-                  }
-                  oled.refreshOledStats((pic && pic.settings) ? pic.settings : null, out.powerState, function (oledData) {
-                    out.oled = oledData;
-                    flushStats(out);
-                  });
-                });
-              });
-              });
-            }
-          );
-        });
-        });
-      }
-    );
-  });
-  });   // close appStorage
-  });   // close connectionmanager
-  });   // close light sensor
-  });   // close dimming
-  });   // close option settings
-  });   // close time settings
-  });   // close getPowerState
-}
-
-// ---------------------------------------------------------------- processes
-/*
- * Read-only process list, loaded on demand rather than folded into the
- * telemetry payload - it answers "what is using the memory" when someone
- * looks, and there is no reason to publish it to MQTT every ten seconds.
- *
- * Deliberately no kill action. Closing a stuck app is what closeByAppId is
- * for, which lets the app manager tear down cleanly; most of these respawn
- * anyway, and surface-manager is the compositor.
- */
-/*
- * A readable name for a process, from its argv.
- *
- * comm is not enough: the kernel caps it at 15 characters, so every LG app
- * arrived as "com.webos.app.i" whatever it really was.
- *
- * WebAppMgr needs more than a basename. It is webOS's Chromium, and Chromium
- * runs one process per role from a single binary - so a TV with four web apps
- * warm shows five identical rows called WebAppMgr, which reads as something
- * gone wrong rather than as the browser doing its job. The role is in --type,
- * absent for the browser process itself, and a renderer that loads an app's
- * V8 snapshot names the app in the path.
- */
-function procName(comm, args) {
-  var bin = String(args).split(/\s+/)[0].replace(/^.*\//, '');
-
-  if (bin === 'WebAppMgr') {
-    var app = args.match(/\/usr\/palm\/applications\/([^\/\s]+)/);
-    if (app) return 'WebAppMgr (' + app[1].replace(/^com\.webos\.app\./, '') + ')';
-    var type = args.match(/--type=(\w+)/);
-    return 'WebAppMgr (' + (type ? type[1] : 'browser') + ')';
-  }
-
-  /*
-   * Neither field is reliable on its own. comm is the name the process chose,
-   * but the kernel caps it at 15 characters. argv[0] is complete but is
-   * sometimes not a name at all - the broadcast service runs
-   * /mnt/lg/lgapp/RELEASE and calls itself tvservice.
-   *
-   * So: comm unless it is exactly at the cap, which is what a clipped name
-   * looks like, and then argv[0] to recover the rest of it.
-   */
-  return (comm && comm.length < 15) ? comm : (bin || comm);
-}
-
-/*
- * CPU per process, over a short window.
- *
- * `ps -o pcpu` on this busybox reports the average since the process started,
- * so anything that worked hard at boot reads high forever - systemd sits at
- * 2.4% on an idle set. The only way to say what is busy now is to read the
- * counters twice and take the difference.
- *
- * Percentages are of the whole machine rather than of one core, so they can be
- * compared with the CPU figure on the Metrics tab and add up to roughly it. A
- * process pegging one core of three reads 33%, not 100%.
- */
-var CPU_WINDOW_MS = 700;
-
-function sampleCpuTicks() {
-  var out = { total: 0, procs: {} };
-  try {
-    var cpu = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(/\s+/);
-    for (var i = 1; i < cpu.length; i++) out.total += parseInt(cpu[i], 10) || 0;
-  } catch (e) {
-    return null;
-  }
-  var names;
-  try { names = fs.readdirSync('/proc'); } catch (e2) { return null; }
-  for (var n = 0; n < names.length; n++) {
-    if (!/^\d+$/.test(names[n])) continue;
-    try {
-      var raw = fs.readFileSync('/proc/' + names[n] + '/stat', 'utf8');
-      /*
-       * The command sits in brackets and may itself contain a bracket or a
-       * space, so the fields are counted from the last one rather than by
-       * splitting the line. After it the first field is the state, which is
-       * the third overall - utime and stime are the fourteenth and fifteenth.
-       */
-      var close = raw.lastIndexOf(')');
-      if (close < 0) continue;
-      var f = raw.slice(close + 2).split(' ');
-      out.procs[names[n]] = {
-        ticks: (parseInt(f[11], 10) || 0) + (parseInt(f[12], 10) || 0),
-        comm: raw.slice(raw.indexOf('(') + 1, close)
-      };
-    } catch (e3) {}
-  }
-  return out;
-}
-
-/*
- * The whole command line, the way `ps -o args` gives it - procName needs more
- * than argv[0], since a web app is named by the application path further along
- * it. Kernel threads have none, and return empty.
- */
-function procCmdline(pid) {
-  try {
-    return fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8')
-             .replace(/\0+$/, '').replace(/\0/g, ' ');
-  } catch (e) {
-    return '';
-  }
-}
-
-function collectCpuProcesses(cb, retried) {
-  var first = sampleCpuTicks();
-  if (!first) return cb({ ok: false, error: 'could not read /proc' });
-
-  setTimeout(function () {
-    var second = sampleCpuTicks();
-    if (!second) return cb({ ok: false, error: 'could not read /proc' });
-
-    var elapsed = second.total - first.total;
-    /*
-     * Seen once, immediately after a restart, and not reproduced since: the
-     * counters read the same twice, which leaves nothing to divide by. Take
-     * one more window rather than handing back an error for something that
-     * clears itself.
-     */
-    if (elapsed <= 0) {
-      if (retried) return cb({ ok: false, error: 'the CPU counters did not move' });
-      return collectCpuProcesses(cb, true);
-    }
-
-    var rows = [], busy = 0;
-    for (var pid in second.procs) {
-      if (!second.procs.hasOwnProperty(pid)) continue;
-      var was = first.procs[pid];
-      // A process that started inside the window has nothing to compare
-      // against, so its whole total would read as if spent in it.
-      if (!was) continue;
-      var delta = second.procs[pid].ticks - was.ticks;
-      if (delta <= 0) continue;
-      var pct = delta / elapsed * 100;
-      busy += pct;
-      rows.push({ name: procName(second.procs[pid].comm, procCmdline(pid)), pct: Math.round(pct * 10) / 10 });
-    }
-    rows.sort(function (a, b) { return b.pct - a.pct; });
-    cb({
-      ok: true,
-      windowMs: CPU_WINDOW_MS,
-      busy: Math.round(busy * 10) / 10,
-      active: rows.length,
-      top: rows.slice(0, 10)
-    });
-  }, CPU_WINDOW_MS);
-}
-
-function collectProcesses(cb) {
-  execFile('/bin/ps', ['-eo', 'rss,comm,args'], { timeout: 4000, maxBuffer: 1024 * 1024 }, function (err, stdout) {
-    if (err) return cb({ ok: false, error: 'could not read process list' });
-    var lines = String(stdout || '').split('\n'), rows = [], total = 0, count = 0;
-    for (var i = 0; i < lines.length; i++) {
-      var m = lines[i].match(/^\s*(\d+)\s+(\S+)\s+(\S.*?)\s*$/);
-      if (!m) continue;
-      var rss = parseInt(m[1], 10);
-      count++;
-      total += rss;
-      rows.push({ name: procName(m[2], m[3]), mb: Math.round(rss / 1024 * 10) / 10 });
-    }
-    rows.sort(function (a, b) { return b.mb - a.mb; });
-    cb({
-      ok: true,
-      count: count,
-      totalMb: Math.round(total / 1024),
-      top: rows.slice(0, 10)
-    });
-  });
-}
-
-// ---------------------------------------------------------------- hdmi / misc
-/*
- * GPU clock. /proc/lg/sys/status carries the PLL outputs in Hz.
- */
-function gpuClockMhz() {
-  var raw = rd('/proc/lg/sys/status');
-  if (!raw) return null;
-  var m = raw.match(/gpu pll out\s*:\s*(\d+)/i);
-  return m ? Math.round(parseInt(m[1], 10) / 1000000) : null;
-}
-
-/*
- * Whether the screen saver is on screen right now. The same file already read
- * for the GPU clock carries it as "ss: OFF".
- *
- * There has been a control to start one since #24 but no way to see whether
- * it took: turnOnScreenSaver returns true whether or not anything answered the
- * request, so the only honest confirmation is the set saying so itself.
- *
- * A set that does not publish the field reports nothing rather than "off",
- * which would claim a screen saver is not running on a TV that never says.
- */
-
-
-/*
- * App storage. Separate partition from cmn_data, and the one that actually
- * fills up and makes installs fail.
- */
-var cachedAppStorage = null;
-var lastAppStorageCheck = 0;
-var APP_STORAGE_TTL = 60000;
-
-function appStorage(cb) {
-  var now = Date.now();
-  if (cachedAppStorage && (now - lastAppStorageCheck < APP_STORAGE_TTL)) {
-    return cb(cachedAppStorage);
-  }
-  execFile('/bin/df', ['-k', '/mnt/lg/appstore'], { timeout: 4000 }, function (err, stdout) {
-    if (err) return cb(cachedAppStorage || null);
-    var lines = String(stdout || '').trim().split('\n');
-    var f = (lines[lines.length - 1] || '').split(/\s+/);
-    if (f.length < 4) return cb(cachedAppStorage || null);
-    var total = parseInt(f[1], 10), used = parseInt(f[2], 10), avail = parseInt(f[3], 10);
-    if (!total) return cb(cachedAppStorage || null);
-    cachedAppStorage = {
-      totalMb: Math.round(total / 1024),
-      usedMb: Math.round(used / 1024),
-      freeMb: Math.round(avail / 1024),
-      pct: Math.round(used / total * 100)
-    };
-    lastAppStorageCheck = Date.now();
-    cb(cachedAppStorage);
-  });
-}
-
-/*
- * HDMI PHY state, straight off the receiver. Loaded on demand rather than in
- * telemetry: four ports of timing detail is a lot to publish every ten seconds
- * and it only matters when someone is looking at it.
- *
- * The PHY nodes are port0..port3 while the TV numbers its inputs HDMI 1..4,
- * and the obvious port+1 mapping is wrong: on a set whose only live input is
- * HDMI 2 (eim reports activate/chosen true, a CEC device present, everything
- * else empty) the port carrying signal is port2, not port1. There is no
- * hotplug or EDID field to pin the rest of the mapping down, so this does not
- * guess. Ports are reported as-is, and the input the TV says is active is
- * matched to the one port carrying signal when exactly one of each exists.
- */
-function hdmiPorts() {
-  var ports = [];
-  for (var i = 0; i < 4; i++) {
-    var raw = rd('/proc/lg/hdmi20/port' + i + '/status');
-    if (!raw) continue;
-    function f(re) { var m = raw.match(re); return m ? m[1].trim() : null; }
-    var hact = parseInt(f(/horizontal-active:\s*(\d+)/) || '0', 10);
-    var vact = parseInt(f(/vertical-active:\s*(\d+)/) || '0', 10);
-    var rate = parseInt(f(/pixel-clock-V:\s*(\d+)/) || '0', 10);
-    var pclk = parseInt(f(/pixel-clock:\s*(\d+)/) || '0', 10);
-
-    // Format 2 (webOS 9+ / HDMI 2.1 driver): Sig:[3840](4400)x[2160](2250)@[120]Hz
-    if (!hact || !vact) {
-      var sigM = raw.match(/Sig:\s*\[(\d+)\](?:\(\d+\))?x\[(\d+)\](?:\(\d+\))?@\[(\d+)\]\s*Hz/i);
-      if (sigM) {
-        hact = parseInt(sigM[1], 10);
-        vact = parseInt(sigM[2], 10);
-        if (!rate) rate = parseInt(sigM[3], 10);
-      }
-    }
-    if (!pclk) {
-      var pclkStr = f(/Pixel Clk\[0*([1-9]\d*)\]/i);
-      if (pclkStr) {
-        var pclkNum = parseInt(pclkStr, 10);
-        pclk = (pclkNum < 100000) ? pclkNum * 10 : Math.round(pclkNum / 1000);
-      }
-    }
-    var isConnected = /connected:\s*on/i.test(raw) ||
-                      /PHY\s+Lock\[1\]/i.test(raw) ||
-                      (hact > 0 && vact > 0);
-    var colorDepth = f(/deep-color-mode:\s*(\S+ \S+)/) || f(/DeepColorMode\[\s*([^\]]+)\]/);
-    if (colorDepth) colorDepth = colorDepth.replace(/^[.\s]+/, '');
-    var isInterlaced = /interlaced:\s*yes/i.test(raw) || /Interlaced\[1\]/i.test(raw);
-
-    ports.push({
-      port: i,
-      connected: isConnected,
-      resolution: (isConnected && hact && vact) ? (hact + 'x' + vact) : null,
-      refreshHz: (isConnected && rate) ? rate : null,
-      pixelClockMhz: (isConnected && pclk) ? Math.round(pclk / 1000 * 10) / 10 : null,
-      colorDepth: isConnected ? colorDepth : null,
-      interlaced: isConnected ? isInterlaced : false
-    });
-  }
-  return ports;
-}
-
-/*
- * Inputs as the TV describes them, with the live PHY figures attached to the
- * active one. The labels are the TV's own, so a renamed input reads "Apple TV"
- * rather than a port number this code guessed at.
- */
-function hdmiInputs(cb) {
-  luna('com.webos.service.eim/getAllInputStatus', {}, function (res) {
-    var devs = (res && res.devices) || [];
-    var ports = hdmiPorts();
-    var signalling = [];
-    for (var p = 0; p < ports.length; p++) if (ports[p].connected) signalling.push(ports[p]);
-
-    var inputs = [];
-    var activeIdx = -1;
-    for (var d = 0; d < devs.length; d++) {
-      if (!devs[d].id || String(devs[d].id).indexOf('HDMI') !== 0) continue;
-      if (devs[d].activate) activeIdx = inputs.length;
-      // On webOS <= 8, lastUniqueId 255 means nothing ever identified over CEC.
-      // On webOS 9+, lastUniqueId is -1 when empty.
-      var hasCec = devs[d].lastUniqueId !== undefined &&
-                   devs[d].lastUniqueId !== 255 &&
-                   devs[d].lastUniqueId !== -1;
-      var seen = !!(hasCec || devs[d].hdmiPlugIn || devs[d].connected || (devs[d].subCount > 0));
-      inputs.push({
-        id: devs[d].id,
-        port: devs[d].port,
-        label: devs[d].label || devs[d].id,
-        appId: devs[d].appId,
-        active: !!devs[d].activate,
-        deviceSeen: seen,
-        signal: null
-      });
-    }
-    // Only claim a pairing when it is unambiguous.
-    if (activeIdx !== -1 && signalling.length === 1) {
-      inputs[activeIdx].signal = signalling[0];
-    }
-    cb({ ok: true, inputs: inputs, ports: ports, pairedUnambiguously: (activeIdx !== -1 && signalling.length === 1) });
-  });
-}
-
-
-/*
- * Power state. tvpower reports the panel separately from the system: a set can
- * be "Active" with the screen lit, or "ScreenOff" with the system running and
- * the panel blanked - which is exactly what the Screen Off control does. The
- * dashboard previously showed neither, so blanking the panel changed nothing
- * on screen and the source kept reading as though something were displayed.
- */
-var POWER_STATES = {
-  'active':        ['On', true,  true],
-  'screenoff':     ['Screen off', true,  false],
-  'activestandby': ['Standby', false, false],
-  'suspend':       ['Standby', false, false],
-  'poweroff':      ['Off', false, false],
-  'prepared':      ['Starting up', true, false],
-  // tvpower reports a running screen saver as a power state of its own.
-  'screensaver':   ['Screen Saver', true,  true]
-};
-
-/*
- * Whether a screen saver is on screen. tvpower reports it as a power state of
- * its own, which is the only source that tracks it: the foreground app does
- * not change - the screen saver draws over whatever is running - and the
- * running-apps list keeps the screen saver app long after it has gone.
- *
- * Measured on a B8: "Screen Saver" while one draws, "Active" once a key
- * dismisses it.
- */
-function isScreenSaver(ps) {
-  return !!(ps && String(ps.raw || '').toLowerCase().replace(/[\s_-]/g, '') === 'screensaver');
-}
-
-function mapPowerState(raw) {
-  var key = String(raw || '').toLowerCase().replace(/[\s_-]/g, '');
-  var m = POWER_STATES[key];
-  if (m) return { raw: raw, label: m[0], systemOn: m[1], screenOn: m[2] };
-  // Unknown state: report it verbatim rather than guessing at a friendly name.
-  return { raw: raw || null, label: raw || 'Unknown', systemOn: true, screenOn: true };
-}
-
-
+privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
+oled.init({ luna: luna, config: CONFIG });
+screensavers.init({
+  luna: luna,
+  assetPath: assetPath,
+  config: CONFIG,
+  injectKey: injectKey,
+  KEY_BACK: KEY_BACK,
+  mapPowerState: mapPowerState,
+  isScreenSaver: isScreenSaver
+});
+telemetry.init({
+  luna: luna,
+  lunaCached: lunaCached,
+  config: CONFIG,
+  oled: oled,
+  privacy: privacy,
+  screensavers: screensavers,
+  tvwebVersion: TVWEB_VERSION,
+  mapPowerState: mapPowerState,
+  isScreenSaver: isScreenSaver
+});
 
 // ---------------------------------------------------------------- controls
 var INPUTS = ha.INPUTS;
-
-// Verified against the settings service: 15 is rejected, 10 and 90 are not.
-// Set from collectStats: sets without the hardware report 65535 and get null.
-var hasLightSensor = false;
-
-/*
- * Which HDMI diagnostics this set reports, one flag per field.
- *
- * Latched rather than read live, because hdmi_diag is absent whenever no HDMI
- * source is active - on the Home screen, on Live TV, on an app - and that is
- * not the same as the set being unable to report it. Once seen, the entity
- * stays; a field the set never reports never gets one.
- *
- * Per field because the block is not all or nothing. An HDMI 2.0 port reports
- * as connected and fills in none of the 2.1 lines, so asking only whether the
- * block existed gave a B8 six entities it could never answer.
- */
-var hdmiSeen = {};
-
-/*
- * Whether this set reports a media play state at all. com.webos.service.acb
- * does not exist on webOS 9 - a C2 answers "Service does not exist" - so the
- * sensor there could only ever read unknown. Latched like the HDMI fields,
- * because the service also returns nothing when no pipeline is running, which
- * is not the same as the service being absent.
- */
-var hasMediaState = false;
-
-
-/*
- * Screen savers.
- *
- * The platform's screen saver is a plain QML app on both firmwares, sitting on
- * a read-only overlay, so a replacement is bind-mounted over it the same way
- * the ad blocker stacks a hosts file. LG's own appinfo.json is copied across
- * rather than written from scratch: it carries the window type and per-model
- * flags, and only `main` needs to resolve to our QML, which it does once the
- * directory underneath it is ours.
- *
- * The marker file inside the mount is what "which screen saver is running" is
- * read from - the live mount answers that, a stored preference only says what
- * was asked for.
- */
-var SCREENSAVER_APP_DIR = '/usr/palm/applications/com.webos.app.screensaver';
-var SCREENSAVER_DIR = '/var/lib/tvweb/screensaver';
-var SCREENSAVER_MARKER = '.tvweb-screensaver';
-var SCREENSAVER_LEVEL_MARKER = '.tvweb-brightness';
-
-// Read from the mount rather than from a stored preference, for the same
-// reason the mode is: the file that is actually staged is the answer.
-function screensaverLevel() {
-  try {
-    var v = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, SCREENSAVER_LEVEL_MARKER), 'utf8').trim();
-    if (v === 'bright') return 'bright';
-  } catch (e) {}
-  return 'dim';
-}
-
-var SCREENSAVERS = {
-  stock: {
-    label: 'LG default',
-    description: 'The screen saver the TV shipped with.'
-  },
-  clock: {
-    label: 'Clock',
-    description: 'A digital clock on black, moving to a new position every minute.',
-    qml: 'screensavers/clock.qml'
-  },
-  starfield: {
-    label: 'Starfield',
-    description: 'A drifting cosmic starscape with occasional shooting stars.',
-    qml: 'screensavers/starfield.qml'
-  },
-  fireworks: {
-    label: 'Fireworks',
-    description: 'Bursts of colour on black, a few seconds apart.',
-    qml: 'screensavers/fireworks.qml'
-  },
-  vitals: {
-    label: 'Panel vitals',
-    description: "The set's own readings - panel hours, pixel refresher countdown, temperature.",
-    qml: 'screensavers/vitals.qml'
-  }
-};
-
-function screensaverMode() {
-  try {
-    var m = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, SCREENSAVER_MARKER), 'utf8').trim();
-    if (SCREENSAVERS[m] && m !== 'stock') return m;
-  } catch (e) {}
-  return 'stock';
-}
-
-function screensaverList() {
-  var cur = screensaverMode();
-  var out = [];
-  for (var k in SCREENSAVERS) {
-    out.push({
-      id: k,
-      label: SCREENSAVERS[k].label,
-      description: SCREENSAVERS[k].description,
-      active: k === cur,
-      available: k === 'stock' || !!assetPath(SCREENSAVERS[k].qml)
-    });
-  }
-  return { ok: true, current: cur, level: screensaverLevel(),
-           modes: out, writable: CONFIG.allowControl };
-}
-
-function mkdirp(dir) {
-  if (fs.existsSync(dir)) return;
-  mkdirp(path.dirname(dir));
-  fs.mkdirSync(dir);
-}
-
-/*
- * The staged app keeps LG's manifest - the id, window type and permissions the
- * screen saver role expects - but not its type. A webOS 10 set ships the screen
- * saver as a Flutter app, payload in lib/ and data/flutter_assets, and the mount
- * puts a QML file where that payload was: SAM begins a launch that never draws,
- * and tvpower parks at "Screen Saver Ready" and refuses every later request with
- * "Invalid State change Request". Point type and main at what is actually
- * staged. Where the stock screen saver is already QML these are the values it
- * carried anyway.
- */
-function stageScreensaverAppinfo() {
-  var stock = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8');
-  var out = stock;
-  try {
-    var info = JSON.parse(stock);
-    info.type = 'qml';
-    info.main = 'qml/main.qml';
-    out = JSON.stringify(info, null, 2);
-  } catch (e) {
-    console.error('screensaver: stock appinfo.json did not parse, staging it unchanged: ' + e.message);
-  }
-  fs.writeFileSync(path.join(SCREENSAVER_DIR, 'appinfo.json'), out);
-}
-
-/*
- * SAM reads every appinfo.json once, when it starts, and hands an app to the
- * runner that copy names - a manifest swapped underneath it goes unnoticed.
- * /usr/palm/applications is "system_builtin" in sam-conf.json, so no install
- * event covers it, and the bus offers no rescan: the service has to be
- * restarted. Compare what SAM holds against the manifest now visible at the app
- * directory, and restart only when they differ - which is the two swaps that
- * change the type, stock to a replacement and back. A set whose screen saver is
- * QML to begin with never differs and never pays for this.
- */
-function ensureScreensaverRunner(cb) {
-  var staged;
-  try {
-    staged = JSON.parse(fs.readFileSync(
-      path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8')).type;
-  } catch (e) {
-    return cb(false);
-  }
-  luna('com.webos.applicationManager/getAppInfo', { id: 'com.webos.app.screensaver' }, function (r) {
-    var cached = r && r.appInfo && r.appInfo.type;
-    // No answer means the bus is not up yet. Leave the service alone.
-    if (!cached || cached === staged) return cb(false);
-    console.log('screensaver: sam holds the app as "' + cached + '" and it is now "'
-                + staged + '" - restarting sam so it reads the manifest again');
-    /*
-     * systemd, even though /etc/init/sam.conf is still on disk: upstart is not
-     * the init on this platform and initctl is inert.
-     *
-     * --no-block because the stop alone can take the best part of a minute -
-     * every app SAM started is in its cgroup and gets waited on, then killed.
-     * Nothing here needs to see the end of that, and a client that gives up on
-     * a timeout only orphans a restart that is happening anyway.
-     */
-    execFile('/bin/systemctl', ['restart', '--no-block', 'sam'], { timeout: 10000 }, function (e) {
-      if (e) console.error('screensaver: could not restart sam: ' + e.message);
-      cb(!e);
-    });
-  });
-}
-
-/*
- * Two things go stale when the screen saver is swapped: what SAM thinks the app
- * is, and the copy it has already loaded. A service restart settles the first
- * and closes every app on the way, so the lighter refresh is for the other case.
- */
-function settleScreensaverApp(cb) {
-  ensureScreensaverRunner(function (samRestarted) {
-    if (samRestarted) return cb();
-    restartScreensaverApp(cb);
-  });
-}
-
-/*
- * Unmount first, always. The stock appinfo.json has to be read from the real
- * app directory, and while a replacement is mounted that is exactly what is
- * hidden.
- */
-function setScreensaver(mode, level, cb) {
-  if (!SCREENSAVERS[mode]) return cb({ ok: false, error: 'unknown screen saver: ' + mode });
-  level = (level === 'bright') ? 'bright' : 'dim';
-
-  execFile('/bin/umount', [SCREENSAVER_APP_DIR], { timeout: 4000 }, function () {
-    if (mode === 'stock') {
-      lastStats = null;
-      return settleScreensaverApp(function () {
-        cb({ ok: screensaverMode() === 'stock', current: screensaverMode(), level: screensaverLevel() });
-      });
-    }
-
-    var src = assetPath(SCREENSAVERS[mode].qml);
-    if (!src) return cb({ ok: false, error: 'screen saver asset missing: ' + SCREENSAVERS[mode].qml });
-
-    try {
-      mkdirp(path.join(SCREENSAVER_DIR, 'qml'));
-      stageScreensaverAppinfo();
-      writeScreensaverQml(src, level);
-      fs.writeFileSync(path.join(SCREENSAVER_DIR, SCREENSAVER_MARKER), mode);
-    } catch (e) {
-      return cb({ ok: false, error: 'could not stage the screen saver: ' + e.message });
-    }
-
-    execFile('/bin/mount', ['--bind', SCREENSAVER_DIR, SCREENSAVER_APP_DIR], { timeout: 4000 }, function (err) {
-      lastStats = null;
-      settleScreensaverApp(function () {
-        var now = screensaverMode();
-        cb({ ok: !err && now === mode, current: now, level: screensaverLevel(),
-             error: (!err && now === mode) ? undefined : 'the mount did not take' });
-      });
-    });
-  });
-}
-
-/*
- * The QML is read once at launch, so a screen saver already running is still
- * the old one and has to go before the swap means anything.
- *
- * One that is on screen is dismissed with a key rather than closed outright.
- * tvpower hands a screen saver request to a client and waits to be answered,
- * and killing the client mid-handshake leaves the service waiting on a process
- * that no longer exists: every later request is then refused as busy until the
- * set is power cycled. A key press lets it finish and exit on its own terms.
- */
-/*
- * The vitals screen saver reads /api/stats from the server on this TV. The
- * port is configurable and the API refuses an unauthenticated read when a
- * token is set, so the address is written in here rather than guessed by the
- * QML.
- */
-function writeScreensaverQml(src, level) {
-  var qml = fs.readFileSync(src, 'utf8')
-    .replace(/__TVWEB_URL__/g,
-      'http://127.0.0.1:' + (CONFIG.port || 8080) + '/api/stats' +
-      (CONFIG.token ? '?k=' + encodeURIComponent(CONFIG.token) : ''))
-    // How bright to draw. The screen saver decides what that means for its own
-    // palette; this only says which of the two was asked for.
-    .replace(/__TVWEB_LEVEL__/g, level === 'bright' ? '1' : '0');
-  fs.writeFileSync(path.join(SCREENSAVER_DIR, 'qml', 'main.qml'), qml);
-
-  /*
-   * Anything else in the screen saver folder goes with it. The starfield draws
-   * its points from an image, and the mount replaces the whole app directory,
-   * so a file left behind in assets is a file the QML cannot open.
-   */
-  try {
-    var from = path.dirname(src);
-    var files = fs.readdirSync(from);
-    for (var i = 0; i < files.length; i++) {
-      if (/\.qml$/i.test(files[i])) continue;
-      fs.writeFileSync(path.join(SCREENSAVER_DIR, 'qml', files[i]),
-                       fs.readFileSync(path.join(from, files[i])));
-    }
-  } catch (e) {
-    console.error('screensaver: could not stage its files: ' + e.message);
-  }
-  fs.writeFileSync(path.join(SCREENSAVER_DIR, SCREENSAVER_LEVEL_MARKER), level === 'bright' ? 'bright' : 'dim');
-}
-
-/*
- * The mount points at a directory, and what was staged into it stays there
- * across reboots - so an upgrade that ships a corrected screen saver would
- * otherwise never reach the TV until someone picked the mode again. Rewriting
- * the file in place needs no unmount and no restart: the next screen saver to
- * launch reads it.
- */
-function restageScreensaver() {
-  var mode = screensaverMode();
-  if (mode === 'stock') return;
-  var src = assetPath(SCREENSAVERS[mode].qml);
-  if (!src) return;
-  try {
-    var staged = path.join(SCREENSAVER_DIR, 'qml', 'main.qml');
-    var before = fs.existsSync(staged) ? fs.readFileSync(staged, 'utf8') : '';
-    writeScreensaverQml(src, screensaverLevel());
-    if (fs.readFileSync(staged, 'utf8') !== before) {
-      console.log('screensaver: restaged "' + mode + '" from a newer asset');
-    }
-  } catch (e) {
-    console.error('screensaver: could not restage ' + mode + ': ' + e.message);
-  }
-}
-
-function restartScreensaverApp(cb) {
-  luna('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
-    if (!isScreenSaver(mapPowerState(pw && pw.state))) {
-      // Nothing drawing, so nothing is mid-handshake and the app - idle or
-      // absent - can be closed so the next launch reads the new QML.
-      return luna('com.webos.applicationManager/closeByAppId',
-                  { id: 'com.webos.app.screensaver' }, function () { cb(); });
-    }
-    injectKey(KEY_BACK, function () {
-      setTimeout(function () {
-        luna('com.webos.applicationManager/closeByAppId', { id: 'com.webos.app.screensaver' }, function () {
-          // It was on screen when the swap happened, so put the new one up in
-          // its place rather than leaving the set on whatever was behind it.
-          setTimeout(function () {
-            luna('com.webos.service.tvpower/power/turnOnScreenSaver', {}, function () { cb(); });
-          }, 1500);
-        });
-      }, 1500);
-    });
-  });
-}
-
-/*
- * Front-panel lights. The "option" settings category carries standByLight,
- * logoLight and powerOnLight on every set, whether or not the hardware is
- * fitted - tv.model.logoLight is the capability flag, and reads false on a
- * B8, which has only a standby LED. Ask the model, not the setting.
- */
-var hasLogoLight = null;   // null = not yet determined
-
-function detectLogoLight(cb) {
-  if (hasLogoLight !== null) return cb(hasLogoLight);
-  luna('com.webos.service.config/getConfigs',
-    { configNames: ['tv.model.logoLight'] },
-    function (res) {
-      var v = res && res.configs && res.configs['tv.model.logoLight'];
-      // Absent means the model does not declare it; treat that as no hardware.
-      hasLogoLight = (v === true);
-      console.log('front lights: standby LED' + (hasLogoLight ? ' + logo light' : ' only (no logo light on this model)'));
-      cb(hasLogoLight);
-    });
-}
 
 /*
  * Remote navigation. Sent through the network input service rather than written
@@ -2083,7 +448,7 @@ function doControl(action, value, cb) {
 
   var origCb = cb;
   cb = function (r) {
-    if (r && r.ok) { lastStats = null; clearLunaCache(); }
+    if (r && r.ok) { telemetry.clearCache(); clearLunaCache(); }
     origCb(r);
   };
 
@@ -2210,7 +575,7 @@ function doControl(action, value, cb) {
       }
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'time', settings: { sleepTimer: st } },
-                  function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     // Front panel LEDs. Both live in the "option" category.
     /*
@@ -2224,7 +589,7 @@ function doControl(action, value, cb) {
       var shiftOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'picture', settings: { screenShift: shiftOn ? 'on' : 'off' } },
-                  function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     case 'logoDimming':
       var logoVal = String(value || '').trim().toLowerCase();
@@ -2233,7 +598,7 @@ function doControl(action, value, cb) {
       }
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'picture', settings: { logoLuminanceAdjust: logoVal } },
-                  function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     case 'standbyLight':
     case 'logoLight':
@@ -2242,7 +607,7 @@ function doControl(action, value, cb) {
       var lightPayload = { category: 'option', settings: {} };
       lightPayload.settings[lightKey] = lightOn ? 'on' : 'off';
       return luna('com.webos.service.settings/setSystemSettings', lightPayload,
-                  function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     case 'serviceMenuLock':
       return oled.setServiceMenuLock(!!(value && value.locked), cb);
@@ -2260,14 +625,14 @@ function doControl(action, value, cb) {
         // No keycode reaches the home screen - the service rejects LG's own -
         // so ask the application manager for it directly.
         return luna('com.webos.applicationManager/launch', { id: 'com.webos.app.home' },
-                    function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                    function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
       }
       if (!RCU_KEYS.hasOwnProperty(rcuName)) {
         return cb({ ok: false, error: 'unknown key: ' + rcuName });
       }
       return luna('com.webos.service.networkinput/test/sendKeyCode',
                   { keyCode: RCU_KEYS[rcuName] },
-                  function (r) { lastStats = null; cb({ ok: !!(r && r.returnValue) }); });
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     case 'screensaverMode':
       /*
@@ -2275,57 +640,20 @@ function doControl(action, value, cb) {
        * written into the same file, so setting one without the other would
        * quietly reset it.
        */
-      var ssMode = value, ssLevel = screensaverLevel();
+      var ssMode = value, ssLevel = screensavers.screensaverLevel();
       if (value && typeof value === 'object') {
         ssMode = value.mode;
         if (value.level) ssLevel = value.level;
       }
-      return setScreensaver(String(ssMode || '').trim(), ssLevel, function (r) {
-        lastStats = null;
+      return screensavers.setScreensaver(String(ssMode || '').trim(), ssLevel, function (r) {
+        telemetry.clearCache();
         cb(r);
       });
 
     case 'screensaver':
-      /*
-       * One control for both directions. Nothing turns a screen saver off -
-       * tvpower publishes turnOnScreenSaver and the registerScreenSaverRequest
-       * pair, and no more - so it is dismissed the way the remote does it, with
-       * a key press the screen saver consumes before anything behind it sees.
-       */
-      return luna('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
-        if (isScreenSaver(mapPowerState(pw && pw.state))) {
-          return injectKey(KEY_BACK, function (ok) {
-            lastStats = null;
-            cb(ok ? { ok: true } : { ok: false, error: 'could not reach the remote input device' });
-          });
-        }
-        /*
-         * turnOnScreenSaver does not draw anything itself. tvpower asks whatever
-         * has registered a screen saver request to show one, and returns true
-         * whether or not anything answers. An HDMI input or Live TV registers
-         * nothing, because the screen saver exists to protect the panel from a
-         * static image, not to interrupt video. So on those sources the call
-         * reports success and nothing happens; say so instead.
-         */
-        luna('com.webos.applicationManager/getForegroundAppInfo', {}, function (fg) {
-          var fgId = (fg && fg.appId) ? String(fg.appId).replace('com.webos.app.', '') : '';
-          if (/^hdmi[1-4]$/.test(fgId) || fgId === 'livetv') {
-            return cb({ ok: false, error: 'the screen saver is only available from an app, not from ' + fgId });
-          }
-          luna('com.webos.service.tvpower/power/turnOnScreenSaver', {}, function (r) {
-            lastStats = null;
-            if (r && r.returnValue) return cb({ ok: true });
-            /*
-             * tvpower refuses in more places than the two guarded above - a
-             * webOS 9 set turns it down on its own home screen with "Invalid
-             * State change Request". Which contexts allow it is the TV's to
-             * decide, so pass its answer along rather than guessing at a list.
-             */
-            cb({ ok: false, error: (r && r.errorText)
-              ? 'the TV would not start a screen saver here: ' + r.errorText
-              : 'the TV would not start a screen saver from ' + (fgId || 'this source') });
-          });
-        });
+      return screensavers.trigger(function (r) {
+        telemetry.clearCache();
+        cb(r);
       });
 
     case 'toast':
@@ -2724,11 +1052,11 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/screensaver') {
-    return send(res, 200, JSON.stringify(screensaverList()));
+    return send(res, 200, JSON.stringify(screensavers.screensaverList()));
   }
 
   if (pathname === '/api/hdmi') {
-    return hdmiInputs(function (r) { send(res, 200, JSON.stringify(r)); });
+    return telemetry.hdmiInputs(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/servicemenu') {
@@ -2737,7 +1065,7 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/oledcare') {
     return oled.readOledProtections(function (live) {
-      collectStats(function (st) {
+      telemetry.collectStats(function (st) {
         var oledData = st.oled || {};
         send(res, 200, JSON.stringify({
           ok: true,
@@ -2772,11 +1100,11 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/cpu') {
-    return collectCpuProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
+    return telemetry.collectCpuProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/processes') {
-    return collectProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
+    return telemetry.collectProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/privacy') {
@@ -2784,7 +1112,7 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/stats') {
-    return collectStats(function (s) { send(res, 200, JSON.stringify(s)); });
+    return telemetry.collectStats(function (s) { send(res, 200, JSON.stringify(s)); });
   }
 
   /* Reports what is known, and never checks on its own: the dashboard polls
@@ -2950,7 +1278,7 @@ if (CLI_MODE) {
                 '  control=' + CONFIG.allowControl + '  power=' + CONFIG.allowPower +
                 '  auth=' + (CONFIG.token ? 'token' : 'none'));
     oled.detectOled(function () {});   // resolve and log panel type up front
-    detectLogoLight(function () {});
+    telemetry.detectLogoLight(function () {});
   });
 } else {
   console.log('web dashboard disabled (web.enabled=false) - mqtt bridge only');
@@ -3044,8 +1372,8 @@ function setupHomeAssistant() {
       cmdInputTopic: cmdInputTopic,
       cmdToastTopic: cmdToastTopic,
       updateTopic: updateTopic,
-      installedApps: installedApps,
-      pictureModes: lastPicModes,
+      installedApps: telemetry.getInstalledApps(),
+      pictureModes: telemetry.getPictureModes(),
       allowPower: CONFIG.allowPower
     });
 
@@ -3055,24 +1383,11 @@ function setupHomeAssistant() {
       publishFn: function (topic, payload, retain) {
         mqttClient.publish(topic, payload, retain);
       },
-      capabilities: {
-        hasRemoteInfo: !!readRemoteInfo(),
-        hasPnwash: fs.existsSync('/mnt/lg/cmn_data/pnwash/completedOffRsCount'),
-        hasCell: !!(HARDWARE_INFO && HARDWARE_INFO.cell),
-        hasHdmiProc: fs.existsSync('/proc/lg/hdmi20'),
-        hasMediaState: hasMediaState,
-        hasHdrStatus: fs.existsSync('/proc/lg/pe/hdr_status'),
-        socArch: HARDWARE_INFO && HARDWARE_INFO.socArch,
-        hasLogoLight: hasLogoLight,
-        thermalPresent: THERMAL_PRESENT,
-        emmcWearPresent: EMMC_WEAR_PRESENT,
-        hasLightSensor: hasLightSensor,
+      capabilities: telemetry.getCapabilities({
         updateCheck: !!(CONFIG.update && CONFIG.update.check),
-        hdmiSeen: hdmiSeen,
-        hasGpuClock: gpuClockMhz() !== null,
         isOled: oled.getIsOled(),
         userEntities: (CONFIG.mqtt && CONFIG.mqtt.entities) || {}
-      }
+      })
     });
 
     for (var i = 0; i < entities.length; i++) {
@@ -3118,7 +1433,7 @@ function setupHomeAssistant() {
   function publishTelemetry() {
     if (!mqttClient.connected) return;
     mqttClient.publish(statusTopic, 'online', true);
-    collectStats(function(s) {
+    telemetry.collectStats(function(s) {
       mqttClient.publish(telemetryTopic, JSON.stringify(s), false);
       MQTT_STATUS.lastPublish = Date.now();
       /*
@@ -3154,10 +1469,7 @@ function setupHomeAssistant() {
        * first time turns that entity on; nothing is ever unlatched, so this
        * settles rather than flapping.
        */
-      var cap = [];
-      for (var hs in hdmiSeen) cap.push(hs);
-      if (hasMediaState) cap.push('play_state');
-      cap = cap.sort().join(',');
+      var cap = telemetry.getCapabilitySignature();
       if (cap !== lastCapSig) {
         lastCapSig = cap;
         console.log('mqtt: set reported (' + cap + ') for the first time - republishing discovery');
@@ -3180,8 +1492,8 @@ function setupHomeAssistant() {
     // The app select's options come from listApps, which on a first connect
     // has not been scanned yet - without this it publishes the fallback list.
     oled.detectOled(function () {
-      detectLogoLight(function () {
-        refreshInstalledApps(function () { publishDiscovery(); });
+      telemetry.detectLogoLight(function () {
+        telemetry.refreshInstalledApps(function () { publishDiscovery(); });
       });
     });
     mqttClient.subscribe(pfx + '/command/#');
@@ -3347,9 +1659,9 @@ if (!CLI_MODE) {
   heartbeat();
   setInterval(heartbeat, 20000);
 
-  restageScreensaver();
+  screensavers.restageScreensaver();
 
-  detectDeviceInfo(function() {
+  telemetry.detectDeviceInfo(function() {
     setupHomeAssistant();
   });
 
