@@ -3477,11 +3477,10 @@ var STAGE_DIR = path.join(INSTALL_DIR, '.update');
 var PREVIOUS_DIR = path.join(INSTALL_DIR, '.previous');
 
 /*
- * Where a rooted curl or wget tends to land, most likely first.
- * /media/developer/bin is the Homebrew Channel's own bin directory and is where
- * the one confirmed set had its curl; the rest are the other plausible places.
- * /usr/bin and /bin come last: the stock pair is there, and it is the pair that
- * cannot do the job - see probeFetch below.
+ * Where a curl or wget tends to land. One the owner installed is tried before
+ * the TV's own in /usr/bin and /bin, being the newer of the two.
+ * /media/developer/bin is the Homebrew Channel's own bin directory, where an
+ * installed curl has been found in use.
  */
 var CLIENT_DIRS = ['/media/developer/bin', '/usr/local/bin', '/opt/bin', '/opt/usr/bin',
                    '/var/lib/webosbrew/bin', '/home/root/bin', '/usr/bin', '/bin'];
@@ -3617,13 +3616,13 @@ function fetchArgs(bin, url, outFile) {
 /*
  * Fetch a URL with whichever client on this TV can reach GitHub.
  *
- * Which one that is belongs to the TV, not to this code. The stock curl
- * (7.53.1, OpenSSL 1.0.2) and busybox wget cannot complete a handshake with
- * current GitHub, and node 0.12's https has no CA bundle worth trusting, so the
- * client that gets through is one the owner installed. Probing beats hardcoding
- * a path, and the probe is the real request rather than a separate reachability
- * check - a client that returns the release JSON has proved everything that
- * matters.
+ * Which one that is belongs to the TV, not to this code. node 0.12's https has
+ * no CA bundle worth trusting. The stock curl reaches GitHub on both sets
+ * tested - 7.53.1 against OpenSSL 1.0.2p on webOS 4.4.3, 7.82.0 against
+ * OpenSSL 3.0.9 on webOS 9.2.2 - but whether another firmware's does is not
+ * something to assume. Probing beats hardcoding a path, and the probe is the
+ * real request rather than a separate reachability check - a client that
+ * returns the release JSON has proved everything that matters.
  *
  * Certificate verification is never turned off. What comes back is run as root
  * on the next restart; an unverified download would be worse than no update
@@ -3644,7 +3643,7 @@ function probeFetch(url, outFile, cb) {
     if (i >= list.length) {
       return cb(new Error('no HTTP client on this TV could reach GitHub' +
                           (last ? ' (' + last + ')' : '') +
-                          '. Install a current curl or wget - the stock pair cannot do TLS to GitHub.'));
+                          '. Install a current curl or wget.'));
     }
     var bin = list[i++];
     if (seen[bin] || !fs.existsSync(bin)) return next();

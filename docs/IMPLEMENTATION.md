@@ -169,14 +169,15 @@ becomes the remote shell's own `argv`:
 
 Five things decide how `tvwebctl update` works.
 
-**The HTTP client is probed, not assumed.** The stock `/usr/bin/curl` is 7.53.1
-against OpenSSL 1.0.2 and busybox `wget` is no better, so neither completes a
-handshake with current GitHub, and node 0.12's `https` has no CA bundle worth
-trusting. The client that gets through is one the owner installed, in a location
-nobody can predict, so each candidate is tried against the real release endpoint
-until one returns usable JSON. A client that does that has proved everything
-that matters. Certificate verification is never disabled: what comes back runs
-as root on the next restart.
+**The HTTP client is probed, not assumed.** Node 0.12's `https` has no CA bundle
+worth trusting, so the download goes through curl or wget. The stock
+`/usr/bin/curl` reaches GitHub on both sets tested — 7.53.1 against OpenSSL
+1.0.2p on webOS 4.4.3, 7.82.0 against OpenSSL 3.0.9 on webOS 9.2.2 — but that is
+not something to assume of other firmware, and a client the owner installed can
+be anywhere. Installed clients are tried before the stock one, each against the
+real release endpoint until one returns usable JSON. A client that does that has
+proved everything that matters. Certificate verification is never disabled: what
+comes back runs as root on the next restart.
 
 **The directory is updated in place, not swapped.** `/var/lib/tvweb` holds more
 than code — `config.json`, `adblock_hosts`, the staged screen saver the boot hook

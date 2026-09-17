@@ -212,8 +212,6 @@ the bridge's connection state and last publish time beside them.
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the
   [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
 * Nothing else on the TV for the dashboard.
-* A current `curl` or `wget` on the TV, only for
-  [updating in place](#updating). The stock pair cannot reach GitHub.
 * An MQTT broker on the network, and usually Home Assistant, only if the
   bridge in [step 4](#4-home-assistant--mqtt-optional) is wanted.
 
@@ -458,13 +456,13 @@ and the list of stopped LG services are left alone; the replaced version stays i
 `/var/lib/tvweb/.previous` for `tvwebctl rollback`. The boot hook is refreshed
 only where one is already installed.
 
-**A current curl or wget on the TV is required.** The stock pair cannot negotiate
-TLS with GitHub: `/usr/bin/curl` is 7.53.1 against OpenSSL 1.0.2, and busybox
-`wget` is no better. Without one the check says so and nothing else changes. The
-probe looks in the Homebrew Channel's own `/media/developer/bin` first, which is
-where the set this was confirmed on keeps its curl, then `/usr/local/bin`,
-`/opt/bin`, `/opt/usr/bin`, `/var/lib/webosbrew/bin` and `/home/root/bin`; point
-`"update": { "client": "/path/to/curl" }` at it if it lives somewhere else.
+The download goes through curl or wget on the TV. The TV's own `/usr/bin/curl`
+reaches GitHub on the sets tested; where it cannot, the check says so and nothing
+else changes, and installing a current curl or wget fixes it. An installed client
+is tried first: the probe looks in the Homebrew Channel's own
+`/media/developer/bin`, then `/usr/local/bin`, `/opt/bin`, `/opt/usr/bin`,
+`/var/lib/webosbrew/bin` and `/home/root/bin`. Point
+`"update": { "client": "/path/to/curl" }` at one that lives somewhere else.
 
 `.previous` is a complete copy of the version that was replaced, so getting back
 does not depend on the installed `tvwebctl` having a `rollback` command:
