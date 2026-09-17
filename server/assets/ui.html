@@ -245,13 +245,13 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 /* ---- controls ---- */
 .set{margin-top:22px}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:11px}
-#picmodes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
-#picmodes button{
+#picmodes,#energysteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
+#picmodes button,#energysteps button{
   font-size:11.5px;letter-spacing:.06em;padding:12px 6px;line-height:1.25;
   text-align:center;display:flex;align-items:center;justify-content:center;
 }
 @media (max-width:380px){
-  #picmodes{grid-template-columns:repeat(2,1fr)}
+  #picmodes,#energysteps{grid-template-columns:repeat(2,1fr)}
 }
 /* Collapsed groups. Picture mode, sound output and the app list are
    set-and-forget: they were taking the majority of the column's height for
@@ -809,6 +809,17 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         <!-- Built from what the TV says it will accept: the settable modes
              change with the dynamic range of what is playing. -->
         <div class="btns" id="picmodes"></div>
+      </div>
+
+      <div class="set"><div class="lbl">Energy saving &middot; <span id="energy-lbl" class="num">&mdash;</span></div>
+        <div class="btns" id="energysteps">
+          <button id="es_auto" onclick="c('energySaving','auto')">Auto</button>
+          <button id="es_off" onclick="c('energySaving','off')">Off</button>
+          <button id="es_min" onclick="c('energySaving','min')">Minimum</button>
+          <button id="es_med" onclick="c('energySaving','med')">Medium</button>
+          <button id="es_max" onclick="c('energySaving','max')">Maximum</button>
+          <button id="es_screen_off" onclick="c('energySaving','screen_off')">Screen off</button>
+        </div>
       </div>
 
     </details>
@@ -1613,6 +1624,15 @@ async function tick() {
           b.classList.toggle('on', b.id.replace('pm_', '') === d.picture.mode_raw);
         }
       }
+
+      const es = d.picture.energySaving || '';
+      if (q('energy-lbl')) q('energy-lbl').textContent = (ENERGY_STEPS[es] || es || '—').toUpperCase();
+      const esBox = q('energysteps');
+      if (esBox) {
+        for (let b of esBox.querySelectorAll('button')) {
+          b.classList.toggle('on', b.id.replace('es_', '') === es);
+        }
+      }
     }
 
     if (d.sound) {
@@ -1639,6 +1659,9 @@ async function tick() {
 }
 
 // Releases are cut on the upstream repo, so the tag link points there.
+// The steps the picture service accepts, in the TV's own order.
+const ENERGY_STEPS = { auto: 'Auto', off: 'Off', min: 'Minimum', med: 'Medium', max: 'Maximum', screen_off: 'Screen off' };
+
 const REPO = 'https://github.com/rorygallagher2024/lg-webos-mqtt';
 
 function setVersion(v) {
