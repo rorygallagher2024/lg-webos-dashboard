@@ -1123,7 +1123,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
     </div>
     <div class="btns" id="upd-btns">
-      <button type="button" id="upd-check" onclick="checkUpdate()">Check now</button>
+      <button type="button" id="upd-check" onclick="checkNow()">Check now</button>
       <button type="button" id="upd-install" hidden onclick="installUpdate()">Install</button>
       <button type="button" id="upd-rollback" hidden onclick="rollbackUpdate()">Roll back</button>
     </div>
@@ -1713,6 +1713,7 @@ function renderUpdate(d) {
   pill.className = 'pill ' + (d.state === 'error' ? 'bad'
     : d.available ? 'warn' : d.state === 'current' ? 'good' : 'idle');
   pill.textContent = d.state === 'error' ? 'failed'
+    : d.state === 'offline' ? 'offline'
     : working ? d.state
     : d.available ? 'v' + d.latest
     : d.state === 'current' ? 'up to date'
@@ -1730,10 +1731,11 @@ function renderUpdate(d) {
   auto.dataset.on = d.autoCheck ? '1' : '';
   auto.disabled = !d.writable;
 
-  msg.textContent = d.state === 'error' ? (d.error || 'the check failed')
+  msg.textContent = (d.state === 'error' || d.state === 'offline') ? (d.error || 'the check failed')
     : d.state === 'installed' ? 'Installed. The server is restarting - this page reconnects on its own.'
     : updArrival;
 
+  chk.hidden = !d.writable;
   chk.disabled = working || updBusy;
   inst.hidden = !(d.available && d.writable);
   inst.disabled = working || updBusy;
@@ -1743,6 +1745,7 @@ function renderUpdate(d) {
   roll.disabled = working || updBusy;
   roll.textContent = 'Roll back to v' + d.rollbackTo;
   roll.dataset.v = d.rollbackTo || '';
+  if (q('upd-prog').hidden) q('upd-btns').hidden = chk.hidden && inst.hidden && roll.hidden;
 
   const vn = q('version-new');
   if (d.available) {
@@ -1829,8 +1832,8 @@ async function fetchJson(url, opts, ms) {
   }
 }
 
-const updControl = action => fetchJson(api('/api/control'), {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action })
+const updControl = (action, value) => fetchJson(api('/api/control'), {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, value })
 }, 120000);
 
 /*
@@ -1870,15 +1873,35 @@ async function awaitRestart(version, doneLabel, param, confirmed, oldVersion) {
   setTimeout(() => location.replace(String(u)), 1200);
 }
 
-async function checkUpdate() {
+/*
+ * Opening the tab is the check. What is already known shows at once, and an
+ * attempt under two minutes old stands - answered or not - so switching back and
+ * forth between tabs does not reach GitHub, or retry an offline TV, each time.
+ * Check now is the way to look again sooner.
+ */
+async function checkOnOpen() {
+  const d = await fetchJson(api('/api/update'), {}, 5000);
+  if (!d || !d.ok) return;
+  renderUpdate(d);
+  noteArrival(d);
+  if (updBusy || !d.writable || (d.attemptedMs !== null && d.attemptedMs < 120000)) return;
+  q('upd-pill').className = 'pill idle';
+  q('upd-pill').textContent = 'checking';
+  const r = await updControl('updateCheck', 'open');
+  if (r && r.ok && r.state !== 'checking') return renderUpdate(r);
+  // Failed, or a check someone else started is still running.
+  setTimeout(loadUpdate, r && r.state === 'checking' ? 2000 : 0);
+}
+
+async function checkNow() {
   updBusy = true;
   updArrival = '';
   q('upd-pill').className = 'pill idle';
   q('upd-pill').textContent = 'checking';
   q('upd-check').disabled = true;
-  await c('updateCheck');
+  const r = await updControl('updateCheck');
   updBusy = false;
-  loadUpdate();
+  if (r && r.ok && r.state !== 'checking') renderUpdate(r); else loadUpdate();
 }
 
 async function installUpdate() {
@@ -2420,7 +2443,7 @@ function showTab(name) {
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
   if (name === 'system') loadHdmiOnce();
-  if (name === 'server') loadUpdate();
+  if (name === 'server') checkOnOpen();
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();

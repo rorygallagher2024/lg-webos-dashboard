@@ -299,8 +299,9 @@ on its own.
 No configuration is needed for this part. Without a config file the dashboard
 runs on port 8080, the controls are live, MQTT is off, and power off / reboot
 are disabled. Nothing is sent anywhere: the server talks to the TV and to
-whoever opens the page, and reaches the internet only if the release check under
-[Updating](#updating) is switched on.
+whoever opens the page, and reaches the internet only to look for a new release -
+when the dashboard's Server tab is opened, or daily if
+[checking automatically](#checking-automatically) is switched on.
 
 That is a complete install &mdash; step 4 is optional.
 
@@ -449,9 +450,9 @@ ssh root@<tv-ip> /var/lib/tvweb/tvwebctl status    # start | stop | restart | st
 How depends on the install. One with a **Server** tab in its dashboard updates
 itself; an older one is updated by deploying again, after which it has the tab.
 
-**With the Server tab.** **Check now** looks for a newer release, **Install**
-puts it on and restarts the server, and **Roll back** returns to the version it
-replaced. Home Assistant offers the same install while the
+**With the Server tab.** Opening it looks for a newer release, and **Check now**
+looks again. **Install** puts it on and restarts the server, and **Roll back**
+returns to the version it replaced. Home Assistant offers the same install while the
 [daily check](#checking-automatically) is on. Over ssh:
 
 ```bash
@@ -499,7 +500,7 @@ cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
 
 ### Checking automatically
 
-Off by default, because it is the only thing here that reaches off the LAN.
+Off by default, because it reaches off the LAN without anyone asking.
 **Check daily** in the Server tab switches it on, as does `config.json`:
 
 ```json

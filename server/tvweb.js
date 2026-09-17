@@ -713,7 +713,9 @@ function doControl(action, value, cb) {
       return oled.requestClearPanelNoise('cancel_schedule', cb);
 
     case 'updateCheck':
-      return updater.checkForUpdate(true, function (e, summary) {
+      // 'open' is the dashboard's Server tab being shown. Its result is kept for
+      // two minutes, so switching between tabs does not reach GitHub each time.
+      return updater.checkForUpdate(value === 'open' ? 120000 : true, function (e, summary) {
         if (e) return cb({ ok: false, error: e.message });
         cb(summary);
       });

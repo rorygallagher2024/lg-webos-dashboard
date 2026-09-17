@@ -20,11 +20,12 @@ var clientDirs = [
 var fetchClient = null;
 
 var UPDATE = {
-  state: 'idle',   // idle | checking | available | current | downloading | installing | installed | error
+  state: 'idle',   // idle | checking | available | current | downloading | installing | installed | offline | error
   latest: null,
   url: null,
   notes: null,
-  checked: 0,
+  checked: 0,       // last check that got an answer
+  attempted: 0,     // last check, answered or not
   error: null,
   busy: false
 };
@@ -94,7 +95,8 @@ function updateSummary() {
     autoCheck: !!(config.update && config.update.check),
     rollbackTo: rollbackVersion(),
     writable: config.allowControl,
-    checkedMs: UPDATE.checked ? Date.now() - UPDATE.checked : null
+    checkedMs: UPDATE.checked ? Date.now() - UPDATE.checked : null,
+    attemptedMs: UPDATE.attempted ? Date.now() - UPDATE.attempted : null
   };
 }
 
@@ -111,6 +113,24 @@ function execErr(err, stderr) {
   var m = String(stderr || '').split('\n')[0].trim();
   if (!m && err && err.code) return 'exited ' + err.code;
   return m || (err && err.message) || 'failed';
+}
+
+/*
+ * A failure that says nothing about the client: the name did not resolve,
+ * nothing answered, or time ran out. Every client shares the TV's network, so
+ * the next would fail the same way, and blaming the client would send someone
+ * off installing curl on a TV that is simply offline.
+ *   curl      6 unresolved, 7 no connection, 28 timed out
+ *   GNU wget  4 network failure
+ *   busybox   exits 1 for everything, so only its message tells
+ */
+function networkFailure(bin, err, stderr) {
+  if (!err) return false;
+  if (err.killed) return true;
+  if (/wget$/.test(bin)) {
+    return err.code === 4 || /bad address|can't connect|timed out|unreachable/i.test(String(stderr || ''));
+  }
+  return err.code === 6 || err.code === 7 || err.code === 28;
 }
 
 function httpErrorStatus(err, stderr) {
@@ -139,8 +159,11 @@ function githubSaid(status, url) {
 
 function fetchArgs(bin, url, outFile) {
   var ua = 'tvweb/' + currentVersion;
-  if (/wget$/.test(bin)) return ['-q', '-T', '30', '-U', ua, '-O', outFile || '-', url];
-  return ['-fsSL', '--max-time', '30', '-A', ua, '-o', outFile || '-', url];
+  // The check is a few kilobytes and someone may be watching the tab, so an
+  // offline TV says so in seconds. The download gets longer.
+  var secs = outFile ? '30' : '10';
+  if (/wget$/.test(bin)) return ['-q', '-T', secs, '-U', ua, '-O', outFile || '-', url];
+  return ['-fsSL', '--max-time', secs, '-A', ua, '-o', outFile || '-', url];
 }
 
 function probeFetch(url, outFile, cb) {
@@ -164,13 +187,19 @@ function probeFetch(url, outFile, cb) {
     if (seen[bin] || !fs.existsSync(bin)) return next();
     seen[bin] = 1;
     execFile(bin, fetchArgs(bin, url, outFile),
-             { timeout: outFile ? 180000 : 45000, maxBuffer: 1024 * 1024 },
+             { timeout: outFile ? 180000 : 15000, maxBuffer: 1024 * 1024 },
              function (err, stdout, stderr) {
       if (err) {
         var status = httpErrorStatus(err, stderr);
         if (status) {
           fetchClient = bin;
           return cb(new Error(githubSaid(status, url)));
+        }
+        if (networkFailure(bin, err, stderr)) {
+          console.error('update: ' + path.basename(bin) + ': ' + execErr(err, stderr));
+          var off = new Error('The TV could not reach GitHub. Check it is connected to the internet.');
+          off.offline = true;
+          return cb(off);
         }
         last = path.basename(bin) + ': ' + execErr(err, stderr);
         return next();
@@ -181,16 +210,25 @@ function probeFetch(url, outFile, cb) {
   })();
 }
 
+/*
+ * Ask GitHub for the latest release, unless a recent enough answer is already
+ * held: unauthenticated calls are limited to 60 an hour from one address, so
+ * `force` shortens that cache rather than removing it, and a number sets it.
+ */
 function checkForUpdate(force, cb) {
   cb = cb || function () {};
   if (UPDATE.state === 'checking') return cb(null, updateSummary());
-  var minAge = force ? 10000 : 3600000;
+  var minAge = typeof force === 'number' ? force : force ? 10000 : 3600000;
   if (UPDATE.latest && (Date.now() - UPDATE.checked) < minAge) return cb(null, updateSummary());
+  // A tab being opened also lets a failed attempt stand, so an offline TV is not
+  // tried again every time someone switches back to it.
+  if (typeof force === 'number' && (Date.now() - UPDATE.attempted) < minAge) return cb(null, updateSummary());
 
+  UPDATE.attempted = Date.now();
   setUpdateState('checking');
   probeFetch(UPDATE_API, null, function (err, body) {
     if (err) {
-      setUpdateState('error', err.message);
+      setUpdateState(err.offline ? 'offline' : 'error', err.message);
       return cb(err, updateSummary());
     }
     var rel = null;
