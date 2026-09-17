@@ -3444,6 +3444,9 @@ function doControl(action, value, cb) {
         cb(r);
       });
 
+    case 'updateAutoCheck':
+      return setAutoCheck(value === true || value === 'on' || value === 'true', cb);
+
     case 'updateRollback':
       return rollbackUpdate(function (r) {
         if (r.ok) setTimeout(function () { restartSelf(); }, 600);
@@ -3497,8 +3500,10 @@ var UPDATE = {
 };
 
 // Set by the MQTT bridge when it starts, so a check that finishes anywhere
-// reaches Home Assistant's update entity.
+// reaches Home Assistant's update entity, and switching the daily check adds or
+// removes that entity.
 var mqttPublishUpdate = null;
+var mqttPublishDiscovery = null;
 
 function setUpdateState(state, err) {
   UPDATE.state = state;
@@ -3713,11 +3718,44 @@ function checkForUpdate(force, cb) {
   });
 }
 
-function mkdirp(dir) {
-  if (fs.existsSync(dir)) return;
-  var up = path.dirname(dir);
-  if (up !== dir) mkdirp(up);
-  fs.mkdirSync(dir);
+var updateFirstTimer = null, updateEveryTimer = null;
+
+// The daily check, off unless asked for. Rescheduled rather than set once, so
+// the dashboard's switch takes effect without a restart.
+function scheduleUpdateChecks(firstMs) {
+  if (updateFirstTimer) { clearTimeout(updateFirstTimer); updateFirstTimer = null; }
+  if (updateEveryTimer) { clearInterval(updateEveryTimer); updateEveryTimer = null; }
+  if (!(CONFIG.update && CONFIG.update.check)) return;
+  var everyH = num(CONFIG.update.intervalHours, 24);
+  if (!(everyH >= 1 && everyH <= 168)) everyH = 24;
+  if (firstMs) {
+    updateFirstTimer = setTimeout(function () {
+      updateFirstTimer = null;
+      checkForUpdate(false);
+    }, firstMs);
+  }
+  updateEveryTimer = setInterval(function () { checkForUpdate(false); }, everyH * 3600000);
+  console.log('update: checking for new releases every ' + everyH + 'h');
+}
+
+/*
+ * Saved to config.json so it survives a restart, and applied in place: all it
+ * changes is a timer and whether Home Assistant is offered the update entity,
+ * neither of which needs the restart that broker settings do.
+ */
+function setAutoCheck(on, cb) {
+  writeSettings({ update: { check: on } }, function (err) {
+    if (err) return cb({ ok: false, error: 'could not save the setting: ' + err.message });
+    CONFIG.update = CONFIG.update || {};
+    CONFIG.update.check = on;
+    scheduleUpdateChecks(0);
+    if (mqttPublishDiscovery) mqttPublishDiscovery();
+    console.log('update: daily check switched ' + (on ? 'on' : 'off'));
+    if (!on) return cb(updateSummary());
+    // Checked before answering, so the switch shows at once whether this TV
+    // can reach GitHub rather than "not checked" until the page is reloaded.
+    checkForUpdate(false, function () { cb(updateSummary()); });
+  });
 }
 
 function copyFile(src, dst) {
@@ -5595,24 +5633,16 @@ function setupHomeAssistant() {
       }
     ];
 
-    /*
-     * Only where the release check is switched on. Without it nothing ever
-     * learns what the latest version is, and an update entity that can never
-     * say is worse than no entity - Home Assistant would show it as unknown
-     * for good.
-     */
-    if (CONFIG.update && CONFIG.update.check) {
-      entities.push({
-        type: 'update', id: 'server_update',
-        payload: {
-          name: 'Server Update',
-          state_topic: updateTopic,
-          command_topic: pfx + '/command/update',
-          payload_install: 'install',
-          icon: 'mdi:package-up'
-        }
-      });
-    }
+    entities.push({
+      type: 'update', id: 'server_update',
+      payload: {
+        name: 'Server Update',
+        state_topic: updateTopic,
+        command_topic: pfx + '/command/update',
+        payload_install: 'install',
+        icon: 'mdi:package-up'
+      }
+    });
 
     if (CONFIG.allowPower) {
       entities.push({
@@ -5739,6 +5769,11 @@ function setupHomeAssistant() {
 
     if (!hasLightSensor) withhold(byId('ambient_light'));
 
+    // Without the daily check nothing learns what the latest release is, and
+    // the entity would read unknown for good. Withheld rather than left out, so
+    // switching the check off removes it.
+    if (!(CONFIG.update && CONFIG.update.check)) withhold(byId('server_update'));
+
     /*
      * HDMI diagnostics this set has never reported. A B8 has no FRL link, no
      * chroma report, no PHY error counter and no VRR hardware, and each of
@@ -5805,6 +5840,7 @@ function setupHomeAssistant() {
     }), true);
   }
   mqttPublishUpdate = publishUpdate;
+  mqttPublishDiscovery = publishDiscovery;
 
   var lastPicSig = '';
   var lastCapSig = '';
@@ -6047,17 +6083,9 @@ if (!CLI_MODE) {
     setupHomeAssistant();
   });
 
-  /*
-   * The periodic release check, off unless asked for. Not at startup: a reboot
-   * brings the whole house back at once, and nothing about this is urgent.
-   */
-  if (CONFIG.update && CONFIG.update.check) {
-    var everyH = num(CONFIG.update.intervalHours, 24);
-    if (!(everyH >= 1 && everyH <= 168)) everyH = 24;
-    setTimeout(function () { checkForUpdate(false); }, 120000);
-    setInterval(function () { checkForUpdate(false); }, everyH * 3600000);
-    console.log('update: checking for new releases every ' + everyH + 'h');
-  }
+  // Not at startup: a reboot brings the whole house back at once, and nothing
+  // about this is urgent.
+  scheduleUpdateChecks(120000);
 }
 
 /*

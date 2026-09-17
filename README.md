@@ -477,6 +477,7 @@ cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
 ### Checking automatically
 
 Off by default, because it is the only thing here that reaches off the LAN.
+**Check daily** in the System tab switches it on, as does `config.json`:
 
 ```json
 { "update": { "check": true, "intervalHours": 24 } }

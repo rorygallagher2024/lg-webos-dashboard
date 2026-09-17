@@ -645,9 +645,16 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         <div class="prot-row">
           <div class="prot-main">
             <div class="prot-title" id="upd-title">tvweb</div>
-            <div class="prot-desc" id="upd-desc">&mdash;</div>
+            <div class="prot-desc" id="upd-desc" hidden></div>
           </div>
           <div class="prot-status"><span class="pill idle" id="upd-pill">&mdash;</span></div>
+        </div>
+        <div class="prot-row">
+          <div class="prot-main">
+            <div class="prot-title">Check daily</div>
+            <div class="prot-desc">Looks for a new release once a day, and lets Home Assistant offer the update.</div>
+          </div>
+          <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
         </div>
       </div>
       <div class="btns" style="margin-top:14px">
@@ -1628,9 +1635,14 @@ function renderUpdate(d) {
 
   desc.textContent = d.available
     ? 'v' + d.latest + ' is out. Installing it replaces the server and restarts it; the config, ad blocker and screen saver are kept.'
-    : d.autoCheck
-      ? 'Checked against the latest GitHub release once a day.'
-      : 'Nothing is checked automatically. Set "update": { "check": true } in config.json for a daily check and the Home Assistant update entity.';
+    : '';
+  desc.hidden = !d.available;
+
+  const auto = q('upd-auto');
+  auto.className = 'pill ' + (d.autoCheck ? 'good' : 'idle');
+  auto.textContent = d.autoCheck ? 'On' : 'Off';
+  auto.dataset.on = d.autoCheck ? '1' : '';
+  auto.disabled = !d.writable;
 
   msg.textContent = d.state === 'error' ? (d.error || 'the check failed')
     : d.state === 'installed' ? 'Installed. The server is restarting - this page reconnects on its own.'
@@ -1686,6 +1698,13 @@ async function installUpdate() {
   }
   if (r && r.ok && !r.updated) q('upd-msg').textContent = r.note || 'nothing newer to install';
   loadUpdate();
+}
+
+async function toggleAutoCheck() {
+  const b = q('upd-auto');
+  b.disabled = true;
+  const r = await c('updateAutoCheck', !b.dataset.on);
+  if (r && r.ok) renderUpdate(r); else loadUpdate();
 }
 
 async function rollbackUpdate() {
