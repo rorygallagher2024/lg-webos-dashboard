@@ -5831,7 +5831,7 @@ function setupHomeAssistant() {
     mqttClient.publish(updateTopic, JSON.stringify({
       installed_version: TVWEB_VERSION,
       latest_version: UPDATE.latest || null,
-      title: 'tvweb',
+      title: 'Server',
       release_url: UPDATE.url || null,
       // Home Assistant caps this at 255 characters and drops the message
       // whole if it is longer.

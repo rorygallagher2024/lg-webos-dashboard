@@ -207,6 +207,13 @@ holds the broker address, credentials, topic prefix and device identity, with
 the bridge's connection state and last publish time beside them.
 [Step 4](#4-home-assistant--mqtt-optional) covers the setup.
 
+### Server updates
+
+The **Server** tab, `/?tab=server`. The installed version, whether a newer
+release is out, and buttons to install it or roll back to the version before.
+**Check daily** looks on its own and lets Home Assistant offer the update.
+[Updating](#updating) covers installs from before the tab existed.
+
 ## Requirements
 
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the
@@ -477,7 +484,7 @@ cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
 ### Checking automatically
 
 Off by default, because it is the only thing here that reaches off the LAN.
-**Check daily** in the System tab switches it on, as does `config.json`:
+**Check daily** in the Server tab switches it on, as does `config.json`:
 
 ```json
 { "update": { "check": true, "intervalHours": 24 } }

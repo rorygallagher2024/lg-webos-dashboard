@@ -387,6 +387,10 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
               margin-bottom:8px}
 .ss-level-row .btns{display:flex;gap:10px;max-width:340px}
 .ss-level-row .btns button{flex:1}
+.upd{max-width:760px;margin-top:22px}
+.upd .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.upd .btns button{min-width:160px;padding:16px 22px}
+.upd #upd-msg{margin-top:12px}
 /*
  * The lists run in two columns. A row is a sentence and a pill: given the full
  * width the pill ends up 400px from the text it belongs to, and capping the
@@ -590,6 +594,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
+  <button type="button" role="tab" data-tab="server">Server</button>
 </nav>
 
 <main id="panels">
@@ -637,32 +642,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         <div id="flashwear-cell"><div class="lbl">Flash wear</div><div class="v num" id="flashval">&mdash;</div><div class="sub">eMMC lifetime estimated</div></div>
         <div id="flashhealth-cell"><div class="lbl">Pre-EOL status</div><div class="v" id="flasheol">&mdash;</div><div class="sub">Drive's own assessment</div></div>
       </div>
-    </div>
-
-    <div class="grp-sec" id="updblock" data-col="1">
-      <div class="grp">Server</div>
-      <div class="prot-table">
-        <div class="prot-row">
-          <div class="prot-main">
-            <div class="prot-title" id="upd-title">tvweb</div>
-            <div class="prot-desc" id="upd-desc" hidden></div>
-          </div>
-          <div class="prot-status"><span class="pill idle" id="upd-pill">&mdash;</span></div>
-        </div>
-        <div class="prot-row">
-          <div class="prot-main">
-            <div class="prot-title">Check daily</div>
-            <div class="prot-desc">Looks for a new release once a day, and lets Home Assistant offer the update.</div>
-          </div>
-          <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
-        </div>
-      </div>
-      <div class="btns" style="margin-top:14px">
-        <button type="button" id="upd-check" onclick="checkUpdate()">Check now</button>
-        <button type="button" id="upd-install" hidden onclick="installUpdate()">Install</button>
-        <button type="button" id="upd-rollback" hidden onclick="rollbackUpdate()">Roll back</button>
-      </div>
-      <div class="sub" id="upd-msg" style="margin-top:10px"></div>
     </div>
 
     <div class="grp-sec" id="remoteblock" data-col="2" hidden>
@@ -1067,6 +1046,33 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
   <div class="sub" id="cfg-file" style="margin-top:14px"></div>
   </div>
+  </div>
+</section>
+
+<section class="priv panel" id="serverpane" role="tabpanel" hidden>
+  <div class="upd">
+    <div class="prot-table">
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title" id="upd-title">Version</div>
+          <div class="prot-desc" id="upd-desc" hidden></div>
+        </div>
+        <div class="prot-status"><span class="pill idle" id="upd-pill">&mdash;</span></div>
+      </div>
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title">Check daily</div>
+          <div class="prot-desc">Looks for a new release once a day, and lets Home Assistant offer the update.</div>
+        </div>
+        <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
+      </div>
+    </div>
+    <div class="btns">
+      <button type="button" id="upd-check" onclick="checkUpdate()">Check now</button>
+      <button type="button" id="upd-install" hidden onclick="installUpdate()">Install</button>
+      <button type="button" id="upd-rollback" hidden onclick="rollbackUpdate()">Roll back</button>
+    </div>
+    <div class="sub" id="upd-msg"></div>
   </div>
 </section>
 </main>
@@ -1621,7 +1627,7 @@ let updBusy = false;
 function renderUpdate(d) {
   const pill = q('upd-pill'), desc = q('upd-desc'), msg = q('upd-msg');
   const inst = q('upd-install'), roll = q('upd-rollback'), chk = q('upd-check');
-  q('upd-title').textContent = 'tvweb v' + d.installed;
+  q('upd-title').textContent = 'Version ' + d.installed;
 
   const working = d.state === 'checking' || d.state === 'downloading' || d.state === 'installing';
   pill.className = 'pill ' + (d.state === 'error' ? 'bad'
@@ -2172,7 +2178,8 @@ const TABS = {
   servicemenu: 'svcpane',
   screensaver: 'sspane',
   privacy:     'privpane',
-  mqtt:        'mqttpane'
+  mqtt:        'mqttpane',
+  server:      'serverpane'
 };
 let activeTab = null;
 // null until the first telemetry says either way.
@@ -2202,7 +2209,8 @@ function showTab(name) {
   try { localStorage.setItem('tab', name); } catch (e) { /* private window */ }
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
-  if (name === 'system') { loadHdmiOnce(); loadUpdate(); }
+  if (name === 'system') loadHdmiOnce();
+  if (name === 'server') loadUpdate();
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();

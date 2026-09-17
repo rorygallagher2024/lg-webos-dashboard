@@ -99,7 +99,7 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_flash_wear` | Flash Wear Level | JEDEC write-cycle consumption (`0–10%`) |
 | `sensor` | `sensor.lg_tv_uptime` | Uptime | TV uptime in seconds |
 | `sensor` | `sensor.lg_tv_tvweb_version` | Server Version | Version of this server, not TV firmware (diagnostic) |
-| `update` | `update.lg_tv_server_update` | Server Update | Latest release, its notes and an install button. Published only while **Check daily** is on in the dashboard's System tab &mdash; see [Updating](../README.md#updating) |
+| `update` | `update.lg_tv_server_update` | Server Update | Latest release, its notes and an install button. Published only while **Check daily** is on in the dashboard's Server tab &mdash; see [Updating](../README.md#updating) |
 
 ---
 
