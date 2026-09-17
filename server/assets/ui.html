@@ -387,6 +387,10 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
               margin-bottom:8px}
 .ss-level-row .btns{display:flex;gap:10px;max-width:340px}
 .ss-level-row .btns button{flex:1}
+.upd{max-width:760px;margin-top:22px}
+.upd .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.upd .btns button{min-width:160px;padding:16px 22px}
+.upd #upd-msg{margin-top:12px}
 /*
  * The lists run in two columns. A row is a sentence and a pill: given the full
  * width the pill ends up 400px from the text it belongs to, and capping the
@@ -518,6 +522,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 #version{text-transform:none;color:inherit;text-decoration:none}
 #version::before{content:'|';margin:0 .55em;opacity:.45}
 #version:hover{color:var(--w80);text-decoration:underline}
+#version-new{text-transform:none;color:var(--cand);text-decoration:none;margin-left:.5em}
+#version-new:hover{text-decoration:underline}
 .stale{opacity:.35;transition:opacity .3s}
 
 /* ---- hardware specifications strip ---- */
@@ -588,6 +594,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
+  <button type="button" role="tab" data-tab="server">Server</button>
 </nav>
 
 <main id="panels">
@@ -1041,11 +1048,38 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
   </div>
 </section>
+
+<section class="priv panel" id="serverpane" role="tabpanel" hidden>
+  <div class="upd">
+    <div class="prot-table">
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title" id="upd-title">Version</div>
+          <div class="prot-desc" id="upd-desc" hidden></div>
+        </div>
+        <div class="prot-status"><span class="pill idle" id="upd-pill">&mdash;</span></div>
+      </div>
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title">Check daily</div>
+          <div class="prot-desc">Looks for a new release once a day, and lets Home Assistant offer the update.</div>
+        </div>
+        <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
+      </div>
+    </div>
+    <div class="btns">
+      <button type="button" id="upd-check" onclick="checkUpdate()">Check now</button>
+      <button type="button" id="upd-install" hidden onclick="installUpdate()">Install</button>
+      <button type="button" id="upd-rollback" hidden onclick="rollbackUpdate()">Roll back</button>
+    </div>
+    <div class="sub" id="upd-msg"></div>
+  </div>
+</section>
 </main>
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a></span>
+  <span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a></span>
 </footer>
 
 <script>
@@ -1082,6 +1116,14 @@ const q = id => document.getElementById(id);
 const api = p => p + (K ? (p.includes('?') ? '&' : '?') + 'k=' + encodeURIComponent(K) : '');
 const mb = k => (k / 1024).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const esc = t => String(t).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+/*
+ * For a value landing in a single-quoted JS string inside an attribute -
+ * onclick="c('launchApp','<id>')". Both escapes are needed, in this order: the
+ * browser HTML-decodes the attribute before the JS in it is parsed, so &#39;
+ * would arrive back as a quote that ends the string early. A backslash escape
+ * survives that decode; esc() then keeps the value inside the attribute.
+ */
+const jsq = t => esc(String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 const hrs = h => h == null ? '—' : (h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1));
 /* Binary steps labelled kB/MB/GB, matching mb() above and the rest of the
    dashboard. Three significant figures at most: a lifetime byte counter is
@@ -1185,7 +1227,7 @@ function renderApps(currentAppId) {
     const clean = cleanAppTitle(a.title, a.id);
     const btnId = 'app_' + a.id.replace(/[^a-zA-Z0-9_-]/g, '_');
     const isCur = currentAppId && (a.id === currentAppId || a.id === ('com.webos.app.' + currentAppId));
-    return `<button id="${btnId}" class="${isCur ? 'on' : ''}" title="${esc(a.title)}" onclick="c('launchApp','${esc(a.id)}')">${esc(clean)}</button>`;
+    return `<button id="${btnId}" class="${isCur ? 'on' : ''}" title="${esc(a.title)}" onclick="c('launchApp','${jsq(a.id)}')">${esc(clean)}</button>`;
   }).join('');
 }
 
@@ -1461,7 +1503,7 @@ async function tick() {
 
     if (d.inputs && !q('inputs').dataset.built) {
       q('inputs').innerHTML = Object.keys(d.inputs).map(k =>
-        `<button id="in_${k}" onclick="c('input','${k}')">${d.inputs[k]}</button>`).join('') +
+        `<button id="in_${esc(k)}" onclick="c('input','${jsq(k)}')">${esc(d.inputs[k])}</button>`).join('') +
         `<button id="in_livetv" onclick="c('input','livetv')">Live TV</button>`;
       q('inputs').dataset.built = '1';
     }
@@ -1531,7 +1573,7 @@ async function tick() {
       if (box && box.dataset.sig !== sig) {
         box.dataset.sig = sig;
         box.innerHTML = modes.map(m =>
-          `<button id="pm_${m.value}" onclick="c('pictureMode','${m.value}')">${esc(m.label)}</button>`
+          `<button id="pm_${esc(m.value)}" onclick="c('pictureMode','${jsq(m.value)}')">${esc(m.label)}</button>`
         ).join('');
       }
       if (box) {
@@ -1569,10 +1611,114 @@ const REPO = 'https://github.com/rorygallagher2024/lg-webos-mqtt';
 function setVersion(v) {
   const el = q('version');
   if (!v || el.dataset.v === v) return;   // static between restarts, so set it once
+  const had = el.dataset.v;
   el.dataset.v = v;
   el.textContent = 'v' + v;
   el.href = REPO + '/releases/tag/v' + v;
   el.hidden = false;
+  // It came back on a different version, so an upgrade landed: the "newer
+  // version" hint beside this is now about the one that is running.
+  if (had) loadUpdate();
+}
+
+// ---- release check and in-place upgrade ----
+let updBusy = false;
+
+function renderUpdate(d) {
+  const pill = q('upd-pill'), desc = q('upd-desc'), msg = q('upd-msg');
+  const inst = q('upd-install'), roll = q('upd-rollback'), chk = q('upd-check');
+  q('upd-title').textContent = 'Version ' + d.installed;
+
+  const working = d.state === 'checking' || d.state === 'downloading' || d.state === 'installing';
+  pill.className = 'pill ' + (d.state === 'error' ? 'bad'
+    : d.available ? 'warn' : d.state === 'current' ? 'good' : 'idle');
+  pill.textContent = d.state === 'error' ? 'failed'
+    : working ? d.state
+    : d.available ? 'v' + d.latest
+    : d.state === 'current' ? 'up to date'
+    : d.state === 'installed' ? 'restarting'
+    : 'not checked';
+
+  desc.textContent = d.available
+    ? 'v' + d.latest + ' is out. Installing it replaces the server and restarts it; the config, ad blocker and screen saver are kept.'
+    : '';
+  desc.hidden = !d.available;
+
+  const auto = q('upd-auto');
+  auto.className = 'pill ' + (d.autoCheck ? 'good' : 'idle');
+  auto.textContent = d.autoCheck ? 'On' : 'Off';
+  auto.dataset.on = d.autoCheck ? '1' : '';
+  auto.disabled = !d.writable;
+
+  msg.textContent = d.state === 'error' ? (d.error || 'the check failed')
+    : d.state === 'installed' ? 'Installed. The server is restarting - this page reconnects on its own.'
+    : '';
+
+  chk.disabled = working || updBusy;
+  inst.hidden = !(d.available && d.writable);
+  inst.disabled = working || updBusy;
+  inst.textContent = 'Install v' + d.latest;
+  roll.hidden = !(d.rollbackTo && d.writable);
+  roll.disabled = working || updBusy;
+  roll.textContent = 'Roll back to v' + d.rollbackTo;
+
+  const vn = q('version-new');
+  if (d.available) {
+    vn.textContent = '\u2192 v' + d.latest;
+    vn.href = REPO + '/releases/tag/v' + d.latest;
+    vn.hidden = false;
+  } else {
+    vn.hidden = true;
+  }
+}
+
+async function loadUpdate() {
+  try {
+    const d = await (await fetch(api('/api/update'), { cache: 'no-store' })).json();
+    if (d && d.ok) renderUpdate(d);
+  } catch (e) { /* the footer hint is not worth an error banner */ }
+}
+
+async function checkUpdate() {
+  updBusy = true;
+  q('upd-pill').className = 'pill idle';
+  q('upd-pill').textContent = 'checking';
+  q('upd-check').disabled = true;
+  await c('updateCheck');
+  updBusy = false;
+  loadUpdate();
+}
+
+async function installUpdate() {
+  const v = q('upd-install').textContent.replace('Install ', '');
+  if (!confirm('Install ' + v + '?\n\nThe server is replaced and restarted. Settings, the ad blocker and the screen saver are kept, and the previous version stays on the TV so it can be rolled back.')) return;
+  updBusy = true;
+  q('upd-msg').textContent = 'Downloading and installing - this takes a minute.';
+  const r = await c('update');
+  updBusy = false;
+  if (r && r.ok && r.updated) {
+    // Said here rather than read back: the server is already going away, so the
+    // next poll would only fail.
+    q('upd-msg').textContent = 'v' + r.latest + ' installed. The server is restarting - this page reconnects on its own.';
+    return;
+  }
+  if (r && r.ok && !r.updated) q('upd-msg').textContent = r.note || 'nothing newer to install';
+  loadUpdate();
+}
+
+async function toggleAutoCheck() {
+  const b = q('upd-auto');
+  b.disabled = true;
+  const r = await c('updateAutoCheck', !b.dataset.on);
+  if (r && r.ok) renderUpdate(r); else loadUpdate();
+}
+
+async function rollbackUpdate() {
+  if (!confirm('Put the previous version back?')) return;
+  updBusy = true;
+  await c('updateRollback');
+  updBusy = false;
+  loadUpdate();
 }
 
 function showErr(m) { const e = q('err'); e.textContent = m; e.style.display = 'block'; }
@@ -1943,7 +2089,7 @@ async function loadProcesses() {
     q('proc-cur').textContent =
       `${d.count} running · ${d.totalMb.toLocaleString()} MB resident`;
     q('proc-list').innerHTML = d.top.map(p =>
-      `<div class="proc"><div class="p-name">${p.name}</div>` +
+      `<div class="proc"><div class="p-name">${esc(p.name)}</div>` +
       `<div class="p-mb">${p.mb.toFixed(1)} MB</div></div>`).join('');
   } catch (e) {
     q('proc-list').innerHTML =
@@ -1967,7 +2113,7 @@ async function loadCpu() {
     q('cpu-cur').textContent = `${d.busy.toFixed(1)}% busy · ${d.active} active`;
     q('cpu-list').innerHTML = d.top.length
       ? d.top.map(p =>
-          `<div class="proc"><div class="p-name">${p.name}</div>` +
+          `<div class="proc"><div class="p-name">${esc(p.name)}</div>` +
           `<div class="p-mb">${p.pct.toFixed(1)}%</div></div>`).join('')
       : '<div class="sub">Nothing used any CPU over the sample.</div>';
   } catch (e) {
@@ -2032,7 +2178,8 @@ const TABS = {
   servicemenu: 'svcpane',
   screensaver: 'sspane',
   privacy:     'privpane',
-  mqtt:        'mqttpane'
+  mqtt:        'mqttpane',
+  server:      'serverpane'
 };
 let activeTab = null;
 // null until the first telemetry says either way.
@@ -2063,6 +2210,7 @@ function showTab(name) {
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
   if (name === 'system') loadHdmiOnce();
+  if (name === 'server') loadUpdate();
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();
@@ -2681,6 +2829,7 @@ document.addEventListener('visibilitychange', () => {
 
 tick();
 startPolling();
+loadUpdate();   // reads what the server already knows; it does not reach GitHub
 </script>
 </body>
 </html>

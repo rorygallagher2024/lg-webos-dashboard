@@ -2,7 +2,7 @@
 
 A server that runs **on** a rooted LG webOS TV. It serves a live dashboard to
 any browser on the network, and will optionally bridge the TV into Home
-Assistant over MQTT as a single auto-discovered device with up to 69 entities.
+Assistant over MQTT as a single auto-discovered device with up to 71 entities.
 
 The dashboard needs nothing but the TV. Home Assistant control over MQTT is
 optional, and set up in [step 4](#4-home-assistant--mqtt-optional).
@@ -25,7 +25,7 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 3. **Replacing the screen saver.** A clock, a starfield, fireworks, or the
    TV's own readings, each dim or bright, in place of LG's.
 
-4. **Integrating the TV into Home Assistant.** Optional, over MQTT: up to 69
+4. **Integrating the TV into Home Assistant.** Optional, over MQTT: up to 71
    entities arrive as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
@@ -60,7 +60,7 @@ There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the T
 
 ## Home Assistant (auto-discovered device via MQTT)
 
-Up to 69 native entities arrive over MQTT Discovery as a single unified device
+Up to 71 native entities arrive over MQTT Discovery as a single unified device
 <p align="center">
   <a href="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235"><img width="800" alt="Home Assistant MQTT entities" src="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235" /></a>
 </p>
@@ -202,10 +202,17 @@ panel. A firmware update restores the LG default.
 ### Home Assistant bridge
 
 The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where up to
-69 entities arrive in Home Assistant as a single auto-discovered device. The tab
+71 entities arrive in Home Assistant as a single auto-discovered device. The tab
 holds the broker address, credentials, topic prefix and device identity, with
 the bridge's connection state and last publish time beside them.
 [Step 4](#4-home-assistant--mqtt-optional) covers the setup.
+
+### Server updates
+
+The **Server** tab, `/?tab=server`. The installed version, whether a newer
+release is out, and buttons to install it or roll back to the version before.
+**Check daily** looks on its own and lets Home Assistant offer the update.
+[Updating](#updating) covers installs from before the tab existed.
 
 ## Requirements
 
@@ -232,6 +239,7 @@ versions and panel types.
 | OLED55G42LW | 24 | 33.31.68 | OLED | Rooted with slopbro, not the Homebrew Channel |
 | OLED42C24LA | 9.2.2 (22+) | 23.25.55 | OLED | Rooted with jsbro-autoroot |
 | OLED65B7V-Z | 3.9.3 | 06.10.65 | OLED | No SoC temperature or eMMC wear readings |
+| OLED55B46LA | 24 (9.24.8) | 23.23.30 | OLED | Installed over telnet; no logo light on this model |
 
 **If you run it on anything else, please open an issue whether it's working or not**
 Include your model, webOS version and
@@ -290,7 +298,8 @@ on its own.
 No configuration is needed for this part. Without a config file the dashboard
 runs on port 8080, the controls are live, MQTT is off, and power off / reboot
 are disabled. Nothing is sent anywhere: the server talks to the TV and to
-whoever opens the page.
+whoever opens the page, and reaches the internet only if the release check under
+[Updating](#updating) is switched on.
 
 That is a complete install &mdash; step 4 is optional.
 
@@ -434,6 +443,73 @@ example automations.
 ssh root@<tv-ip> /var/lib/tvweb/tvwebctl status    # start | stop | restart | status
 ```
 
+### Updating
+
+How depends on the install. One with a **Server** tab in its dashboard updates
+itself; an older one is updated by deploying again, after which it has the tab.
+
+**With the Server tab.** **Check now** looks for a newer release, **Install**
+puts it on and restarts the server, and **Roll back** returns to the version it
+replaced. Home Assistant offers the same install while the
+[daily check](#checking-automatically) is on. Over ssh:
+
+```bash
+ssh root@<tv-ip> /var/lib/tvweb/tvwebctl update           # install the latest release
+ssh root@<tv-ip> /var/lib/tvweb/tvwebctl update --check   # report without installing
+ssh root@<tv-ip> /var/lib/tvweb/tvwebctl rollback         # put the previous version back
+```
+
+**Without it, or for something unreleased,** pull the latest code into the clone
+from [step 1](#1-get-the-files) and deploy again, with the flags used the first
+time:
+
+```bash
+cd lg-webos-mqtt/server
+git pull
+./deploy.sh <tv-ip> --persist
+```
+
+Only the server's own files are replaced: the TV keeps its settings, ad blocker,
+screen saver and stopped services.
+
+An in-place upgrade downloads the release tarball, replaces the files the
+release ships and restarts. `config.json`, the ad blocker's hosts file, the
+staged screen saver and the list of stopped LG services are left alone; the
+replaced version stays in `/var/lib/tvweb/.previous` for `tvwebctl rollback`.
+The boot hook is refreshed only where one is already installed.
+
+The download goes through curl or wget on the TV. The TV's own `/usr/bin/curl`
+reaches GitHub on the sets tested; where it cannot, the check says so and nothing
+else changes, and installing a current curl or wget fixes it. An installed client
+is tried first: the probe looks in the Homebrew Channel's own
+`/media/developer/bin`, then `/usr/local/bin`, `/opt/bin`, `/opt/usr/bin`,
+`/var/lib/webosbrew/bin` and `/home/root/bin`. Point
+`"update": { "client": "/path/to/curl" }` at one that lives somewhere else.
+
+`.previous` is a complete copy of the version that was replaced, so getting back
+does not depend on the installed `tvwebctl` having a `rollback` command:
+
+```bash
+ssh root@<tv-ip>
+/var/lib/tvweb/tvwebctl stop
+cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
+/var/lib/tvweb/tvwebctl start
+```
+
+### Checking automatically
+
+Off by default, because it is the only thing here that reaches off the LAN.
+**Check daily** in the Server tab switches it on, as does `config.json`:
+
+```json
+{ "update": { "check": true, "intervalHours": 24 } }
+```
+
+With it on, the server asks GitHub for the latest release once a day, the
+dashboard footer shows a newer version next to the installed one, and Home
+Assistant gets the update entity. The request says nothing about the TV beyond
+the address any HTTP request reveals.
+
 ## Uninstalling
 
 ```bash
@@ -471,7 +547,7 @@ Full detail, including the MQTT ACL guidance and optional TLS, is in
 ## Documentation
 
 * [docs/SECURITY.md](docs/SECURITY.md) &mdash; threat model, SSH migration, MQTT hardening
-* [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) &mdash; up to 69 entities, universal media player, example automations
+* [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) &mdash; up to 71 entities, universal media player, example automations
 * [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) &mdash; architecture, `/proc/lg` reference, platform quirks
 
 ---

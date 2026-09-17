@@ -4,8 +4,8 @@
  *
  * IMPORTANT: the TV ships node v0.12.2 (2015). This file must stay ES5 -
  * no arrow functions, no const/let, no template literals, no async/await,
- * no Object.assign. The browser-side code further down is NOT restricted,
- * because it runs in your phone/laptop browser, not on the TV.
+ * no Object.assign; scripts/check-es5.py enforces it. The dashboard in
+ * assets/ui.html is NOT restricted: it runs in a browser, not on the TV.
  *
  * Run:  node tvweb.js
  */
@@ -77,6 +77,24 @@ var CONFIG = {
     name: '',
     model: '',
     manufacturer: 'LG'
+  },
+
+  /*
+   * Release checks. Off by default: this is the only thing here that makes the
+   * TV talk to anything off the LAN, and a project whose point is reducing what
+   * the set reaches out to should not start doing it unasked. The dashboard's
+   * Check now button and `tvwebctl update` work either way - those are the
+   * owner asking. With this on, the check also feeds Home Assistant's update
+   * entity.
+   */
+  update: {
+    check: false,
+    intervalHours: 24,
+    /*
+     * Path to a TLS-capable curl or wget. Normally left blank: the probe looks
+     * in the usual places. Set it when a rooted client lives somewhere else.
+     */
+    client: ''
   }
 };
 
@@ -157,6 +175,23 @@ loadConfig();
     else if (a[i] === '--config') i++;   // consumed before loadConfig
     else if (a[i] === '--no-mqtt') { CONFIG.mqtt = CONFIG.mqtt || {}; CONFIG.mqtt.enabled = false; }
     else if (a[i] === '--no-control') CONFIG.allowControl = false;
+  }
+})();
+
+/*
+ * One-shot modes, behind `tvwebctl update` and `tvwebctl rollback`. They run
+ * the updater and exit rather than starting the server, so a release is
+ * installed by the same code whether the request came from the dashboard, Home
+ * Assistant or a shell - and so an upgrade works on an install with the
+ * dashboard switched off and the server not running.
+ */
+var CLI_MODE = null;
+(function cliMode() {
+  var a = process.argv.slice(2);
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] === '--update') CLI_MODE = 'update';
+    else if (a[i] === '--check-update') CLI_MODE = 'check';
+    else if (a[i] === '--rollback') CLI_MODE = 'rollback';
   }
 })();
 
@@ -3401,9 +3436,576 @@ function doControl(action, value, cb) {
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
+    case 'updateCheck':
+      return checkForUpdate(true, function (e, summary) {
+        if (e) return cb({ ok: false, error: e.message });
+        cb(summary);
+      });
+
+    /*
+     * Fetches code from GitHub and installs it over this copy. Gated by
+     * allowControl along with everything else here and by nothing further: the
+     * source is one repository over verified TLS, so the most anyone who can
+     * reach this can do is move the set to the current release.
+     */
+    case 'update':
+      return installUpdate(function (r) {
+        if (r.ok && r.updated) {
+          /*
+           * Answer first, restart after: the new code only runs once the
+           * process does, and the caller needs the result before this one
+           * goes away.
+           */
+          setTimeout(function () {
+            if (!restartSelf()) console.error('update: no tvwebctl found - restart manually to apply');
+          }, 600);
+        }
+        cb(r);
+      });
+
+    case 'updateAutoCheck':
+      return setAutoCheck(value === true || value === 'on' || value === 'true', cb);
+
+    case 'updateRollback':
+      return rollbackUpdate(function (r) {
+        if (r.ok) setTimeout(function () { restartSelf(); }, 600);
+        cb(r);
+      });
+
     default:
       return cb({ ok: false, error: 'unknown action' });
   }
+}
+
+// ---------------------------------------------------------------- updates
+/*
+ * Release checks and in-place upgrades.
+ *
+ * In the server core rather than behind the dashboard or the MQTT bridge,
+ * because either half can be switched off and an upgrade has to be reachable
+ * from whichever is left: the dashboard, Home Assistant's update entity, or
+ * `tvwebctl update` over ssh.
+ */
+var UPDATE_REPO = 'rorygallagher2024/lg-webos-mqtt';
+var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases/latest';
+var UPDATE_TARBALL = 'https://codeload.github.com/' + UPDATE_REPO + '/tar.gz/refs/tags/v';
+var BOOT_HOOK = '/var/lib/webosbrew/init.d/50-tvweb';
+
+// Where the files go: wherever this copy is running from, which on a TV is
+// /var/lib/tvweb. Staging sits inside it so the swap is a rename - across
+// filesystems it would not be.
+var INSTALL_DIR = __dirname;
+var STAGE_DIR = path.join(INSTALL_DIR, '.update');
+var PREVIOUS_DIR = path.join(INSTALL_DIR, '.previous');
+
+/*
+ * Where a curl or wget tends to land. One the owner installed is tried before
+ * the TV's own in /usr/bin and /bin, being the newer of the two.
+ * /media/developer/bin is the Homebrew Channel's own bin directory, where an
+ * installed curl has been found in use.
+ */
+var CLIENT_DIRS = ['/media/developer/bin', '/usr/local/bin', '/opt/bin', '/opt/usr/bin',
+                   '/var/lib/webosbrew/bin', '/home/root/bin', '/usr/bin', '/bin'];
+var fetchClient = null;   // the one that answered, remembered for the next call
+
+var UPDATE = {
+  state: 'idle',   // idle | checking | available | current | downloading | installing | installed | error
+  latest: null,
+  url: null,
+  notes: null,
+  checked: 0,
+  error: null,
+  busy: false
+};
+
+// Set by the MQTT bridge when it starts, so a check that finishes anywhere
+// reaches Home Assistant's update entity, and switching the daily check adds or
+// removes that entity.
+var mqttPublishUpdate = null;
+var mqttPublishDiscovery = null;
+
+function setUpdateState(state, err) {
+  UPDATE.state = state;
+  UPDATE.error = err || null;
+  if (mqttPublishUpdate) mqttPublishUpdate();
+}
+
+function updateSummary() {
+  return {
+    ok: true,
+    state: UPDATE.state,
+    installed: TVWEB_VERSION,
+    latest: UPDATE.latest,
+    available: !!(UPDATE.latest && verNewer(UPDATE.latest, TVWEB_VERSION)),
+    url: UPDATE.url,
+    notes: UPDATE.notes,
+    error: UPDATE.error,
+    client: fetchClient,
+    autoCheck: !!(CONFIG.update && CONFIG.update.check),
+    rollbackTo: rollbackVersion(),
+    writable: CONFIG.allowControl,
+    checkedMs: UPDATE.checked ? Date.now() - UPDATE.checked : null
+  };
+}
+
+function verParts(v) {
+  var a = String(v || '').replace(/^v/i, '').split('.');
+  return [num(a[0], 0), num(a[1], 0), num(a[2], 0)];
+}
+
+function verNewer(a, b) {
+  var x = verParts(a), y = verParts(b);
+  for (var i = 0; i < 3; i++) {
+    if (x[i] !== y[i]) return x[i] > y[i];
+  }
+  return false;
+}
+
+function findBin(name) {
+  for (var i = 0; i < CLIENT_DIRS.length; i++) {
+    var full = CLIENT_DIRS[i] + '/' + name;
+    if (fs.existsSync(full)) return full;
+  }
+  return null;
+}
+
+function execErr(err, stderr) {
+  if (err && err.killed) return 'timed out';
+  var m = String(stderr || '').split('\n')[0].trim();
+  /*
+   * Both clients are run quietly, so a failure usually arrives as nothing but
+   * an exit code - and which code it is says what went wrong: curl 60 is a
+   * certificate it would not trust, 35 a handshake it could not complete, 6 a
+   * name it could not resolve.
+   */
+  if (!m && err && err.code) return 'exited ' + err.code;
+  return m || (err && err.message) || 'failed';
+}
+
+/*
+ * The status GitHub answered with, where the client got one. Both clients name
+ * it on stderr:
+ *   busybox wget  wget: server returned error: HTTP/1.1 404 Not Found
+ *   GNU wget      ERROR 404: Not Found.
+ *   curl -fS      curl: (22) The requested URL returned error: 404
+ * Matched by phrase rather than by hunting for a 4xx-shaped number, which would
+ * also match "Failed to connect to api.github.com port 443".
+ *
+ * Returns -1 for an error whose status is not in the text: GNU wget under -q
+ * prints nothing at all, but both clients keep a dedicated exit code for "the
+ * server answered with an error" - curl 22, wget 8.
+ */
+function httpErrorStatus(err, stderr) {
+  var text = String(stderr || '');
+  var m = /returned error:?\s*(?:HTTP\/[\d.]+\s+)?([1-5]\d\d)/i.exec(text) ||
+          /\bERROR\s+([1-5]\d\d)\b/i.exec(text);
+  if (m) return parseInt(m[1], 10);
+  if (err && (err.code === 22 || err.code === 8)) return -1;
+  return 0;
+}
+
+function githubSaid(status, url) {
+  var where = String(url).replace(/^https?:\/\/[^\/]+/, '');
+  if (status === 404) {
+    return 'GitHub returned 404 for ' + where +
+           ' - no release published yet, or the repository is not visible';
+  }
+  if (status === 403 || status === 429) {
+    /*
+     * Hedged on purpose. All that is known is that something answered over
+     * HTTP, and 403 is equally what a proxy, a captive portal or a filtering
+     * resolver returns - naming only one cause would mislead as badly as the
+     * missing-client message this replaced.
+     */
+    return status + ' for ' + where +
+           ' - either the API rate limit for this address is spent (60 an hour ' +
+           'unauthenticated), or something on the network refused the request';
+  }
+  if (status > 0) return 'GitHub returned ' + status + ' for ' + where;
+  return 'GitHub answered with an error for ' + where;
+}
+
+function fetchArgs(bin, url, outFile) {
+  var ua = 'tvweb/' + TVWEB_VERSION;
+  /*
+   * -T and -U are the only timeout and user-agent flags both busybox and GNU
+   * wget accept; --timeout= is GNU's alone. GitHub refuses a request with no
+   * user agent, and both clients set one by default, but naming this one makes
+   * the TV identifiable in a rate-limit argument.
+   */
+  if (/wget$/.test(bin)) return ['-q', '-T', '30', '-U', ua, '-O', outFile || '-', url];
+  return ['-fsSL', '--max-time', '30', '-A', ua, '-o', outFile || '-', url];
+}
+
+/*
+ * Fetch a URL with whichever client on this TV can reach GitHub.
+ *
+ * Which one that is belongs to the TV, not to this code. node 0.12's https has
+ * no CA bundle worth trusting. The stock curl reaches GitHub on both sets
+ * tested - 7.53.1 against OpenSSL 1.0.2p on webOS 4.4.3, 7.82.0 against
+ * OpenSSL 3.0.9 on webOS 9.2.2 - but whether another firmware's does is not
+ * something to assume. Probing beats hardcoding a path, and the probe is the
+ * real request rather than a separate reachability check - a client that
+ * returns the release JSON has proved everything that matters.
+ *
+ * Certificate verification is never turned off. What comes back is run as root
+ * on the next restart; an unverified download would be worse than no update
+ * path at all.
+ */
+function probeFetch(url, outFile, cb) {
+  var list = [];
+  var configured = (CONFIG.update && CONFIG.update.client) || '';
+  if (fetchClient) list.push(fetchClient);
+  if (configured) list.push(configured);
+  for (var d = 0; d < CLIENT_DIRS.length; d++) {
+    list.push(CLIENT_DIRS[d] + '/curl');
+    list.push(CLIENT_DIRS[d] + '/wget');
+  }
+
+  var i = 0, last = '', seen = {};
+  (function next() {
+    if (i >= list.length) {
+      return cb(new Error('no HTTP client on this TV could reach GitHub' +
+                          (last ? ' (' + last + ')' : '') +
+                          '. Install a current curl or wget.'));
+    }
+    var bin = list[i++];
+    if (seen[bin] || !fs.existsSync(bin)) return next();
+    seen[bin] = 1;
+    execFile(bin, fetchArgs(bin, url, outFile),
+             { timeout: outFile ? 180000 : 45000, maxBuffer: 1024 * 1024 },
+             function (err, stdout, stderr) {
+      if (err) {
+        /*
+         * A status means this client reached GitHub and GitHub answered, so the
+         * transport works and the request is what went wrong. Trying the rest of
+         * the list would ask the same question again, and reporting it as a
+         * missing client would send someone off installing curl for nothing.
+         */
+        var status = httpErrorStatus(err, stderr);
+        if (status) {
+          fetchClient = bin;   // it works; the answer is just not the one wanted
+          return cb(new Error(githubSaid(status, url)));
+        }
+        last = path.basename(bin) + ': ' + execErr(err, stderr);
+        return next();
+      }
+      fetchClient = bin;
+      cb(null, String(stdout || ''), bin);
+    });
+  })();
+}
+
+/*
+ * Ask GitHub for the latest release. `force` is a person pressing a button, and
+ * only shortens the cache rather than removing it: unauthenticated API calls
+ * are limited to 60 an hour from one address, and a held-down button should not
+ * spend them.
+ */
+function checkForUpdate(force, cb) {
+  cb = cb || function () {};
+  if (UPDATE.state === 'checking') return cb(null, updateSummary());
+  var minAge = force ? 10000 : 3600000;
+  if (UPDATE.latest && (Date.now() - UPDATE.checked) < minAge) return cb(null, updateSummary());
+
+  setUpdateState('checking');
+  probeFetch(UPDATE_API, null, function (err, body) {
+    if (err) {
+      setUpdateState('error', err.message);
+      return cb(err, updateSummary());
+    }
+    var rel = null;
+    try { rel = JSON.parse(body); } catch (e) {}
+    if (!rel || !rel.tag_name) {
+      /*
+       * Valid JSON with no tag in it is a real answer that is not a release -
+       * a rate limit, most likely - so report what it said rather than
+       * blaming the client that successfully delivered it.
+       */
+      var why = (rel && rel.message) ? rel.message : 'GitHub did not return a release';
+      setUpdateState('error', why);
+      return cb(new Error(why), updateSummary());
+    }
+    UPDATE.latest = String(rel.tag_name).replace(/^v/i, '');
+    UPDATE.url = rel.html_url || null;
+    UPDATE.notes = rel.body ? String(rel.body).slice(0, 800) : null;
+    UPDATE.checked = Date.now();
+    setUpdateState(verNewer(UPDATE.latest, TVWEB_VERSION) ? 'available' : 'current');
+    console.log('update: installed v' + TVWEB_VERSION + ', latest v' + UPDATE.latest +
+                ' (' + UPDATE.state + ', via ' + fetchClient + ')');
+    cb(null, updateSummary());
+  });
+}
+
+var updateFirstTimer = null, updateEveryTimer = null;
+
+// The daily check, off unless asked for. Rescheduled rather than set once, so
+// the dashboard's switch takes effect without a restart.
+function scheduleUpdateChecks(firstMs) {
+  if (updateFirstTimer) { clearTimeout(updateFirstTimer); updateFirstTimer = null; }
+  if (updateEveryTimer) { clearInterval(updateEveryTimer); updateEveryTimer = null; }
+  if (!(CONFIG.update && CONFIG.update.check)) return;
+  var everyH = num(CONFIG.update.intervalHours, 24);
+  if (!(everyH >= 1 && everyH <= 168)) everyH = 24;
+  if (firstMs) {
+    updateFirstTimer = setTimeout(function () {
+      updateFirstTimer = null;
+      checkForUpdate(false);
+    }, firstMs);
+  }
+  updateEveryTimer = setInterval(function () { checkForUpdate(false); }, everyH * 3600000);
+  console.log('update: checking for new releases every ' + everyH + 'h');
+}
+
+/*
+ * Saved to config.json so it survives a restart, and applied in place: all it
+ * changes is a timer and whether Home Assistant is offered the update entity,
+ * neither of which needs the restart that broker settings do.
+ */
+function setAutoCheck(on, cb) {
+  writeSettings({ update: { check: on } }, function (err) {
+    if (err) return cb({ ok: false, error: 'could not save the setting: ' + err.message });
+    CONFIG.update = CONFIG.update || {};
+    CONFIG.update.check = on;
+    scheduleUpdateChecks(0);
+    if (mqttPublishDiscovery) mqttPublishDiscovery();
+    console.log('update: daily check switched ' + (on ? 'on' : 'off'));
+    if (!on) return cb(updateSummary());
+    // Checked before answering, so the switch shows at once whether this TV
+    // can reach GitHub rather than "not checked" until the page is reloaded.
+    checkForUpdate(false, function () { cb(updateSummary()); });
+  });
+}
+
+function copyFile(src, dst) {
+  fs.writeFileSync(dst, fs.readFileSync(src));
+}
+
+function listFiles(dir, base, out) {
+  base = base || dir;
+  out = out || [];
+  var names = fs.readdirSync(dir);
+  for (var i = 0; i < names.length; i++) {
+    var full = path.join(dir, names[i]);
+    var st;
+    try { st = fs.statSync(full); } catch (e) { continue; }
+    if (st.isDirectory()) listFiles(full, base, out);
+    else out.push(path.relative(base, full));
+  }
+  return out;
+}
+
+function rmrf(dir, cb) {
+  if (!fs.existsSync(dir)) return cb();
+  execFile('/bin/rm', ['-rf', dir], { timeout: 20000 }, function () { cb(); });
+}
+
+// GitHub wraps a source tarball in one directory named for the commit, so the
+// name is not known in advance.
+function tarballTop(dir) {
+  var names = fs.readdirSync(dir);
+  for (var i = 0; i < names.length; i++) {
+    var full = path.join(dir, names[i]);
+    try {
+      if (fs.statSync(full).isDirectory()) return full;
+    } catch (e) {}
+  }
+  return null;
+}
+
+function declaredVersion(file) {
+  var m = /TVWEB_VERSION\s*=\s*'([^']+)'/.exec(fs.readFileSync(file, 'utf8').slice(0, 4096));
+  return m ? m[1] : null;
+}
+
+function rollbackVersion() {
+  try {
+    return declaredVersion(path.join(PREVIOUS_DIR, 'tvweb.js'));
+  } catch (e) { return null; }
+}
+
+/*
+ * Copy one file into place beside the running install. Always written under a
+ * temporary name and renamed, never written over the target: busybox ash reads
+ * a script as it runs, so overwriting tvwebctl would corrupt the watchdog loop
+ * already executing out of it. A rename leaves that process on the old inode
+ * until it next starts.
+ */
+function installFile(src, dst, exec) {
+  mkdirp(path.dirname(dst));
+  var tmp = dst + '.new';
+  copyFile(src, tmp);
+  fs.chmodSync(tmp, exec ? 0755 : 0644);
+  fs.renameSync(tmp, dst);
+}
+
+function isExecutable(rel) {
+  return rel === 'tvwebctl' || /\.sh$/.test(rel);
+}
+
+/*
+ * Download the latest release and install it over this one.
+ *
+ * The directory is updated in place rather than swapped wholesale. Everything
+ * that is not code lives in here too - config.json, the adblock hosts file, the
+ * staged screen saver that a boot hook bind-mounts, the list of stopped LG
+ * services - and a swap has to carry every one of them across correctly or
+ * silently lose it. Replacing only the files the release ships cannot lose
+ * state it never touches. The replaced copies are kept in .previous for
+ * `tvwebctl rollback`.
+ */
+function installUpdate(cb) {
+  if (UPDATE.busy) return cb({ ok: false, error: 'an update is already running' });
+
+  /*
+   * A git checkout is updated with git. Writing release files over one would
+   * lose uncommitted work, and this is reachable from a dashboard button.
+   */
+  if (fs.existsSync(path.join(INSTALL_DIR, '..', '.git'))) {
+    return cb({ ok: false, error: 'this is a git checkout - update it with git, not from here' });
+  }
+
+  UPDATE.busy = true;
+  var done = function (r) {
+    UPDATE.busy = false;
+    if (mqttPublishUpdate) mqttPublishUpdate();
+    cb(r);
+  };
+  var fail = function (msg) {
+    setUpdateState('error', msg);
+    console.error('update: ' + msg);
+    rmrf(STAGE_DIR, function () { done({ ok: false, error: msg }); });
+  };
+
+  checkForUpdate(true, function (err) {
+    // done() rather than cb(): it clears the in-progress flag Home Assistant is
+    // watching, which a bare return would leave asserted.
+    if (err) return done({ ok: false, error: err.message });
+    var ver = UPDATE.latest;
+    // A check already in flight returns what is known so far, which on a first
+    // run is nothing.
+    if (!ver) return done({ ok: false, error: 'no release information yet - check first' });
+    if (!verNewer(ver, TVWEB_VERSION)) {
+      return done({ ok: true, updated: false, installed: TVWEB_VERSION, latest: ver,
+                    note: 'already on the latest release' });
+    }
+
+    setUpdateState('downloading');
+    rmrf(STAGE_DIR, function () {
+      try { mkdirp(STAGE_DIR); } catch (e) { return fail('could not create ' + STAGE_DIR + ': ' + e.message); }
+      var gz = path.join(STAGE_DIR, 'release.tar.gz');
+      console.log('update: downloading v' + ver);
+      probeFetch(UPDATE_TARBALL + ver, gz, function (e2) {
+        if (e2) return fail(e2.message);
+
+        /*
+         * Inflated here rather than with `tar -xz`: node's zlib is certain to
+         * be present and busybox's gzip support is not, and a truncated
+         * download fails to inflate - which is the check for an incomplete
+         * one, without trusting a content length.
+         */
+        var gzBuf;
+        try { gzBuf = fs.readFileSync(gz); } catch (e) { return fail('could not read the download: ' + e.message); }
+        zlib.gunzip(gzBuf, function (e3, tarBuf) {
+          if (e3) return fail('the download did not arrive complete (' + e3.message + ')');
+          var tarBin = findBin('tar');
+          if (!tarBin) return fail('no tar on this TV to unpack the release with');
+          var tarFile = path.join(STAGE_DIR, 'release.tar');
+          try { fs.writeFileSync(tarFile, tarBuf); } catch (e) { return fail('could not stage the release: ' + e.message); }
+
+          setUpdateState('installing');
+          execFile(tarBin, ['-xf', tarFile, '-C', STAGE_DIR], { timeout: 120000 }, function (e4, so, se) {
+            if (e4) return fail('could not unpack the release: ' + execErr(e4, se));
+            var top = tarballTop(STAGE_DIR);
+            var src = top ? path.join(top, 'server') : null;
+            if (!src || !fs.existsSync(path.join(src, 'tvweb.js'))) {
+              return fail('the release tarball has no server directory in it');
+            }
+            /*
+             * The download states its own version. Checking it against the tag
+             * that was asked for catches a mangled or redirected fetch before
+             * anything is replaced.
+             */
+            var decl;
+            try { decl = declaredVersion(path.join(src, 'tvweb.js')); } catch (e) { decl = null; }
+            if (decl !== ver) {
+              return fail('the downloaded release declares v' + decl + ', not v' + ver);
+            }
+
+            var files = listFiles(src), installed = [], bad = null;
+            rmrf(PREVIOUS_DIR, function () {
+              for (var i = 0; i < files.length; i++) {
+                var rel = files[i];
+                // deploy.sh runs on a workstation, and the boot hook is placed
+                // by name somewhere else entirely - see below.
+                if (rel === 'deploy.sh' || rel === '50-tvweb.sh') continue;
+                var dst = path.join(INSTALL_DIR, rel);
+                try {
+                  if (fs.existsSync(dst)) {
+                    var keep = path.join(PREVIOUS_DIR, rel);
+                    mkdirp(path.dirname(keep));
+                    copyFile(dst, keep);
+                  }
+                  installFile(path.join(src, rel), dst, isExecutable(rel));
+                  installed.push(rel);
+                } catch (e) { bad = rel + ': ' + e.message; break; }
+              }
+              if (bad) return fail('could not install ' + bad + ' (v' + TVWEB_VERSION + ' is in .previous)');
+
+              /*
+               * The boot hook, only where one is already installed: --persist
+               * is a deliberate choice, and an upgrade that started the server
+               * at boot on a set whose owner had not asked for that would be a
+               * surprise. A hook that cannot be refreshed is not worth failing
+               * the upgrade over - the new server is already in place.
+               */
+              if (fs.existsSync(BOOT_HOOK) && fs.existsSync(path.join(src, '50-tvweb.sh'))) {
+                try {
+                  installFile(path.join(src, '50-tvweb.sh'), BOOT_HOOK, true);
+                } catch (e) {
+                  console.error('update: could not refresh the boot hook: ' + e.message);
+                }
+              }
+
+              rmrf(STAGE_DIR, function () {
+                setUpdateState('installed');
+                console.log('update: installed v' + ver + ' over v' + TVWEB_VERSION +
+                            ' (' + installed.length + ' files)');
+                done({ ok: true, updated: true, installed: TVWEB_VERSION, latest: ver,
+                       files: installed.length });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/*
+ * Put back what the last update replaced. The copies stay where they are
+ * afterwards, so rolling back twice does nothing rather than reinstating the
+ * version that was just rejected.
+ *
+ * An update replaces tvwebctl along with everything else, so the command that
+ * undoes it is the new release's copy: `rollback` has to keep its name, or an
+ * install has no way back to the version it came from. .previous holds a whole
+ * copy either way, so restoring it by hand is always possible - see the README.
+ */
+function rollbackUpdate(cb) {
+  var was = rollbackVersion();
+  if (!was) return cb({ ok: false, error: 'nothing to roll back to' });
+  var files = listFiles(PREVIOUS_DIR);
+  for (var i = 0; i < files.length; i++) {
+    try {
+      installFile(path.join(PREVIOUS_DIR, files[i]), path.join(INSTALL_DIR, files[i]),
+                  isExecutable(files[i]));
+    } catch (e) {
+      return cb({ ok: false, error: 'could not restore ' + files[i] + ': ' + e.message });
+    }
+  }
+  console.log('update: rolled back to v' + was + ' (' + files.length + ' files)');
+  cb({ ok: true, restored: was, files: files.length });
 }
 
 // ------------------------------------------------------- external assets
@@ -3481,7 +4083,7 @@ var UI_HTML_GZ = null;
 var ASSET_CACHE = {};
 
 (function loadUI() {
-  if (!WEB_ENABLED) return;   // nothing will serve it
+  if (!WEB_ENABLED || CLI_MODE) return;   // nothing will serve it
   var f = assetPath('ui.html');
   if (!f) {
     console.error('assets: ui.html not found in ' + ASSET_DIRS.join(', ') +
@@ -3765,6 +4367,12 @@ var server = http.createServer(function (req, res) {
     return collectStats(function (s) { send(res, 200, JSON.stringify(s)); });
   }
 
+  /* Reports what is known, and never checks on its own: the dashboard polls
+     this, and a poll that reached GitHub would be a request per viewer. */
+  if (pathname === '/api/update') {
+    return send(res, 200, JSON.stringify(updateSummary()));
+  }
+
   if (pathname === '/api/settings' && req.method === 'GET') {
     if (!authed(u.query)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
     var mc = CONFIG.mqtt || {};
@@ -3849,12 +4457,13 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/control' && req.method === 'POST') {
     /*
-     * CSRF guard. Responses carry Access-Control-Allow-Origin:*, and a POST
-     * with a "simple" content type (text/plain, form-urlencoded) is sent by a
-     * browser WITHOUT a CORS preflight - so any web page the user visits could
-     * otherwise drive this TV. Requiring application/json forces a preflight,
-     * which this server never approves, and rejecting cross-site Origins
-     * closes the gap for anything that does slip through.
+     * CSRF guard. No CORS grant is sent, so another site cannot read the
+     * reply - but a POST with a "simple" content type (text/plain,
+     * form-urlencoded) is still *delivered* without a preflight, and the TV
+     * has acted on it by the time the response is discarded. Requiring
+     * application/json forces a preflight, which this server never approves,
+     * and rejecting cross-site Origins closes the gap for anything that does
+     * slip through.
      */
     var ctype = String(req.headers['content-type'] || '').toLowerCase();
     if (ctype.indexOf('application/json') !== 0) {
@@ -3894,13 +4503,14 @@ var mqttEnabled = !!(CONFIG.mqtt && CONFIG.mqtt.enabled && CONFIG.mqtt.host);
  * dashboard and the MQTT bridge switched off there is no reason for the
  * process to exist, and a silent no-op is harder to diagnose than an exit.
  */
-if (!webEnabled && !mqttEnabled) {
+if (!CLI_MODE && !webEnabled && !mqttEnabled) {
   console.error('nothing to do: web.enabled is false and mqtt is not configured.');
   console.error('enable one of them in config.json.');
   process.exit(1);
 }
 
 (function checkBootAdBlock() {
+  if (CLI_MODE) return;
   try {
     if (fs.existsSync(ADBLOCK_FLAG_FILE) && !isAdBlockActive() && fs.existsSync(ADBLOCK_HOSTS_FILE)) {
       execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 }, function (err) {
@@ -3915,7 +4525,10 @@ if (!webEnabled && !mqttEnabled) {
   } catch (e) {}
 })();
 
-if (webEnabled) {
+if (CLI_MODE) {
+  // A one-shot run installs a release and exits: no listener, no bridge, no
+  // timers, and nothing that would fight the server already running.
+} else if (webEnabled) {
   server.listen(CONFIG.port, CONFIG.host, function () {
     console.log('tvweb listening on ' + CONFIG.host + ':' + CONFIG.port +
                 '  control=' + CONFIG.allowControl + '  power=' + CONFIG.allowPower +
@@ -3970,6 +4583,16 @@ MiniMQTT.prototype.connect = function() {
   var self = this;
   if (this.client) return;
   clearTimeout(this.retryTimer);
+
+  /*
+   * Start each connection on an empty buffer. A drop mid-packet - a broker
+   * restart, a Wi-Fi blip - leaves a partial packet here, and the new
+   * connection's CONNACK would be appended to that fragment. The parser reads
+   * the remaining length from the fragment's bytes, waits for a packet that
+   * never completes, and the client stays unconnected: publish() then silently
+   * returns and the bridge goes quiet until the process restarts.
+   */
+  this.buffer = toBuffer([]);
 
   /*
    * Plain TCP by default, since that is what a typical home broker listens on.
@@ -4103,7 +4726,18 @@ MiniMQTT.prototype._parse = function() {
       var tLen = (packetBody[0] << 8) | packetBody[1];
       var topic = packetBody.slice(2, 2 + tLen).toString('utf8');
       var pOffset = 2 + tLen;
-      if (qos > 0) pOffset += 2; // skip packet identifier
+      if (qos > 0) {
+        /*
+         * Subscriptions are made at QoS 0 and a broker may not deliver above
+         * the granted QoS, so this should never arrive. If one does, a QoS 1
+         * message left unacknowledged is redelivered on a timer for as long as
+         * the session lasts, so answer it rather than drop it silently.
+         */
+        if (qos === 1 && this.client) {
+          this.client.write(toBuffer([0x40, 0x02, packetBody[pOffset], packetBody[pOffset + 1]]));
+        }
+        pOffset += 2;   // past the packet identifier
+      }
       var payload = packetBody.slice(pOffset).toString('utf8');
       this.emit('message', topic, payload);
     }
@@ -4208,6 +4842,7 @@ function setupHomeAssistant() {
   var cmdVolTopic = pfx + '/command/volume';
   var cmdInputTopic = pfx + '/command/input';
   var cmdToastTopic = pfx + '/command/toast';
+  var updateTopic = pfx + '/update';
 
   var devInfo = {
     identifiers: [devId],
@@ -5016,6 +5651,17 @@ function setupHomeAssistant() {
       }
     ];
 
+    entities.push({
+      type: 'update', id: 'server_update',
+      payload: {
+        name: 'Server Update',
+        state_topic: updateTopic,
+        command_topic: pfx + '/command/update',
+        payload_install: 'install',
+        icon: 'mdi:package-up'
+      }
+    });
+
     if (CONFIG.allowPower) {
       entities.push({
         type: 'button', id: 'restart',
@@ -5045,6 +5691,19 @@ function setupHomeAssistant() {
      */
     // Each of these has one field behind it, and is published only once this
     // set has reported that field - see hdmiSeen.
+    /*
+     * Entities this set cannot answer for.
+     *
+     * Publishing one anyway leaves Home Assistant with a sensor that reads
+     * "unknown" for the life of the install - or worse, a confident 0 that
+     * looks like a real measurement. A retained empty config removes one that
+     * a previous run published, so a set that loses a capability (or a config
+     * that renames the device) does not leave orphans behind holding their
+     * last value.
+     *
+     * Order matters only for the OLED rule last: its log line counts what it
+     * withheld, after the rules above have taken their own.
+     */
     var HDMI_DIAG_ONLY = {
       hdmi_link_mode: 'phy_mode', hdmi_chroma: 'chroma', hdmi_hdcp: 'hdcp',
       hdmi_cable_errors: 'phy_errors', hdmi_allm: 'allm', hdmi_vrr: 'vrr'
@@ -5063,211 +5722,105 @@ function setupHomeAssistant() {
     };
 
     /*
-     * Withhold remote battery entity if Magic Remote info is absent (e.g. set only uses IR).
+     * The component is part of the discovery topic, so the clear has to use
+     * the entity's own type: clearing homeassistant/sensor/... for something
+     * published as a switch removes nothing and leaves the switch stranded.
      */
-    if (!readRemoteInfo()) {
-      var keptRemote = [];
-      for (var ri = 0; ri < entities.length; ri++) {
-        if (entities[ri].id === 'remote_battery') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/remote_battery/config', '', true);
-        } else { keptRemote.push(entities[ri]); }
+    function withhold(matches) {
+      var kept = [], dropped = 0;
+      for (var w = 0; w < entities.length; w++) {
+        if (matches(entities[w])) {
+          mqttClient.publish(discPfx + '/' + entities[w].type + '/' + devId + '/' +
+                             entities[w].id + '/config', '', true);
+          dropped++;
+        } else {
+          kept.push(entities[w]);
+        }
       }
-      entities = keptRemote;
+      entities = kept;
+      return dropped;
     }
 
-    /*
-     * Withhold OLED cycle counters & failure alerts on older sets where pnwash files don't exist.
-     */
+    // Matcher for the common case: withhold these entities by id.
+    function byId() {
+      var set = {}, a;
+      for (a = 0; a < arguments.length; a++) set[arguments[a]] = 1;
+      return function (e) { return set[e.id] === 1; };
+    }
+
+    // Magic Remote battery, on a set that only ever sees an IR remote.
+    if (!readRemoteInfo()) withhold(byId('remote_battery'));
+
+    // OLED cycle counters and failure alerts, on older sets with no pnwash files.
     if (!fs.existsSync('/mnt/lg/cmn_data/pnwash/completedOffRsCount')) {
-      var keptCycles = [];
-      for (var ci = 0; ci < entities.length; ci++) {
-        if (entities[ci].id === 'oled_short_cycles' || entities[ci].id === 'oled_refresher_cycles' || entities[ci].id === 'oled_failure_alerts') {
-          mqttClient.publish(discPfx + '/' + entities[ci].type + '/' + devId + '/' + entities[ci].id + '/config', '', true);
-        } else { keptCycles.push(entities[ci]); }
-      }
-      entities = keptCycles;
+      withhold(byId('oled_short_cycles', 'oled_refresher_cycles', 'oled_failure_alerts'));
     }
 
-    /*
-     * Withhold panel silicon cell & TCON firmware if not available from panelcontroller.
-     */
-    if (!HARDWARE_INFO.cell) {
-      var keptSilicon = [];
-      for (var si = 0; si < entities.length; si++) {
-        if (entities[si].id === 'oled_cell_type' || entities[si].id === 'tcon_firmware') {
-          mqttClient.publish(discPfx + '/' + entities[si].type + '/' + devId + '/' + entities[si].id + '/config', '', true);
-        } else { keptSilicon.push(entities[si]); }
-      }
-      entities = keptSilicon;
-    }
+    // Panel silicon, where panelcontroller does not report the cell.
+    if (!HARDWARE_INFO.cell) withhold(byId('oled_cell_type', 'tcon_firmware'));
 
-    /*
-     * Withhold HDMI 2.1 diagnostics on platforms without /proc/lg/hdmi20.
-     */
+    // HDMI 2.1 diagnostics, on platforms with no /proc/lg/hdmi20 at all.
     if (!fs.existsSync('/proc/lg/hdmi20')) {
-      var keptHdmi = [];
-      for (var hi = 0; hi < entities.length; hi++) {
-        if (entities[hi].id.indexOf('hdmi_') === 0) {
-          mqttClient.publish(discPfx + '/' + entities[hi].type + '/' + devId + '/' + entities[hi].id + '/config', '', true);
-        } else { keptHdmi.push(entities[hi]); }
-      }
-      entities = keptHdmi;
+      withhold(function (e) { return e.id.indexOf('hdmi_') === 0; });
     }
+
+    // Play state, on a set whose media service never answers - webOS 9 has no
+    // com.webos.service.acb at all.
+    if (!hasMediaState) withhold(byId('play_state'));
+
+    if (!fs.existsSync('/proc/lg/pe/hdr_status')) withhold(byId('video_colorimetry'));
+
+    if (!HARDWARE_INFO.socArch) withhold(byId('soc_architecture'));
 
     /*
-     * Play state, on a set whose media service never answers - webOS 9 has no
-     * com.webos.service.acb at all.
+     * The ambient light entity on sets without the sensor. They still answer
+     * getLightSensorData, reporting 65535, so it would sit at "unknown"
+     * forever rather than simply not existing.
      */
-    if (!hasMediaState) {
-      var keptMedia = [];
-      for (var mi = 0; mi < entities.length; mi++) {
-        if (entities[mi].id === 'play_state') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/play_state/config', '', true);
-        } else { keptMedia.push(entities[mi]); }
-      }
-      entities = keptMedia;
-    }
+    if (hasLogoLight === false) withhold(byId('logo_light'));
 
-    /*
-     * Withhold colorimetry if /proc/lg/pe/hdr_status does not exist.
-     */
-    if (!fs.existsSync('/proc/lg/pe/hdr_status')) {
-      var keptColor = [];
-      for (var cli = 0; cli < entities.length; cli++) {
-        if (entities[cli].id === 'video_colorimetry') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/video_colorimetry/config', '', true);
-        } else { keptColor.push(entities[cli]); }
-      }
-      entities = keptColor;
-    }
+    // No thermal sensor at all (webOS 3.x).
+    if (!THERMAL_PRESENT) withhold(byId('soc_temperature'));
 
-    /*
-     * Withhold SoC architecture if unknown.
-     */
-    if (!HARDWARE_INFO.socArch) {
-      var keptArch = [];
-      for (var ai = 0; ai < entities.length; ai++) {
-        if (entities[ai].id === 'soc_architecture') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/soc_architecture/config', '', true);
-        } else { keptArch.push(entities[ai]); }
-      }
-      entities = keptArch;
-    }
+    // eMMC wear counters, absent on webOS 3.x.
+    if (!EMMC_WEAR_PRESENT) withhold(byId('flash_health', 'flash_wear'));
 
-    /*
-     * Withhold the ambient light entity on sets without the sensor. They still
-     * answer getLightSensorData, reporting 65535, so the entity would sit at
-     * "unknown" forever instead of simply not existing.
-     */
-    if (hasLogoLight === false) {
-      var keptLogo = [];
-      for (var g = 0; g < entities.length; g++) {
-        if (entities[g].id === 'logo_light') {
-          mqttClient.publish(discPfx + '/switch/' + devId + '/logo_light/config', '', true);
-        } else { keptLogo.push(entities[g]); }
-      }
-      entities = keptLogo;
-    }
+    if (!hasLightSensor) withhold(byId('ambient_light'));
 
-    /*
-     * Same reasoning on platforms with no thermal sensor at all (webOS 3.x):
-     * publishing the entity would leave a temperature in Home Assistant that
-     * is permanently unknown, which reads as a broken sensor rather than an
-     * absent one.
-     */
-    if (!THERMAL_PRESENT) {
-      var keptTemp = [];
-      for (var t = 0; t < entities.length; t++) {
-        if (entities[t].id === 'soc_temperature') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/soc_temperature/config', '', true);
-        } else { keptTemp.push(entities[t]); }
-      }
-      entities = keptTemp;
-    }
-
-    /*
-     * Same again for the eMMC wear counters, absent on webOS 3.x. An entity
-     * reading "unknown" for the life of the install is indistinguishable from
-     * a sensor that has broken.
-     */
-    if (!EMMC_WEAR_PRESENT) {
-      var keptFlash = [];
-      for (var f = 0; f < entities.length; f++) {
-        if (entities[f].id === 'flash_health' || entities[f].id === 'flash_wear') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/' + entities[f].id + '/config', '', true);
-        } else { keptFlash.push(entities[f]); }
-      }
-      entities = keptFlash;
-    }
-
-    if (!hasLightSensor) {
-      var keptAmb = [];
-      for (var a = 0; a < entities.length; a++) {
-        if (entities[a].id === 'ambient_light') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/ambient_light/config', '', true);
-        } else { keptAmb.push(entities[a]); }
-      }
-      entities = keptAmb;
-    }
+    // Without the daily check nothing learns what the latest release is, and
+    // the entity would read unknown for good. Withheld rather than left out, so
+    // switching the check off removes it.
+    if (!(CONFIG.update && CONFIG.update.check)) withhold(byId('server_update'));
 
     /*
      * HDMI diagnostics this set has never reported. A B8 has no FRL link, no
-     * chroma report, no PHY error counter and no VRR hardware, and an entity
-     * that can only ever read unknown - or worse, a confident 0 - is worse
-     * than none.
+     * chroma report, no PHY error counter and no VRR hardware, and each of
+     * these has one field behind it - see hdmiSeen.
      */
-    var keptHdmi = [];
-    for (var hi = 0; hi < entities.length; hi++) {
-      var hNeeds = HDMI_DIAG_ONLY[entities[hi].id];
-      if (hNeeds && !hdmiSeen[hNeeds]) {
-        mqttClient.publish(discPfx + '/' + entities[hi].type + '/' + devId + '/' +
-                           entities[hi].id + '/config', '', true);
-      } else { keptHdmi.push(entities[hi]); }
-    }
-    entities = keptHdmi;
+    withhold(function (e) {
+      var needs = HDMI_DIAG_ONLY[e.id];
+      return !!needs && !hdmiSeen[needs];
+    });
 
     /*
-     * GPU clock. Withheld on sets whose kernel does not expose the PLL output
-     * in /proc/lg/sys/status (such as webOS 9+ / C2).
+     * GPU clock, on sets whose kernel does not expose the PLL output in
+     * /proc/lg/sys/status (such as webOS 9+ / C2).
      */
-    if (gpuClockMhz() === null) {
-      var keptGpu = [];
-      for (var gi = 0; gi < entities.length; gi++) {
-        if (entities[gi].id === 'gpu_clock') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/gpu_clock/config', '', true);
-        } else { keptGpu.push(entities[gi]); }
-      }
-      entities = keptGpu;
-    }
+    if (gpuClockMhz() === null) withhold(byId('gpu_clock'));
 
     /*
      * Panel dimming. OLED sets control light per subpixel rather than via
-     * backlight zones — withhold on OLEDs. On LCD/QNED sets the entity stays
+     * backlight zones, so it is withheld on OLED. On LCD/QNED the entity stays
      * registered; the template returns null until the first telemetry tick.
      */
-    if (isOled === true) {
-      var keptDim = [];
-      for (var di = 0; di < entities.length; di++) {
-        if (entities[di].id === 'panel_dimming') {
-          mqttClient.publish(discPfx + '/sensor/' + devId + '/panel_dimming/config', '', true);
-        } else { keptDim.push(entities[di]); }
-      }
-      entities = keptDim;
-    }
+    if (isOled === true) withhold(byId('panel_dimming'));
 
+    // Panel-lifecycle entities, on anything that is not an OLED. Reporting
+    // 0 hours would read as a real measurement.
     if (isOled === false) {
-      var kept = [];
-      for (var d = 0; d < entities.length; d++) {
-        if (OLED_ONLY[entities[d].id]) {
-          var dead = discPfx + '/' + entities[d].type + '/' + devId + '/' + entities[d].id + '/config';
-          mqttClient.publish(dead, '', true);   // retained empty = remove
-        } else {
-          kept.push(entities[d]);
-        }
-      }
       console.log('mqtt: not an OLED panel, withheld ' +
-                  (entities.length - kept.length) + ' panel entities');
-      entities = kept;
+                  withhold(function (e) { return OLED_ONLY[e.id] === 1; }) +
+                  ' panel entities');
     }
 
     for (var i = 0; i < entities.length; i++) {
@@ -5284,6 +5837,28 @@ function setupHomeAssistant() {
     }
     console.log('mqtt: published ' + entities.length + ' Home Assistant discovery entities');
   }
+
+  /*
+   * Retained and on its own topic rather than folded into the telemetry
+   * payload: Home Assistant's update entity reads the whole message as its
+   * state, and this changes once a day at most while telemetry goes out every
+   * few seconds.
+   */
+  function publishUpdate() {
+    if (!mqttClient.connected) return;
+    mqttClient.publish(updateTopic, JSON.stringify({
+      installed_version: TVWEB_VERSION,
+      latest_version: UPDATE.latest || null,
+      title: 'Server',
+      release_url: UPDATE.url || null,
+      // Home Assistant caps this at 255 characters and drops the message
+      // whole if it is longer.
+      release_summary: UPDATE.notes ? UPDATE.notes.slice(0, 255) : null,
+      in_progress: !!UPDATE.busy
+    }), true);
+  }
+  mqttPublishUpdate = publishUpdate;
+  mqttPublishDiscovery = publishDiscovery;
 
   var lastPicSig = '';
   var lastCapSig = '';
@@ -5341,6 +5916,7 @@ function setupHomeAssistant() {
 
   mqttClient.on('connect', function() {
     mqttStatus('connected', '');
+    flushMqttErrorRepeats();
     console.log('mqtt: connected to ' + CONFIG.mqtt.host + ':' + mqttClient.opts.port +
                 (useTls ? ' (tls)' : ' (plaintext)'));
     mqttClient.publish(statusTopic, 'online', true);
@@ -5358,6 +5934,7 @@ function setupHomeAssistant() {
     });
     mqttClient.subscribe(pfx + '/command/#');
     publishTelemetry();
+    publishUpdate();
   });
 
   mqttClient.on('message', function(topic, payload) {
@@ -5419,6 +5996,20 @@ function setupHomeAssistant() {
       return;
     }
 
+    if (action === 'update') {
+      // Home Assistant's update entity sends `install`. Anything else on this
+      // topic is read as a request to look rather than to install, so an
+      // automation can refresh the entity without upgrading the TV.
+      if (val.toLowerCase() !== 'install') {
+        doControl('updateCheck', null, function () {});
+        return;
+      }
+      doControl('update', null, function (r) {
+        console.log('mqtt: update requested, result: ' + JSON.stringify(r));
+      });
+      return;
+    }
+
     if (action === 'refresher') {
       var sch = (val.toLowerCase() === 'schedule' || val.toLowerCase() === 'on');
       doControl(sch ? 'refresherSchedule' : 'refresherCancel', null, function() {
@@ -5432,8 +6023,31 @@ function setupHomeAssistant() {
     });
   });
 
+  /*
+   * A connection attempt fails every 5 seconds while the broker is
+   * unreachable, and each one arrives here with the same message. Logging all
+   * of them wrote ~17,000 identical lines a day to flash for as long as the
+   * outage lasted. Repeats are counted instead, and the total is reported once
+   * the message changes or the client connects - the fact worth having is how
+   * long it went on, not each attempt.
+   */
+  var lastMqttError = null;
+  var mqttErrorRepeats = 0;
+
+  function flushMqttErrorRepeats() {
+    if (mqttErrorRepeats) {
+      console.error('mqtt error: last message repeated ' + mqttErrorRepeats + ' more time' +
+                    (mqttErrorRepeats === 1 ? '' : 's'));
+      mqttErrorRepeats = 0;
+    }
+    lastMqttError = null;
+  }
+
   mqttClient.on('error', function(err) {
     mqttStatus('error', err.message);
+    if (err.message === lastMqttError) { mqttErrorRepeats++; return; }
+    flushMqttErrorRepeats();
+    lastMqttError = err.message;
     console.error('mqtt error:', err.message);
   });
 
@@ -5477,11 +6091,46 @@ function heartbeat() {
   fs.writeFile(BEAT_FILE, String(Math.floor(Date.now() / 1000)), function () {});
 }
 
-heartbeat();
-setInterval(heartbeat, 20000);
+if (!CLI_MODE) {
+  heartbeat();
+  setInterval(heartbeat, 20000);
 
-restageScreensaver();
+  restageScreensaver();
 
-detectDeviceInfo(function() {
-  setupHomeAssistant();
-});
+  detectDeviceInfo(function() {
+    setupHomeAssistant();
+  });
+
+  // Not at startup: a reboot brings the whole house back at once, and nothing
+  // about this is urgent.
+  scheduleUpdateChecks(120000);
+}
+
+/*
+ * The one-shot modes. Last in the file so every function they use is defined,
+ * and so nothing above has started a server this process is about to end.
+ *
+ * Exit 3 from --update means there was nothing newer, which tvwebctl reads as
+ * "no restart needed" rather than as a failure.
+ */
+if (CLI_MODE === 'check') {
+  checkForUpdate(true, function (err, summary) {
+    if (err) { console.error(err.message); process.exit(1); }
+    console.log('installed v' + TVWEB_VERSION + ', latest v' + summary.latest +
+                (summary.available ? ' - update available' : ' - up to date'));
+    process.exit(0);
+  });
+} else if (CLI_MODE === 'update') {
+  installUpdate(function (r) {
+    if (!r.ok) { console.error(r.error); process.exit(1); }
+    if (!r.updated) { console.log(r.note + ' (v' + r.installed + ')'); process.exit(3); }
+    console.log('installed v' + r.latest + ' over v' + r.installed + ', ' + r.files + ' files');
+    process.exit(0);
+  });
+} else if (CLI_MODE === 'rollback') {
+  rollbackUpdate(function (r) {
+    if (!r.ok) { console.error(r.error); process.exit(1); }
+    console.log('restored v' + r.restored + ', ' + r.files + ' files');
+    process.exit(0);
+  });
+}

@@ -33,7 +33,7 @@ here is needed to use the project - see the [README](../README.md) for that.
                                           ▼
                   ┌─────────────────────────────────────────┐
                   │              Home Assistant             │
-                  │       (Up to 61 Auto-Discovered)        │
+                  │      (Auto-Discovered Entities)         │
                   └─────────────────────────────────────────┘
 ```
 
@@ -164,6 +164,52 @@ becomes the remote shell's own `argv`:
 
 `rsync` ships with the Homebrew Channel but is broken on-device: it cannot load
 `libcrypto.so.1.1`. Use `scp`, which works over the sftp subsystem.
+
+## Upgrading in place
+
+Five things decide how `tvwebctl update` works.
+
+**The HTTP client is probed, not assumed.** Node 0.12's `https` has no CA bundle
+worth trusting, so the download goes through curl or wget. The stock
+`/usr/bin/curl` reaches GitHub on both sets tested — 7.53.1 against OpenSSL
+1.0.2p on webOS 4.4.3, 7.82.0 against OpenSSL 3.0.9 on webOS 9.2.2 — but that is
+not something to assume of other firmware, and a client the owner installed can
+be anywhere. Installed clients are tried before the stock one, each against the
+real release endpoint until one returns usable JSON. A client that does that has
+proved everything that matters. Certificate verification is never disabled: what
+comes back runs as root on the next restart.
+
+**The directory is updated in place, not swapped.** `/var/lib/tvweb` holds more
+than code — `config.json`, `adblock_hosts`, the staged screen saver the boot hook
+bind-mounts, `services_stopped` — and a wholesale swap has to carry every one of
+them across or silently lose it. Replacing only the files the release ships
+cannot lose state it never touches.
+
+**Every file is renamed into place, never written over.** Busybox ash reads a
+script as it executes, so overwriting `tvwebctl` corrupts the watchdog loop
+already running out of it. A rename leaves that process on the old inode.
+
+**The tarball is inflated by node, not by tar.** `zlib` is certainly present and
+busybox's gzip support is not, and an inflate failure is how a truncated download
+is caught — cheaper than trusting a content length. The unpacked `tvweb.js` then
+has to declare the version that was asked for before anything is replaced.
+
+**A client that cannot answer is not the same as a request that is refused.**
+Treating every non-zero exit as "try the next client" reported a 404 from a
+repository with no releases as `no HTTP client on this TV could reach GitHub -
+install a current curl`, which would send someone off installing software they
+already have. Both clients name the status on stderr (`server returned error:
+HTTP/1.1 404`, `ERROR 404:`, `returned error: 404`) and both keep an exit code
+for it — curl 22, wget 8 — so an HTTP answer of any kind ends the probe: the
+transport has proved itself and only the request is wrong. The 403 wording stays
+hedged, since a proxy or a captive portal returns that as readily as a spent
+rate limit.
+
+The upgrade runs in the server itself, with `tvwebctl update` invoking
+`node tvweb.js --update` as a one-shot. One implementation serves the dashboard,
+Home Assistant and the shell, and the shell path still works with the dashboard
+switched off or the server not running. `--update` exits 3 when there is nothing
+newer, which `tvwebctl` reads as "no restart needed" rather than as a failure.
 
 ## Fonts
 
@@ -310,3 +356,43 @@ holds until someone notices.
 `scripts/check-entities.py` resolves every entity's `value_json` paths against a
 live `/api/stats`. A renamed field otherwise leaves an entity at `unknown` with
 no error anywhere.
+
+---
+
+## Rotating a log the server is holding open
+
+`/var/lib` is flash and nothing trimmed `tvweb.log`, so a broker the TV could
+not reach appended a line every five seconds - the retry interval - for as long
+as the outage lasted. Two changes: repeated MQTT connection errors are counted
+and reported once rather than logged individually, and the watchdog in
+`tvwebctl` trims the file at 256k.
+
+The trim keeps one previous generation and truncates in place rather than
+renaming. Renaming does not work here: the server writes to a descriptor it
+already holds, so it follows the file under its new name and the fresh one
+stays empty. Truncating in place only works if that descriptor was opened
+`O_APPEND`, which is why `start_app` redirects with `>>` and not `>`. Without
+it the server keeps its own offset and carries on writing past the old end,
+leaving a sparse file that still reports the size the trim just reclaimed -
+measured at 19MB apparent against 3MB allocated, which would send the watchdog
+into rotating it on every pass.
+
+---
+
+## The checks
+
+`scripts/` holds five static checks. Four need nothing but the repository and
+run in CI alongside `shellcheck`; `check-entities.py` needs a live
+`/api/stats`, so it is run by hand against the set.
+
+| Check | What it catches |
+| :--- | :--- |
+| `check-es5.py` | An ES6 construct in `tvweb.js`. Node 0.12 treats one as a parse error, so the server never starts and logs nothing. |
+| `check-ui-ids.py` | An id the dashboard reaches for that no element defines. |
+| `check-screensavers.py` | QML newer than the `import QtQuick` line it declares. |
+| `check-drift.py` | A documented entity count the code has moved past, and an asset `deploy.sh` would never install. |
+| `check-entities.py` | An entity template naming a field the telemetry no longer has. |
+
+`check-es5.py` blanks strings, comments and regex literals before scanning, and
+checks syntax only: an ES6 library call parses and fails at the call, which the
+log shows, while a parse error leaves no process to log anything.
