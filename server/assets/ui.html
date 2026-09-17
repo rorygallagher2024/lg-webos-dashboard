@@ -1063,7 +1063,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <button id="cfg-save-btn" onclick="saveSettings()">Save &amp; restart</button>
     <span class="cfg-msg" id="cfg-msg">Saving restarts the server. The dashboard reconnects on its own.</span>
   </div>
-  <div class="sub" id="cfg-file" style="margin-top:14px"></div>
   </div>
   </div>
 </section>
@@ -2865,7 +2864,6 @@ async function loadSettings() {
     if (m.categories) cfgCategories = m.categories;
     if (m.entityCatalogue) cfgCatalogue = m.entityCatalogue;
     renderEntitiesUI();
-    q('cfg-file').textContent = 'Saved to ' + j.configFile + ' on the TV.';
     q('cfg-save-btn').disabled = !j.writable;
     cfgMsg(j.writable
       ? 'Saving restarts the server. The dashboard reconnects on its own.'
