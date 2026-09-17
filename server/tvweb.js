@@ -27,7 +27,7 @@ var zlib = require('zlib');
  * a link to /releases/tag/v<version>, so a value with no tag behind it gives a
  * 404 rather than a wrong page.
  */
-var TVWEB_VERSION = '0.34.2';
+var TVWEB_VERSION = '0.34.3';
 
 // ---------------------------------------------------------------- config
 var CONFIG = {
@@ -1499,6 +1499,23 @@ function pushTemp(t) {
   tempHistory.push(t);
   if (tempHistory.length > TEMP_HISTORY_MAX) tempHistory.shift();
 }
+/*
+ * Boot time, as an instant rather than a counter.
+ *
+ * uptime is floored to the second and the clock it is subtracted from moves in
+ * milliseconds, so recomputing this every publish would shift it by a second
+ * each time — a new Home Assistant state every 10s for a figure that changes
+ * only when the TV restarts. Republish only when the computed instant moves
+ * further than that jitter: 30s also absorbs the clock stepping when NTP lands,
+ * which on a cold boot is after the first telemetry has gone out.
+ */
+var bootEpoch = 0;
+function bootTime(uptimeSec) {
+  var computed = Date.now() - uptimeSec * 1000;
+  if (Math.abs(computed - bootEpoch) > 30000) bootEpoch = computed;
+  return new Date(bootEpoch).toISOString();
+}
+
 var lastStats = null;
 var lastStatsTime = 0;
 var isCollecting = false;
@@ -1632,7 +1649,7 @@ function collectStats(cb) {
     mem: { total: mi.MemTotal || 0, avail: mi.MemAvailable || 0 },
     swap: { total: mi.SwapTotal || 0, free: mi.SwapFree || 0, backing: swapBacking() },
     uptime: uptimeSec,
-    lastRestart: new Date(Date.now() - uptimeSec * 1000).toISOString(),
+    bootTime: bootTime(uptimeSec),
     loadavg: (rd('/proc/loadavg') || '').split(' ').slice(0, 3),
     wifi: wifi(),
     net: rate,
@@ -4486,13 +4503,14 @@ function setupHomeAssistant() {
         }
       },
       {
-        type: 'sensor', id: 'last_restart',
+        type: 'sensor', id: 'uptime',
         payload: {
-          name: 'Last Restart',
+          name: 'Uptime',
           state_topic: telemetryTopic,
-          value_template: '{{ value_json.lastRestart }}',
+          value_template: '{{ value_json.bootTime }}',
           device_class: 'timestamp',
-          icon: 'mdi:restart'
+          entity_category: 'diagnostic',
+          icon: 'mdi:clock-start'
         }
       },
       {
