@@ -53,7 +53,7 @@ def check_counts(count):
     split across a line break in the README, and a check that quietly skips a
     reference is the thing this script exists to prevent.
     """
-    pattern = re.compile(r'up to (\d+)\s+(?:native\s+)?entities', re.I)
+    pattern = re.compile(r'up to\s+(\d+)\s+(?:native\s+)?entities', re.I)
     checked = 0
     for doc in sorted(list(root.glob('*.md')) + list((root / 'docs').glob('*.md'))):
         text = doc.read_text(encoding='utf-8')
