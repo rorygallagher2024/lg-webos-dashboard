@@ -439,6 +439,7 @@ button.pill[disabled]{cursor:default;opacity:.45}
 /* The raw flag name, kept visible on rows that now show a friendlier one: it is
    what the API, the TV and the issue tracker all call it. */
 .pv-row .k{color:var(--w35)}
+.pv-row .cnt{color:var(--w60);font-size:13px;font-weight:400}
 /* Collapsible privacy sections. The consent list alone runs to 21 rows, so the
    long sections fold. The summary keeps the pv-h size rather than borrowing the
    control column's small caps, so folding a section does not demote it. */
@@ -486,6 +487,15 @@ button.pill[disabled]{cursor:default;opacity:.45}
 .cfg-msg.bad{color:var(--warn,#e5534b)}
 .cfg-msg.good{color:var(--w100)}
 .cfg-toggles button[disabled].on{background:transparent;color:var(--w60);border-color:var(--w12);font-weight:400}
+.cfg-ent-chk{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:4px;
+  font-size:14px;color:var(--w90);min-width:0;user-select:none;cursor:pointer;transition:background .15s}
+.cfg-ent-chk:hover{background:var(--w06)}
+.cfg-ent-chk.dis{cursor:default;opacity:.45}
+.cfg-ent-chk.dis:hover{background:transparent}
+.cfg-ent-chk input[type="checkbox"]{width:16px;height:16px;margin:0;cursor:pointer;flex-shrink:0;accent-color:var(--cand)}
+.cfg-ent-chk.dis input[type="checkbox"]{cursor:default}
+.cfg-ent-chk .ent-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfg-ent-chk .ent-type{font-size:12px;color:var(--w60);margin-left:5px;font-weight:400}
 .proc{display:grid;grid-template-columns:1fr auto;gap:14px;padding:9px 0;
   border-bottom:1px solid var(--w06);font-size:14px}
 .proc .p-name{color:var(--w80);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2779,7 +2789,7 @@ function renderEntitiesUI() {
     entsHtml += `
       <div class="pv-row">
         <div>
-          <div class="n">${esc(cat.name)} <span class="k">(${count} ${count === 1 ? 'entity' : 'entities'})</span></div>
+          <div class="n">${esc(cat.name)} <span class="cnt">(${count} ${count === 1 ? 'entity' : 'entities'})</span></div>
           <div class="d">${esc(cat.desc)}</div>
         </div>
         <button type="button" class="pill ${catOn ? 'good' : 'idle'}" id="cfg-cat-${cat.id}" onclick="cfgToggleCat('${cat.id}')">
@@ -2797,14 +2807,14 @@ function renderEntitiesUI() {
       if (!catEnts.length) continue;
       const catOn = cfgEntities[cat.id] !== false;
       subHtml += `<div class="pv-g" style="margin-top:16px"><span>${esc(cat.name)}</span></div>`;
-      subHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:8px 16px;margin-top:8px">`;
+      subHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:4px 12px;margin-top:8px">`;
       for (const e of catEnts) {
         const isDis = disabledSet.has(e.id) || disabledSet.has(e.type + '.' + e.id);
         const checked = catOn && !isDis;
         subHtml += `
-          <label class="cfg-ent-chk" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:${catOn ? 'pointer' : 'default'};opacity:${catOn ? '1' : '0.45'};min-width:0;user-select:none">
+          <label class="cfg-ent-chk${catOn ? '' : ' dis'}">
             <input type="checkbox" id="cfg-ent-${e.id}" data-id="${esc(e.id)}" data-type="${esc(e.type)}" data-cat="${esc(cat.id)}" ${checked ? 'checked' : ''} ${catOn ? '' : 'disabled'} onchange="cfgToggleEnt(this)">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name)} <span class="k" style="font-size:11px;opacity:0.6">${esc(e.type)}</span></span>
+            <span class="ent-name">${esc(e.name)} <span class="ent-type">${esc(e.type)}</span></span>
           </label>`;
       }
       subHtml += `</div>`;
