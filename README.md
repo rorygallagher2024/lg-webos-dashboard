@@ -353,7 +353,7 @@ Nothing else is needed. Home Assistant picks up the device within a few seconds
 of the bridge connecting.
 
 <p align="center">
-  <a href="docs/screenshots/mqtt.png"><img src="docs/screenshots/mqtt.png" alt="MQTT tab: bridge status and switch beside the broker, topic and device fields" width="700"></a>
+  <a href="docs/screenshots/mqtt.png"><img src="docs/screenshots/mqtt.png" alt="MQTT tab: bridge status and switch beside the broker and device fields, with the entity categories published to Home Assistant" width="700"></a>
 </p>
 
 The panel reports whether the bridge is connected to the broker and how long ago
