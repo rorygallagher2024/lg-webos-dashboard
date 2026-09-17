@@ -2,14 +2,14 @@
 
 A server that runs **on** a rooted LG webOS TV. It serves a live dashboard to
 any browser on the network, and will optionally bridge the TV into Home
-Assistant over MQTT as a single auto-discovered device with up to 72 entities.
+Assistant over MQTT as a single auto-discovered device.
 
 The dashboard needs nothing but the TV. Home Assistant control over MQTT is
 optional, and set up in [step 4](#4-home-assistant--mqtt-optional).
 
 There are no dependencies. This is ES5 on the Node 0.12 runtime that is on the TV.
 
----f
+---
 
 ## What it's for
 
