@@ -16,7 +16,7 @@ Assistant integration is completely optional and covered in
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
 * **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-sets)
 
-[Overview](#what-its-for) • [Screenshots](#web-dashboard) • [Features](#core-features) • [Installation](#installation) • [Tested Sets](#tested-sets) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
+[Overview](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested Sets](#tested-sets) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
 
 ---
 
@@ -59,7 +59,9 @@ Assistant integration is completely optional and covered in
 
 ---
 
-## Web dashboard
+## Screenshots
+
+### Web dashboard
 
 <p align="center">
   <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="System tab: SoC temperature, system readouts, storage and HDMI ports, dark theme (OLED65B8SLC)" width="440"></a>
@@ -67,21 +69,23 @@ Assistant integration is completely optional and covered in
   <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer, front lights and power, light theme (OLED65B8SLC)" width="440"></a>
 </p>
 
-## Home Assistant (auto-discovered device via MQTT)
+### Home Assistant
 
-The TV arrives over MQTT Discovery as a single unified device
+The TV arrives over MQTT Discovery as a single unified device:
+
 <p align="center">
   <a href="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235"><img width="800" alt="Home Assistant MQTT entities" src="https://github.com/user-attachments/assets/1d76b1a2-68d9-42a4-a497-b107d706b235" /></a>
 </p>
 
 A custom Home Assistant dashboard for an LG TV:
+
 <p align="center">
   <a href="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600"><img width="800" alt="Custom dashboard leveraging MQTT data" src="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600" /></a>
 </p>
 
 ---
 
-## Core features
+## Features
 
 Each has a tab of its own in the dashboard, and a deep link to it. OLED Care
 appears on OLED sets only. Fonts and assets are served by the TV, so the page
