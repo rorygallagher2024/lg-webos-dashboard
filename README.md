@@ -14,41 +14,43 @@ optional, and set up in [step 4](#4-home-assistant--mqtt-optional).
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
 * **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-on)
 
+[Overview](#what-its-for) • [Screenshots](#web-dashboard) • [Features](#core-features) • [Requirements](#requirements) • [Installation](#3-install-the-dashboard) • [Home Assistant](#4-home-assistant--mqtt-optional) • [Tested Sets](#tested-on) • [Security](#security)
+
 ---
 
 ## What it's for
 
-1. **Controlling the TV without the cloud.** A D-pad to navigate the TV itself, volume, mute, media playback keys (play, pause, stop, skip), app launcher, picture presets, sound output routing, power and reboot.
+1. **[Controlling the TV without the cloud](#remote-control).** A D-pad to navigate the TV itself, volume, mute, media playback keys (play, pause, stop, skip), app launcher, picture presets, sound output routing, power and reboot.
 
-2. **Seeing what the TV collects, and switching it off.** Whether LG's
+2. **[Seeing what the TV collects, and switching it off](#privacy-and-data-collection).** Whether LG's
    content-recognition engine is running and sampling your screen, your
    advertising identifier and whether ad tracking is limited, and every data
    agreement recorded on the set with most of them switchable from the
    dashboard. Includes an on-TV blocker for LG's ad and telemetry
    endpoints, and a switch for the two diagnostics services that upload to LG.
-   
-3. **Replacing the screen saver.** A clock, a starfield, fireworks, or the
+
+3. **[Replacing the screen saver](#screen-savers).** A clock, a starfield, fireworks, or the
    TV's own readings, each dim or bright, in place of LG's.
 
-4. **Integrating the TV into Home Assistant.** Optional, over MQTT: the set
+4. **[Integrating the TV into Home Assistant](#home-assistant-bridge).** Optional, over MQTT: the set
    arrives as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
    [Step 4](#4-home-assistant--mqtt-optional) explains what MQTT is.
 
-5. **Seeing what the TV is actually doing.** SoC temperature, per-core CPU
+5. **[Seeing what the TV is actually doing](#telemetry-and-diagnostics).** SoC temperature, per-core CPU
    load, memory, swap, current draw, Wi-Fi signal and throughput.
 
-6. **Observing OLED panel wear.** Cumulative panel hours, compensation cycle
+6. **[Observing OLED panel wear](#oled-wear-and-burn-in-protection).** Cumulative panel hours, compensation cycle
    progress, Pixel Refresher countdown with scheduling, completed cycle counters
    and failure alerts.
 
-7. **Controlling the OLED burn-in protections.** What each one does and a switch
+7. **[Controlling the OLED burn-in protections](#oled-wear-and-burn-in-protection).** What each one does and a switch
    for it: screen shift and logo dimming on any OLED, and on sets that expose
    them, ASBL and Global Stress Reduction &mdash; the two normally reachable only
    from the TV's service menu, with a service remote and a PIN.
 
-8. **Opening the service menu, and unlocking it where it is locked.** LG's own
+8. **[Opening the service menu, and unlocking it where it is locked](#service-menu-access).** LG's own
    engineering menu, put on the TV screen from a browser &mdash; no service
    remote. Newer firmware shows a cut-down version of it until it is unlocked,
    which the dashboard can do as well.
@@ -185,6 +187,9 @@ still asks for its PIN. Newer firmware shows a cut-down version until it is
 unlocked, and the dashboard can unlock it: the TV has to be switched off and on
 again before that takes effect. Sets old enough not to lock it say so.
 
+> [!WARNING]
+> The service menu provides low-level hardware and calibration control. Changing unfamiliar values in EZ Adjust or In Start can cause permanent display corruption or render the set unbootable.
+
 <p align="center">
   <a href="docs/screenshots/servicemenu.png"><img src="docs/screenshots/servicemenu.png" alt="Service menu tab: unlock state with a power-cycle note, buttons to open EZ Adjust or In Start, and a warning about what the menu can change" width="700"></a>
 </p>
@@ -274,16 +279,13 @@ cd lg-webos-mqtt/server
 Nothing to set up: the install uses SSH if the TV has it, and the Homebrew
 Channel's telnet if not.
 
-Moving to SSH is still worth doing. On a rooted TV, telnet lets anyone on the
-network take full control of the TV with no password. That comes from the
-rooting rather than from this project, but it is the biggest risk on the TV.
-[Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes
-about five minutes, before or after installing.
+> [!TIP]
+> Telnet leaves an unauthenticated root shell open on your local network. [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes about five minutes and is strongly recommended.
 
 ## 3. Install the dashboard
 
 Find the TV's address under Settings &rarr; Network on the TV, or in the
-router's list of devices. Then, in the same window:
+router's list of devices. Then, from the `server/` directory in your terminal:
 
 ```bash
 ./deploy.sh <tv-ip>
@@ -393,9 +395,8 @@ and redeploy, or edit `/var/lib/tvweb/config.json` on the TV and restart.
 is set &mdash; a fresh install should not expose "turn the TV off" to the whole
 network. Enable it deliberately.
 
-Recommended: give the TV its own MQTT user with a restricted ACL rather than
-reusing the main Home Assistant credentials. See
-[docs/SECURITY.md](docs/SECURITY.md).
+> [!NOTE]
+> Give the TV its own MQTT user with a restricted topic ACL rather than reusing your main Home Assistant credentials. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ### Using MQTT without Home Assistant
 
