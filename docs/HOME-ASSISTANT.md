@@ -39,7 +39,7 @@ Categories:
 | `button` | `button.lg_tv_pause` | Pause | Pause media playback |
 | `button` | `button.lg_tv_play_pause` | Play / Pause | Toggle media playback |
 | `button` | `button.lg_tv_stop` | Stop | Stop media playback |
-| `switch` | `switch.lg_tv_oled_screen_shift` | OLED Screen Shift | Pixel orbiting, on OLED sets |
+| `switch` | `switch.lg_tv_oled_screen_shift` | OLED Screen Shift | Pixel orbiting, on OLED TVs |
 | `select` | `select.lg_tv_oled_logo_dimming` | OLED Logo Dimming | Local logo dimming: Off, Light, High |
 | `select` | `select.lg_tv_screensaver_mode` | Screen Saver | Which screen saver the TV runs: LG default, Clock, Starfield, Fireworks or Panel vitals. Brightness is set on the dashboard's Screensaver tab |
 | `button` | `button.lg_tv_screensaver` | Start Screensaver | Starts the webOS screensaver, or dismisses one that is showing |
@@ -49,7 +49,7 @@ Categories:
 
 Playback reaches an HDMI source over CEC, where the TV has only one key for both halves of play/pause. Pause and Play / Pause behave as expected there; Play toggles rather than only resuming. On the built-in apps all four are exact.
 
-### OLED Panel Health (OLED sets only)
+### OLED Panel Health (OLED TVs only)
 | Domain | Entity ID | Name | Description |
 | :--- | :--- | :--- | :--- |
 | `sensor` | `sensor.lg_tv_oled_panel_hours` | OLED Panel Hours | Total cumulative operating hours (`h`) |
@@ -61,9 +61,9 @@ Playback reaches an HDMI source over CEC, where the TV has only one key for both
 | `sensor` | `sensor.lg_tv_oled_refresher_status` | Pixel Refresher Status | `Idle`, `Scheduled`, or `Running` (2,000h deep cycle) |
 | `sensor` | `sensor.lg_tv_oled_short_cycles` | OLED Short Cycles Completed | Lifetime completed Off-RS short compensation cycles |
 | `sensor` | `sensor.lg_tv_oled_refresher_cycles` | OLED Refresher Cycles Completed | Lifetime completed JB 2,000-hour deep refresher cycles |
-| `sensor` | `sensor.lg_tv_oled_failure_alerts` | OLED Compensation Failures | Total compensation failure alerts recorded on set |
+| `sensor` | `sensor.lg_tv_oled_failure_alerts` | OLED Compensation Failures | Total compensation failure alerts recorded on TV |
 | `binary_sensor` | `binary_sensor.lg_tv_oled_asbl_dimmer` | OLED ASBL Protection | State of Auto Static Brightness Limiter / GSR dimmer |
-| `binary_sensor` | `binary_sensor.lg_tv_screen_saver_active` | Screen Saver | Whether a screen saver is on screen now; withheld on sets that do not report it |
+| `binary_sensor` | `binary_sensor.lg_tv_screen_saver_active` | Screen Saver | Whether a screen saver is on screen now; withheld on TVs that do not report it |
 
 ### HDMI 2.1 & Live Stream Telemetry
 | Domain | Entity ID | Name | Description |
@@ -84,9 +84,9 @@ Playback reaches an HDMI source over CEC, where the TV has only one key for both
 | `sensor` | `sensor.lg_tv_active_app` | Active App | Current foreground app or friendly CEC device |
 | `sensor` | `sensor.lg_tv_play_state` | Player State | State of the TV's own media pipeline (`playing`, `paused`, `stopped`) |
 
-The six HDMI entities are published per field, and only once the set has
+The six HDMI entities are published per field, and only once the TV has
 reported that field. An HDMI 2.0 port reports as connected but carries none of
-the 2.1 lines, so a 2018 set such as a B8 gets none of them rather than a row
+the 2.1 lines, so a 2018 TV such as a B8 gets none of them rather than a row
 of Unknowns and a cable error count of zero.
 
 ### Hardware, Remote & System Diagnostics
@@ -101,7 +101,7 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_cpu_load` | CPU Usage | Real-time CPU load (`%`) |
 | `sensor` | `sensor.lg_tv_gpu_clock` | GPU Clock | Real-time GPU frequency (`MHz`) |
 | `sensor` | `sensor.lg_tv_memory_usage` | Memory Usage | System RAM usage (`%`) |
-| `sensor` | `sensor.lg_tv_swap_usage` | Swap Usage | Swap usage (`%`), backed by zram or a flash partition depending on the set |
+| `sensor` | `sensor.lg_tv_swap_usage` | Swap Usage | Swap usage (`%`), backed by zram or a flash partition depending on the TV |
 | `sensor` | `sensor.lg_tv_app_storage_free` | App Storage Free | Available storage on `/media/developer` (`GB`) |
 | `sensor` | `sensor.lg_tv_ambient_light` | Ambient Light | Ambient room illuminance (`lux`, if sensor present) |
 | `sensor` | `sensor.lg_tv_wifi_signal` | Wi-Fi Signal | Wi-Fi signal strength (`dBm`) |

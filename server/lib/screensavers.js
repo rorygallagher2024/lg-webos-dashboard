@@ -39,7 +39,7 @@ var SCREENSAVERS = {
   },
   vitals: {
     label: 'Panel vitals',
-    description: "The set's own readings - panel hours, pixel refresher countdown, temperature.",
+    description: "The TV's own readings - panel hours, pixel refresher countdown, temperature.",
     qml: 'screensavers/vitals.qml'
   }
 };

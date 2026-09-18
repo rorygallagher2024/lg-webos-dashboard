@@ -14,9 +14,9 @@ Assistant integration is completely optional and covered in
 * **webOS**: 3.4 through 25 (2016–2025 models)
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
-* **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-sets)
+* **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-tvs)
 
-[Overview](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested Sets](#tested-sets) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
+[What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
 
 ---
 
@@ -27,14 +27,14 @@ Assistant integration is completely optional and covered in
 2. **[Seeing what the TV collects, and switching it off](#privacy-and-data-collection).** Whether LG's
    content-recognition engine is running and sampling your screen, your
    advertising identifier and whether ad tracking is limited, and every data
-   agreement recorded on the set with most of them switchable from the
+   agreement recorded on the TV with most of them switchable from the
    dashboard. Includes an on-TV blocker for LG's ad and telemetry
    endpoints, and a switch for the two diagnostics services that upload to LG.
 
 3. **[Replacing the screen saver](#screen-savers).** A clock, a starfield, fireworks, or the
    TV's own readings, each dim or bright, in place of LG's.
 
-4. **[Integrating the TV into Home Assistant](#home-assistant-bridge).** Optional, over MQTT: the set
+4. **[Integrating the TV into Home Assistant](#home-assistant-bridge).** Optional, over MQTT: the TV
    arrives as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
@@ -48,7 +48,7 @@ Assistant integration is completely optional and covered in
    and failure alerts.
 
 7. **[Controlling the OLED burn-in protections](#oled-wear-and-burn-in-protection).** What each one does and a switch
-   for it: screen shift and logo dimming on any OLED, and on sets that expose
+   for it: screen shift and logo dimming on any OLED, and on TVs that expose
    them, ASBL and Global Stress Reduction &mdash; the two normally reachable only
    from the TV's service menu, with a service remote and a PIN.
 
@@ -88,14 +88,14 @@ A custom Home Assistant dashboard for an LG TV:
 ## Features
 
 Each has a tab of its own in the dashboard, and a deep link to it. OLED Care
-appears on OLED sets only. Fonts and assets are served by the TV, so the page
+appears on OLED TVs only. Fonts and assets are served by the TV, so the page
 works with no internet access, and a high-contrast light theme with dark text
 sits alongside the default true-black OLED one &mdash; masthead toggle (☾ / ☀)
 or `/?theme=light`.
 
 ### Remote control
 
-The **Control** tab, `/?tab=control`. Drives the set from a browser, including
+The **Control** tab, `/?tab=control`. Drives the TV from a browser, including
 the things the remote does not do easily.
 
 * A D-pad &mdash; arrows, OK, Back and Home &mdash; to navigate the TV's own
@@ -104,13 +104,13 @@ the things the remote does not do easily.
   skip &mdash; through native remote key injection.
 * App launching, picture presets and sound output routing. The presets on offer
   are the ones the TV will accept for whatever is playing: a Dolby Vision source
-  has its own set.
+  has its own presets.
 * Screen blanking, sleep timer, standby LED, on-screen notifications, and power
   and restart &mdash; from here or from Home Assistant.
 
 ### Telemetry and diagnostics
 
-The **System** tab, `/?tab=system`. What the set is doing and what it is made
+The **System** tab, `/?tab=system`. What the TV is doing and what it is made
 of, most of which is absent from its own settings menu.
 
 * SoC temperature and current draw, CPU and per-core load, GPU clock, memory and
@@ -138,8 +138,8 @@ of, most of which is absent from its own settings menu.
 
 The **Privacy** tab, `/?tab=privacy`. Reports what the TV is doing rather than
 repeating its settings menu: whether the content-recognition engine is running
-and sampling frames, the set's advertising identifier and whether ad tracking
-is limited, every data agreement recorded on the set, and which of LG's
+and sampling frames, the TV's advertising identifier and whether ad tracking
+is limited, every data agreement recorded on the TV, and which of LG's
 collection services are alive &mdash; the two the service bus starts on demand
 are marked as such, and the two upstart supervises can be switched off for
 good.
@@ -153,7 +153,7 @@ before anything is clicked. Acceptance of the terms themselves is left to the
 TV's own menus.
 
 The ad & telemetry blocker blackholes LG's tracking, ad and ACR endpoints on the
-set itself, by bind-mounting a hosts table over `/etc/hosts`, and is restored on
+TV itself, by bind-mounting a hosts table over `/etc/hosts`, and is restored on
 boot. Two tiers: *ads & telemetry* blocks the nine ad and diagnostics hosts and
 leaves LG's service platform reachable; *everything* adds the ten that carry the
 Content Store and firmware delivery, so on that tier the app store and updates
@@ -167,7 +167,7 @@ may stop working. The store server differs by platform
 
 ### OLED wear and burn-in protection
 
-The **OLED Care** tab, `/?tab=oledcare`, on OLED sets. The panel's own wear
+The **OLED Care** tab, `/?tab=oledcare`, on OLED TVs. The panel's own wear
 figures beside what each burn-in protection does and a switch for it.
 
 * Cumulative panel hours, panel maintenance and Pixel Refresher countdowns with
@@ -191,10 +191,10 @@ The **Service menu** tab, `/?tab=servicemenu`. Opens LG's engineering menu on
 the TV &mdash; EZ Adjust or In Start &mdash; without a service remote; the TV
 still asks for its PIN. Newer firmware shows a cut-down version until it is
 unlocked, and the dashboard can unlock it: the TV has to be switched off and on
-again before that takes effect. Sets old enough not to lock it say so.
+again before that takes effect. TVs old enough not to lock it say so.
 
 > [!WARNING]
-> The service menu provides low-level hardware and calibration control. Changing unfamiliar values in EZ Adjust or In Start can cause permanent display corruption or render the set unbootable.
+> The service menu provides low-level hardware and calibration control. Changing unfamiliar values in EZ Adjust or In Start can cause permanent display corruption or render the TV unbootable.
 
 <p align="center">
   <a href="docs/screenshots/servicemenu.png"><img src="docs/screenshots/servicemenu.png" alt="Service menu tab: unlock state with a power-cycle note, buttons to open EZ Adjust or In Start, and a warning about what the menu can change" width="700"></a>
@@ -203,7 +203,7 @@ again before that takes effect. Sets old enough not to lock it say so.
 ### Screen savers
 
 The **Screensaver** tab, `/?tab=screensaver`. Four in place of LG's: a clock, a
-starfield, fireworks, and one showing the set's own panel hours and refresher
+starfield, fireworks, and one showing the TV's own panel hours and refresher
 countdown. Each mode offers dim and bright variants, and visual elements
 continuously drift across the screen to prevent OLED burn-in or image retention.
 A firmware update restores the LG default.
@@ -247,15 +247,15 @@ release is out, and buttons to install it or roll back to the version before.
 * An MQTT broker on the network, and usually Home Assistant, only if the
   bridge in [Home Assistant & MQTT](#home-assistant--mqtt-optional) is wanted.
 
-### Tested sets
+### Tested TVs
 
-Tested across the following sets so far. The Luna
+Tested across the following TVs so far. The Luna
 service names and `/proc/lg` paths this relies on may differ across webOS
 versions and panel types.
 
 | Model | webOS | Firmware | Panel | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| OLED65B8SLC | 4.4.3 | 05.50.70 | OLED | Development set |
+| OLED65B8SLC | 4.4.3 | 05.50.70 | OLED | Development TV |
 | OLED65C8PUA | 4.4.0 | 05.50.15 | OLED | No `getAdid` on this firmware |
 | OLED65C9AUA | 4.9.x (4.5+) | 05.50.00 | OLED | |
 | OLED55C9PLA | 4.9.0 | 05.30.40 | OLED | Working fine |
@@ -325,7 +325,7 @@ That is a complete install &mdash; Home Assistant integration is optional.
 * **Nothing on port 8080.** On the TV, `/var/lib/tvweb/tvwebctl status` says
   whether the server is running and `/var/lib/tvweb/tvweb.log` says why it is
   not.
-* **Panel hours and OLED Care missing on an OLED set**, or showing on an LCD
+* **Panel hours and OLED Care missing on an OLED TV**, or showing on an LCD
   one. Panel detection went the wrong way: set `"panel": "oled"` or
   `"panel": "lcd"` in `server/config.json` before a first deploy, or in
   `/var/lib/tvweb/config.json` on a TV that already has one.

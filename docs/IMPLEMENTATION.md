@@ -129,13 +129,13 @@ to a dedicated service and changed filesystem file paths:
 | **Compensation failures** | &mdash; | `/mnt/lg/cmn_data/pnwash/failAlertCount` | integer count |
 | **Panel silicon info** | &mdash; | `com.webos.service.panelcontroller/getOledCellInfo` / `getOledTconInfo` | Cell ID & TCON FPGA FW |
 
-On older sets, the interval file reading `24` means four hours, matching LG's documented
+On older TVs, the interval file reading `24` means four hours, matching LG's documented
 cumulative-viewing cycle — not twenty-four. It is expressed in the same 10-minute units as
 the Luna counters it gets compared against, while `autoOffRsTime` alongside it is in
-hours. Confirmed on a live set: `autoOffRsTime` 3426 against a `panelUsageTime`
+hours. Confirmed on a live TV: `autoOffRsTime` 3426 against a `panelUsageTime`
 of 20576 (÷6 = 3429).
 
-On webOS 9+ sets, `autoOffRsInterval` is expressed directly in whole hours (`4`),
+On webOS 9+ TVs, `autoOffRsInterval` is expressed directly in whole hours (`4`),
 `autoJbInterval` reports `2000 ok`, and `panelcontroller/getPanelUsageTime` provides
 the live usage counter in 10-minute units. Confirmed on an LG C2: `autoOffRsLastTime` 4767
 against a `panelUsageTime` of 28614 (÷6 = 4769).
@@ -171,7 +171,7 @@ Five things decide how `tvwebctl update` works.
 
 **The HTTP client is probed, not assumed.** Node 0.12's `https` has no CA bundle
 worth trusting, so the download goes through curl or wget. The stock
-`/usr/bin/curl` reaches GitHub on both sets tested — 7.53.1 against OpenSSL
+`/usr/bin/curl` reaches GitHub on both TVs tested — 7.53.1 against OpenSSL
 1.0.2p on webOS 4.4.3, 7.82.0 against OpenSSL 3.0.9 on webOS 9.2.2 — but that is
 not something to assume of other firmware, and a client the owner installed can
 be anywhere. Installed clients are tried before the stock one, each against the
@@ -256,7 +256,7 @@ Several flags share one document, so they can only be switched off together.
 The panel names them before they are clicked.
 
 `eulaInfoNetwork` also carries the document titles - `S_ADG` is the "Viewing
-Information Agreement" - and is the only place on the set that names them. The
+Information Agreement" - and is the only place on the TV that names them. The
 file that caches it does not exist on webOS 9, so it is read from the service.
 
 Two quirks. `getSystemSettings` answers for `eulaStatus` only when no `category`
@@ -269,13 +269,13 @@ honours it, and the value may be mirrored against the account server-side.
 
 `returnValue: true` is the service accepting the call, not evidence it stored
 anything - writing the file directly looks exactly as successful. Every write
-from the panel is read back before it reports success, so a set where the
+from the panel is read back before it reports success, so a TV where the
 setter is a no-op says so rather than showing a toggle that has not moved.
 
 Which flags exist varies: a B8 on 4.4.3 has 21, a C2 on 9.2.2 has 23, including
 `marketingOnAllowed`, `shoppingOnAllowed` and `takeOnAllowed`, and no
 `allAllowed`. `eulaMappingList` differs too - `additional1Allowed` is in a group
-on 4.4.3 and in none on 4.4.0. Nothing about the set is hardcoded for that
+on 4.4.3 and in none on 4.4.0. Nothing about the TV is hardcoded for that
 reason: the mapping decides which flags the panel will write, and a TV that
 publishes no mapping gets no toggles on undescribed flags at all.
 
@@ -383,7 +383,7 @@ into rotating it on every pass.
 
 `scripts/` holds five static checks. Four need nothing but the repository and
 run in CI alongside `shellcheck`; `check-entities.py` needs a live
-`/api/stats`, so it is run by hand against the set.
+`/api/stats`, so it is run by hand against the TV.
 
 | Check | What it catches |
 | :--- | :--- |
@@ -404,7 +404,7 @@ log shows, while a parse error leaves no process to log anything.
 The in-place updater (`server/lib/updater.js`) downloads the release tarball from GitHub directly onto the TV and unpacks it over `/var/lib/tvweb/` without needing a computer or `deploy.sh`.
 
 ### Download Client Probing
-The download requires `curl` or `wget` on the TV. LG's stock `/usr/bin/curl` reaches GitHub on tested sets, but third-party tools or stripped setups might place modern clients in non-standard paths. To ensure reliable downloads across webOS generations, the updater probes executable binaries in prioritized order:
+The download requires `curl` or `wget` on the TV. LG's stock `/usr/bin/curl` reaches GitHub on tested TVs, but third-party tools or stripped setups might place modern clients in non-standard paths. To ensure reliable downloads across webOS generations, the updater probes executable binaries in prioritized order:
 
 1. `/media/developer/bin` (Homebrew Channel package directory)
 2. `/usr/local/bin`

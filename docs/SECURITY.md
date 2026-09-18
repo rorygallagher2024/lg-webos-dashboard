@@ -16,7 +16,7 @@ it before exposing it more widely.
   token. An MQTT-only install has no reason to expose one.
 - **The upgrade endpoint installs code.** `allowControl` gates it along with
   everything else, so on a default install anyone who can reach the port can
-  move the set to the current release. It is a fixed repository over verified
+  move the TV to the current release. It is a fixed repository over verified
   TLS, so that is the whole of what they can do; `token` or
   `"allowControl": false` closes it.
 - **Never port-forward this.** It is designed for a trusted LAN.
