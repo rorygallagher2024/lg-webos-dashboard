@@ -1,11 +1,13 @@
 # LG webOS TV Dashboard & Home Assistant Bridge
 
-A server that runs **on** a rooted LG webOS TV. It serves a live dashboard to
-any browser on the network, and will optionally bridge the TV into Home
-Assistant over MQTT as a single auto-discovered device.
+A server that runs directly **on** a rooted LG webOS TV. It serves a live browser
+dashboard for remote control, OLED panel care, privacy toggles, and hardware
+telemetry &mdash; with an optional MQTT bridge that automatically exposes the TV as
+a unified Home Assistant device.
 
-The dashboard needs nothing but the TV. Home Assistant control over MQTT is
-optional, and set up in [step 4](#4-home-assistant--mqtt-optional).
+The dashboard runs standalone on the TV with zero external dependencies. Home
+Assistant integration is completely optional and covered in
+[step 4](#4-home-assistant--mqtt-optional).
 
 ### Compatibility at a glance
 
@@ -198,8 +200,9 @@ again before that takes effect. Sets old enough not to lock it say so.
 
 The **Screensaver** tab, `/?tab=screensaver`. Four in place of LG's: a clock, a
 starfield, fireworks, and one showing the set's own panel hours and refresher
-countdown. Each draws dim or bright, and all of them move so nothing marks the
-panel. A firmware update restores the LG default.
+countdown. Each mode offers dim and bright variants, and visual elements
+continuously drift across the screen to prevent OLED burn-in or image retention.
+A firmware update restores the LG default.
 
 <p align="center">
   <a href="docs/screenshots/screensaver.png"><img src="docs/screenshots/screensaver.png" alt="Screensaver tab: LG default, Clock, Starfield, Fireworks and Panel vitals, with a dim and bright toggle" width="700"></a>
@@ -257,9 +260,7 @@ versions and panel types.
 | OLED55C17LB | 6.x | &mdash; | OLED | HDMI 2.1 diagnostics and remote battery reporting |
 | OLED48C55LA | 25 (10.3.1) | 33.31.68 | OLED | Installed over telnet; in-app update to 0.37.2 confirmed |
 
-**If you run it on anything else, please open an issue whether it's working or not**
-Include your model, webOS version and
-`/var/lib/tvweb/tvweb.log` and I will add a row.
+**Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with your TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` &mdash; whether everything worked or something broke &mdash; and we will add a row.
 
 ---
 
@@ -311,6 +312,10 @@ That is a complete install &mdash; step 4 is optional.
 
 ### If something does not come up
 
+* **Connection refused or password prompt during install.** The installer tries
+  passwordless SSH first, then telnet. If SSH prompts for a password, make sure
+  telnet is toggled **ON** in the TV's Homebrew Channel app settings, or run
+  `./deploy.sh <tv-ip> --telnet` to connect directly over telnet.
 * **Nothing on port 8080.** On the TV, `/var/lib/tvweb/tvwebctl status` says
   whether the server is running and `/var/lib/tvweb/tvweb.log` says why it is
   not.
@@ -328,11 +333,11 @@ user's own hardware &mdash; a Raspberry Pi, a NUC, a container on a NAS. It
 gathers devices from different vendors into one place and automates them. It is
 not a service, and nothing here talks to a company's cloud.
 
-**MQTT** is a lightweight messaging protocol. Something publishes a message to a
-named topic, and anything subscribed to that topic receives it. It needs a
-**broker** &mdash; a small server that relays those messages between publishers
-and subscribers. [Mosquitto](https://mosquitto.org/) is the usual one, and Home
-Assistant ships it as a one-click add-on.
+**MQTT** is a lightweight messaging protocol: a device publishes state updates
+to a named topic, and any subscriber (such as Home Assistant) instantly receives
+them. It relies on a **broker** &mdash; a small server that relays those messages
+between publishers and subscribers. [Mosquitto](https://mosquitto.org/) is the
+usual one, and Home Assistant ships it as a one-click add-on.
 
 This project publishes the TV's telemetry to a broker, and describes its own
 entities using the **MQTT Discovery** convention. Home Assistant reads that
@@ -527,11 +532,12 @@ Nothing on the TV's read-only rootfs is ever modified.
 
 ## Security
 
-The dashboard has **no authentication by default** and binds to `0.0.0.0`, so
-anyone who can reach the port can use every enabled control. On a home LAN that
-is usually the point but you can set `"token": "something-long"` in
-`config.json` if you want it gated, and never port-forward it. If you only use
-Home Assistant, `"web": { "enabled": false }` removes the endpoint entirely.
+The dashboard binds to `0.0.0.0` with **no authentication by default**,
+allowing frictionless control from any phone or browser on your trusted local
+network. If you share your network or want to restrict access, configure
+`"token": "your-secret-token"` in `config.json`. **Never expose port 8080
+directly to the internet (do not port-forward).** If you only use Home Assistant,
+`"web": { "enabled": false }` removes the web endpoint entirely.
 
 The MQTT settings panel is part of that surface: on a default install, anyone
 who can reach the port can change the broker the TV publishes to, and so
