@@ -9,10 +9,10 @@ The dashboard runs standalone on the TV with zero external dependencies.
 
 ### Compatibility at a glance
 
-* **webOS**: 3.4 through 25 (2016–2025 models)
+* **webOS**: 3.4 through 25 confirmed (2016–2025 models; other versions likely work as well)
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
-* **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-tvs)
+* **Tested hardware**: 12 models verified so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; other rooted models should work; [see full table](#tested-tvs)
 
 [What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt-optional) • [Managing the server](#managing-the-server) • [Security](#security)
 
@@ -129,30 +129,21 @@ of, most of which is absent from its own settings menu.
 
 ### Privacy and data collection
 
-The **Privacy** tab, `/?tab=privacy`. Reports what the TV is doing rather than
-repeating its settings menu: whether the content-recognition engine is running
-and sampling frames, the TV's advertising identifier and whether ad tracking
-is limited, every data agreement recorded on the TV, and which of LG's
-collection services are alive &mdash; the two the service bus starts on demand
-are marked as such, and the two upstart supervises can be switched off for
-good.
+The **Privacy** tab, `/?tab=privacy`. Reports what the TV is actually doing: whether
+the content-recognition engine is running and sampling frames, your advertising ID and
+whether ad tracking is limited, recorded data agreements, and toggles to disable LG's
+background collection and diagnostics services.
 
-Most of those agreements can be switched off from here, and the advertising ID
-can be reset and its cookies cleared. The TV keeps two records &mdash; the
-agreements, and the flags derived from them &mdash; and a change writes both, so
-it survives a reboot on firmware that rebuilds the flags at boot. Some
-agreements cover several flags, and the panel names the ones that move together
-before anything is clicked. Acceptance of the terms themselves is left to the
-TV's own menus.
+Most data agreements can be switched off from here (persisting across reboots), and the
+advertising ID can be reset and its cookies cleared. Acceptance of new terms is left to
+the TV's own menus.
 
 The ad & telemetry blocker blackholes LG's tracking, ad and ACR endpoints on the
 TV itself, by bind-mounting a hosts table over `/etc/hosts`, and is restored on
 boot. Two tiers: *ads & telemetry* blocks the nine ad and diagnostics hosts and
 leaves LG's service platform reachable; *everything* adds the ten that carry the
 Content Store and firmware delivery, so on that tier the app store and updates
-may stop working. The store server differs by platform
-&mdash; `com.webos.appInstallService` installs from `lgtvsdp.com` on webOS 4 and
-`nextlgsdp.com` on webOS 9 &mdash; and both are in that tier.
+may stop working.
 
 <p align="center">
   <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
@@ -166,9 +157,9 @@ figures beside what each burn-in protection does and a switch for it.
 * Cumulative panel hours, panel maintenance and Pixel Refresher countdowns with
   scheduling, completed cycle counters and failure alerts.
 * Screen shift and logo dimming on any OLED.
-* Temporal peak control (ASBL) and global stress reduction, on webOS 4 and
-  webOS 9 alike &mdash; the two normally reachable only from the service menu,
-  with a service remote and a PIN, and carrying a warning to match.
+* Temporal peak control (ASBL) and global stress reduction on supported models
+  (the two normally reachable only from the TV's service menu, with a service
+  remote and a PIN).
 
 <p align="center">
   <a href="docs/screenshots/oledcare.png"><img src="docs/screenshots/oledcare.png" alt="OLED Care tab: screen shift, logo dimming, temporal peak control and global stress reduction, each described, with switches and a warranty warning" width="700"></a>
@@ -480,18 +471,9 @@ git pull
 ./deploy.sh <tv-ip>
 ```
 
-Only the server's own files are replaced: the TV keeps its settings, ad blocker,
-screen saver and stopped services.
-
-An in-place upgrade downloads the release tarball, replaces the files the
-release ships and restarts. `config.json`, the ad blocker's hosts file, the
-staged screen saver and the list of stopped LG services are left alone; the
-replaced version stays in `/var/lib/tvweb/.previous` for `tvwebctl rollback`.
-The boot hook is refreshed only where one is already installed.
-
-The download uses `curl` or `wget` directly on the TV (probing common binary paths
-or using `"update": { "client": "/path/to/curl" }` in `config.json`). See
-[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#in-place-updater-and-binary-probing)
+Only the server's own files are replaced: your configuration, ad blocker hosts,
+screen saver, and stopped services are preserved. Previous versions are saved to allow
+instant rollback via `tvwebctl rollback`. See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#in-place-updater-and-binary-probing)
 for client probing order and manual rollback details.
 
 ### Checking automatically
