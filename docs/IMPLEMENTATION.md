@@ -396,3 +396,26 @@ run in CI alongside `shellcheck`; `check-entities.py` needs a live
 `check-es5.py` blanks strings, comments and regex literals before scanning, and
 checks syntax only: an ES6 library call parses and fails at the call, which the
 log shows, while a parse error leaves no process to log anything.
+
+---
+
+## In-place updater and binary probing
+
+The in-place updater (`server/lib/updater.js`) downloads the release tarball from GitHub directly onto the TV and unpacks it over `/var/lib/tvweb/` without needing a computer or `deploy.sh`.
+
+### Download Client Probing
+The download requires `curl` or `wget` on the TV. LG's stock `/usr/bin/curl` reaches GitHub on tested sets, but third-party tools or stripped setups might place modern clients in non-standard paths. To ensure reliable downloads across webOS generations, the updater probes executable binaries in prioritized order:
+
+1. `/media/developer/bin` (Homebrew Channel package directory)
+2. `/usr/local/bin`
+3. `/opt/bin` and `/opt/usr/bin` (Optware / Entware)
+4. `/var/lib/webosbrew/bin`
+5. `/home/root/bin`
+6. `/usr/bin` and `/bin` (stock system binaries)
+
+A custom client path can also be configured in `config.json` via `"update": { "client": "/path/to/curl" }`.
+
+### Safe In-Place Staging & Rollback
+1. **Extraction & Validation**: The tarball is decompressed via Node's `zlib.gunzipSync` and unpacked into `/var/lib/tvweb/.update/`. It validates that the downloaded package contains a valid `server/tvweb.js` declaring the expected release version.
+2. **Non-Destructive Upgrade**: Files are copied over `/var/lib/tvweb/`. `config.json`, the ad blocker's hosts file (`adblock_hosts`), staged screensavers, and stopped service lists are strictly preserved.
+3. **Rollback Backup**: A complete copy of the replaced version is retained in `/var/lib/tvweb/.previous/`. Running `tvwebctl rollback` (or manually copying `.previous/.` back to `/var/lib/tvweb/`) restores the previous version without redeploying.

@@ -485,23 +485,10 @@ staged screen saver and the list of stopped LG services are left alone; the
 replaced version stays in `/var/lib/tvweb/.previous` for `tvwebctl rollback`.
 The boot hook is refreshed only where one is already installed.
 
-The download goes through curl or wget on the TV. The TV's own `/usr/bin/curl`
-reaches GitHub on the sets tested; where it cannot, the check says so and nothing
-else changes, and installing a current curl or wget fixes it. An installed client
-is tried first: the probe looks in the Homebrew Channel's own
-`/media/developer/bin`, then `/usr/local/bin`, `/opt/bin`, `/opt/usr/bin`,
-`/var/lib/webosbrew/bin` and `/home/root/bin`. Point
-`"update": { "client": "/path/to/curl" }` at one that lives somewhere else.
-
-`.previous` is a complete copy of the version that was replaced, so getting back
-does not depend on the installed `tvwebctl` having a `rollback` command:
-
-```bash
-ssh root@<tv-ip>
-/var/lib/tvweb/tvwebctl stop
-cp -r /var/lib/tvweb/.previous/. /var/lib/tvweb/
-/var/lib/tvweb/tvwebctl start
-```
+The download uses `curl` or `wget` directly on the TV (probing common binary paths
+or using `"update": { "client": "/path/to/curl" }` in `config.json`). See
+[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#in-place-updater-and-binary-probing)
+for client probing order and manual rollback details.
 
 ### Checking automatically
 
