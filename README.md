@@ -241,9 +241,9 @@ versions and panel types.
 | OLED55G42LW | 24 | 33.31.68 | OLED | Rooted with slopbro, not the Homebrew Channel |
 | OLED42C24LA | 9.2.2 (22+) | 23.25.55 | OLED | Rooted with jsbro-autoroot |
 | OLED65B7V-Z | 3.9.3 | 06.10.65 | OLED | No SoC temperature or eMMC wear readings |
-| OLED55B46LA | 24 (9.24.8) | 23.23.30 | OLED | Installed over telnet; no logo light on this model |
+| OLED55B46LA | 24 (9.24.8) | 23.23.30 | OLED | Installed over telnet |
 | OLED55C17LB | 6.x | &mdash; | OLED | HDMI 2.1 diagnostics and remote battery reporting |
-| OLED48C55LA | 25 (10.3.1) | 33.31.68 | OLED | Installed over telnet; in-app update to 0.37.2 confirmed; no logo light on this model |
+| OLED48C55LA | 25 (10.3.1) | 33.31.68 | OLED | Installed over telnet; in-app update to 0.37.2 confirmed |
 
 **If you run it on anything else, please open an issue whether it's working or not**
 Include your model, webOS version and
