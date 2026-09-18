@@ -136,6 +136,7 @@ use_ssh() {
 
 deploy_ssh() {
   echo "installing on $TV over SSH ..."
+  # shellcheck disable=SC2029  # $STAGE is a fixed path, meant to be filled in here
   ssh "${SSH_OPTS[@]}" "root@$TV" "mkdir -p $STAGE && cat > $STAGE/bundle.tar" < "$WORK/bundle.tar"
   install_script | ssh "${SSH_OPTS[@]}" "root@$TV" 'sh -s' > "$WORK/out" 2>&1 || true
 }
