@@ -7,16 +7,16 @@ a unified Home Assistant device.
 
 The dashboard runs standalone on the TV with zero external dependencies. Home
 Assistant integration is completely optional and covered in
-[step 4](#4-home-assistant--mqtt-optional).
+[Home Assistant & MQTT](#home-assistant--mqtt-optional).
 
 ### Compatibility at a glance
 
 * **webOS**: 3.4 through 25 (2016–2025 models)
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
-* **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-on)
+* **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-sets)
 
-[Overview](#what-its-for) • [Screenshots](#web-dashboard) • [Features](#core-features) • [Requirements](#requirements) • [Installation](#3-install-the-dashboard) • [Home Assistant](#4-home-assistant--mqtt-optional) • [Tested Sets](#tested-on) • [Security](#security)
+[Overview](#what-its-for) • [Screenshots](#web-dashboard) • [Features](#core-features) • [Installation](#installation) • [Tested Sets](#tested-sets) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
 
 ---
 
@@ -38,7 +38,7 @@ Assistant integration is completely optional and covered in
    arrives as a single auto-discovered device &mdash; no YAML, no LG
    account &mdash; so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
-   [Step 4](#4-home-assistant--mqtt-optional) explains what MQTT is.
+   [Home Assistant & MQTT](#home-assistant--mqtt-optional) explains what MQTT is.
 
 5. **[Seeing what the TV is actually doing](#telemetry-and-diagnostics).** SoC temperature, per-core CPU
    load, memory, swap, current draw, Wi-Fi signal and throughput.
@@ -218,7 +218,7 @@ The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where it
 arrives in Home Assistant as a single auto-discovered device. The tab
 holds the broker address, credentials, topic prefix and device identity, with
 the bridge's connection state and last publish time beside them.
-[Step 4](#4-home-assistant--mqtt-optional) covers the setup.
+[Home Assistant & MQTT](#home-assistant--mqtt-optional) covers the setup.
 
 ### Server updates
 
@@ -227,7 +227,11 @@ release is out, and buttons to install it or roll back to the version before.
 **Check daily** looks on its own and lets Home Assistant offer the update.
 [Updating](#updating) covers installs from before the tab existed.
 
-## Requirements
+---
+
+## Installation
+
+### Requirements
 
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the
   [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
@@ -237,9 +241,9 @@ release is out, and buttons to install it or roll back to the version before.
   adds the Git Bash window the install runs in. Nothing else needs installing,
   and the TV does not need internet access.
 * An MQTT broker on the network, and usually Home Assistant, only if the
-  bridge in [step 4](#4-home-assistant--mqtt-optional) is wanted.
+  bridge in [Home Assistant & MQTT](#home-assistant--mqtt-optional) is wanted.
 
-### Tested on
+### Tested sets
 
 Tested across the following sets so far. The Luna
 service names and `/proc/lg` paths this relies on may differ across webOS
@@ -262,9 +266,7 @@ versions and panel types.
 
 **Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with your TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` &mdash; whether everything worked or something broke &mdash; and we will add a row.
 
----
-
-## 1. Get the files
+### 1. Get the files
 
 Download the project onto a computer on the same network as the TV. On
 Windows, run these in a Git Bash window, which Git for Windows adds to the
@@ -275,7 +277,7 @@ git clone https://github.com/rorygallagher2024/lg-webos-dashboard.git
 cd lg-webos-dashboard/server
 ```
 
-## 2. Access
+### 2. Access
 
 Nothing to set up: the install uses SSH if the TV has it, and the Homebrew
 Channel's telnet if not.
@@ -283,7 +285,7 @@ Channel's telnet if not.
 > [!TIP]
 > Telnet leaves an unauthenticated root shell open on your local network. [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes about five minutes and is strongly recommended.
 
-## 3. Install the dashboard
+### 3. Install the dashboard
 
 Find the TV's address under Settings &rarr; Network on the TV, or in the
 router's list of devices. Then, from the `server/` directory in your terminal:
@@ -308,9 +310,9 @@ whoever opens the page, and reaches the internet only to look for a new release 
 when the dashboard's Server tab is opened, or daily if
 [checking automatically](#checking-automatically) is switched on.
 
-That is a complete install &mdash; step 4 is optional.
+That is a complete install &mdash; Home Assistant integration is optional.
 
-### If something does not come up
+### Troubleshooting
 
 * **Connection refused or password prompt during install.** The installer tries
   passwordless SSH first, then telnet. If SSH prompts for a password, make sure
@@ -324,7 +326,9 @@ That is a complete install &mdash; step 4 is optional.
   `"panel": "lcd"` in `server/config.json` before a first deploy, or in
   `/var/lib/tvweb/config.json` on a TV that already has one.
 
-## 4. Home Assistant & MQTT (optional)
+---
+
+## Home Assistant & MQTT (optional)
 
 ### What these are
 
