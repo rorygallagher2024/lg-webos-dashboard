@@ -16,7 +16,7 @@ Assistant integration is completely optional and covered in
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
 * **Tested hardware**: 12 verified models so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; [see full table](#tested-tvs)
 
-[What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt-optional) • [Security](#security)
+[What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt-optional) • [Managing the server](#managing-the-server) • [Security](#security)
 
 ---
 
@@ -452,7 +452,9 @@ file. With both disabled the server exits rather than idling.
 See [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) for the entity list and
 example automations.
 
-## Managing it
+---
+
+## Managing the server
 
 ```bash
 ssh root@<tv-ip> /var/lib/tvweb/tvwebctl status    # start | stop | restart | status
@@ -512,7 +514,7 @@ dashboard footer shows a newer version next to the installed one, and Home
 Assistant gets the update entity. The request says nothing about the TV beyond
 the address any HTTP request reveals.
 
-## Uninstalling
+### Uninstalling
 
 ```bash
 ssh root@<tv-ip>
