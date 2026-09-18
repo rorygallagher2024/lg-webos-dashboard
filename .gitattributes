@@ -1,0 +1,6 @@
+# These run under bash on the computer and under the TV's own shell, and a
+# carriage return at the end of each line breaks both. Git for Windows adds one
+# on checkout by default, so pin them to plain line endings.
+*.sh            text eol=lf
+*.py            text eol=lf
+server/tvwebctl text eol=lf
