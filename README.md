@@ -252,8 +252,9 @@ Include your model, webOS version and
 
 ## 1. Get the files
 
-`deploy.sh` runs on a computer on the same network as the TV, not on the TV
-itself. Clone the repository there &mdash; on Windows, in a Git Bash window:
+Download the project onto a computer on the same network as the TV. On
+Windows, run these in a Git Bash window, which Git for Windows adds to the
+Start menu:
 
 ```bash
 git clone https://github.com/rorygallagher2024/lg-webos-mqtt.git
@@ -262,41 +263,32 @@ cd lg-webos-mqtt/server
 
 ## 2. Access
 
-`deploy.sh` needs a root shell on the TV. It uses **SSH** when key-based login
-works and falls back to the Homebrew Channel's **telnet** otherwise, so nothing
-has to change to get started. `--telnet` forces the older path.
+Nothing to set up: the install uses SSH if the TV has it, and the Homebrew
+Channel's telnet if not.
 
-* **SSH keys already working with the TV?** Nothing to do. Skip to step 3.
-* **Freshly rooted, telnet only?** That works too. Skip to step 3.
-* **Want to move to SSH?** Recommended, and it takes about five minutes:
-  see [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh).
-  It can be done before or after installing; `deploy.sh` works either side.
-
-Either way the files are sent from your computer straight to the TV, so the
-TV does not need internet access, and neither route needs anything installed on
-the computer.
-
-Worth knowing whichever way: a rooted TV's telnet is an **unauthenticated root
-shell on port 23**. Anyone on the network gets root with no password. That comes
-from the rooting rather than from this project, but it is the largest exposure
-on the TV and worth closing when the chance comes.
+Moving to SSH is still worth doing. On a rooted TV, telnet lets anyone on the
+network take full control of the TV with no password. That comes from the
+rooting rather than from this project, but it is the biggest risk on the TV.
+[Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh) takes
+about five minutes, before or after installing.
 
 ## 3. Install the dashboard
 
-`<tv-ip>` is the TV's own address &mdash; Settings &rarr; Network on the set, or
-the router's client list. A static lease for it saves trouble later.
+Find the TV's address under Settings &rarr; Network on the TV, or in the
+router's list of devices. Then, in the same window:
 
 ```bash
 ./deploy.sh <tv-ip>
 ```
 
-Run it from a terminal window you keep open rather than by double-clicking it,
-so you can read what it reports. It finishes by checking that the dashboard
-answers, and says so if it doesn't. Then open **`http://<tv-ip>:8080/`**.
+For example, `./deploy.sh 192.168.1.50`. It takes about ten seconds and finishes
+by checking that the dashboard answers. When it says `done`, open
+**`http://<tv-ip>:8080/`** in a browser. If anything goes wrong, it stops and
+says why.
 
-It also sets the server to start again whenever the TV restarts. To try it
-without that, add `--no-persist`: the dashboard then runs until the TV next
-restarts, and nothing is left to start on its own.
+The server starts again by itself whenever the TV restarts. To try it without
+that, add `--no-persist`, and it runs only until the TV next restarts. Setting
+the router to always give the TV the same address saves looking it up again.
 
 No configuration is needed for this part. Without a config file the dashboard
 runs on port 8080, the controls are live, MQTT is off, and power off / reboot
