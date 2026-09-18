@@ -1,8 +1,8 @@
 {
-  "name": "lg-webos-mqtt",
+  "name": "lg-webos-dashboard",
   "version": "0.37.2",
   "private": true,
-  "description": "Home Assistant MQTT bridge and dashboard for LG webOS TVs",
+  "description": "Dashboard, remote control, OLED care, and Home Assistant MQTT bridge for LG webOS TVs",
   "devDependencies": {
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"

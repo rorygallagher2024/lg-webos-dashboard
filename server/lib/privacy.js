@@ -3,7 +3,8 @@ var fs = require('fs');
 var execFile = require('child_process').execFile;
 
 var ADBLOCK_HOSTS_FILE = '/var/lib/tvweb/adblock_hosts';
-var ADBLOCK_MARKER = '# LG Ad & Telemetry Blackhole (lg-webos-mqtt)';
+var ADBLOCK_MARKER = '# LG Ad & Telemetry Blackhole (lg-webos-dashboard)';
+var ADBLOCK_LEGACY_MARKER = '# LG Ad & Telemetry Blackhole (lg-webos-mqtt)';
 var ADBLOCK_FLAG_FILE = '/var/lib/tvweb/adblock_enabled';
 
 var ADBLOCK_ADS = [
@@ -170,7 +171,7 @@ function isAdBlockActive() {
   }
   try {
     var hosts = fs.readFileSync('/etc/hosts', 'utf8');
-    cachedAdBlockActive = hosts.indexOf(ADBLOCK_MARKER) !== -1;
+    cachedAdBlockActive = hosts.indexOf(ADBLOCK_MARKER) !== -1 || hosts.indexOf(ADBLOCK_LEGACY_MARKER) !== -1;
     lastAdBlockCheck = now;
     return cachedAdBlockActive;
   } catch (e) {

@@ -4,7 +4,7 @@ var path = require('path');
 var zlib = require('zlib');
 var execFile = require('child_process').execFile;
 
-var UPDATE_REPO = 'rorygallagher2024/lg-webos-mqtt';
+var UPDATE_REPO = 'rorygallagher2024/lg-webos-dashboard';
 var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases/latest';
 var UPDATE_TARBALL = 'https://codeload.github.com/' + UPDATE_REPO + '/tar.gz/refs/tags/v';
 var BOOT_HOOK = '/var/lib/webosbrew/init.d/50-tvweb';

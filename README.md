@@ -270,8 +270,8 @@ Windows, run these in a Git Bash window, which Git for Windows adds to the
 Start menu:
 
 ```bash
-git clone https://github.com/rorygallagher2024/lg-webos-mqtt.git
-cd lg-webos-mqtt/server
+git clone https://github.com/rorygallagher2024/lg-webos-dashboard.git
+cd lg-webos-dashboard/server
 ```
 
 ## 2. Access
@@ -466,7 +466,7 @@ from [step 1](#1-get-the-files) and deploy again, with the flags used the first
 time:
 
 ```bash
-cd lg-webos-mqtt/server
+cd lg-webos-dashboard/server
 git pull
 ./deploy.sh <tv-ip>
 ```

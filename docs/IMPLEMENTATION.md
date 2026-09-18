@@ -235,7 +235,7 @@ Writing through the service works, but the flag alone does not survive a boot.
 documents with an accepted flag on each. At boot the firmware rebuilds every
 mapped flag from the accepted documents, so a flag written on its own is
 overwritten by whatever its agreement still says. Reported on a C8 (webOS 4.4.0)
-in [#61](https://github.com/rorygallagher2024/lg-webos-mqtt/issues/61).
+in [#61](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/61).
 
 **Both firmwares rebuild.** An earlier note here said a B8 on 4.4.3 did not, on
 the strength of `cookiesAllowed` surviving a reboot. That flag is absent from

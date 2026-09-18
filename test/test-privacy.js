@@ -29,7 +29,7 @@ test('every blocked host is answered on both families', function () {
 });
 
 test('the table still carries the marker the mount is detected by', function () {
-  assert.ok(privacy.adBlockHostsTable('ads').indexOf('lg-webos-mqtt') !== -1);
+  assert.ok(privacy.adBlockHostsTable('ads').indexOf('lg-webos-dashboard') !== -1);
 });
 
 test('localhost keeps its own entries', function () {
