@@ -336,10 +336,11 @@ That is a complete install &mdash; Home Assistant integration is optional.
 
 ### What these are
 
-**Home Assistant** is open-source home automation software that runs on the
-user's own hardware &mdash; a Raspberry Pi, a NUC, a container on a NAS. It
-gathers devices from different vendors into one place and automates them. It is
-not a service, and nothing here talks to a company's cloud.
+**Home Assistant** is open-source home automation software that runs on your own
+hardware &mdash; a Raspberry Pi, a NUC, a container on a NAS. It gathers devices
+from different vendors into one place and automates them locally. Communication
+between the TV, your broker, and Home Assistant stays entirely on your local
+network &mdash; no LG account or vendor cloud dependencies required.
 
 **MQTT** is a lightweight messaging protocol: a device publishes state updates
 to a named topic, and any subscriber (such as Home Assistant) instantly receives
