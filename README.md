@@ -219,6 +219,10 @@ release is out, and buttons to install it or roll back to the version before.
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the
   [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
 * Nothing else on the TV for the dashboard.
+* A computer on the same network to install from. A Mac or a Linux machine
+  works as it is. On Windows, use WSL (Ubuntu, from the Microsoft Store); Git
+  Bash also works, but only once SSH is set up on the TV &mdash; see
+  [step 2](#2-access).
 * An MQTT broker on the network, and usually Home Assistant, only if the
   bridge in [step 4](#4-home-assistant--mqtt-optional) is wanted.
 
@@ -250,9 +254,8 @@ Include your model, webOS version and
 
 ## 1. Get the files
 
-`deploy.sh` runs on a computer on the same network as the TV &mdash; macOS,
-Linux, or Windows under WSL or Git Bash &mdash; not on the TV itself. Clone the
-repository there:
+`deploy.sh` runs on a computer on the same network as the TV, not on the TV
+itself. Clone the repository there &mdash; on Windows, inside WSL:
 
 ```bash
 git clone https://github.com/rorygallagher2024/lg-webos-mqtt.git
@@ -271,9 +274,11 @@ has to change to get started. `--telnet` forces the older path.
   see [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh).
   It can be done before or after installing; `deploy.sh` works either side.
 
-The telnet path has no file transfer of its own, so it also wants `python3` and
-`nc` on this machine: the files are served back to the TV over HTTP for a few
-seconds while it runs.
+Telnet can't copy files, so on that route the TV downloads them from your
+computer for a few seconds while the script runs. That needs two things on the
+computer: Python 3, and netcat, a small networking tool. A Mac, Linux and WSL
+have both. Git Bash on Windows has neither, so there, set up SSH first. If
+anything is missing, `deploy.sh` says what and stops.
 
 Worth knowing whichever way: a rooted TV's telnet is an **unauthenticated root
 shell on port 23**. Anyone on the network gets root with no password. That comes
@@ -289,8 +294,9 @@ the router's client list. A static lease for it saves trouble later.
 ./deploy.sh <tv-ip> --persist
 ```
 
-Then open **`http://<tv-ip>:8080/`**. The script prints the service status and
-the last few log lines as it finishes.
+Run it from a terminal window you keep open rather than by double-clicking it,
+so you can read what it reports. It finishes by checking that the dashboard
+answers, and says so if it doesn't. Then open **`http://<tv-ip>:8080/`**.
 
 `--persist` installs a boot hook so the server survives a reboot; leaving it off
 runs the dashboard until the TV next restarts and installs nothing that starts
