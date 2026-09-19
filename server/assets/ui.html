@@ -2614,6 +2614,7 @@ async function loadOledCare() {
   const cyc = [];
   if (d.compCycles !== null && d.compCycles !== undefined) cyc.push(`Short cycles completed <span>${d.compCycles.toLocaleString()}</span>`);
   if (d.refresherCycles !== null && d.refresherCycles !== undefined) cyc.push(`Pixel refresher cycles <span>${d.refresherCycles.toLocaleString()}</span>`);
+  if (d.gsrStressCount !== null && d.gsrStressCount !== undefined) cyc.push(`GSR stress events <span>${d.gsrStressCount.toLocaleString()}</span>`);
   if (d.failureAlerts !== null && d.failureAlerts !== undefined) cyc.push(`Failure alerts <span>${d.failureAlerts.toLocaleString()}</span>`);
   q('oc-cycles').innerHTML = cyc.map(x => `<div>${x}</div>`).join('');
   q('oled-warn').hidden = !d.serviceControls;
