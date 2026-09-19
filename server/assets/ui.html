@@ -332,6 +332,20 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .dp-ok{grid-column:2;grid-row:2}
 .dp-right{grid-column:3;grid-row:2}
 .dp-down{grid-column:2;grid-row:3}
+/* Shortcut buttons: a row per button on the remote, each with the app it opens.
+   Same shape as the OLED rows so the two panels read alike. */
+.sc-row{display:flex;gap:20px;justify-content:space-between;align-items:center;
+  padding:16px 0;border-bottom:1px solid var(--w06)}
+.sc-row:last-child{border-bottom:0}
+.sc-name{font-size:15px}
+.sc-desc{font-size:13px;color:var(--w50);margin-top:6px;line-height:1.5;max-width:52ch}
+.sc-pick{flex:0 0 auto}
+.sc-pick select{font-family:inherit;font-size:13px;color:var(--w80);
+  background:var(--bg);border:1px solid var(--w25);border-radius:3px;
+  padding:8px 10px;min-width:200px;cursor:pointer}
+.sc-pick select:disabled{opacity:.45;cursor:default}
+.sc-pick select:focus{outline:none;border-color:var(--w50)}
+
 .oled-row{display:flex;gap:20px;justify-content:space-between;align-items:flex-start;
           padding:18px 0;border-bottom:1px solid var(--w12)}
 .oled-row:last-child{border-bottom:0}
@@ -944,7 +958,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <div class="lbl">Remote shortcut buttons</div>
   <div id="sc-list" class="ss-list"></div>
   <div class="sub" id="sc-msg"></div>
-  <div class="pv-note" id="sc-note">Only the buttons this remote actually has are listed. Changing one restarts the TV's window manager, so the screen goes dark for a few seconds and open apps close.<br>The TV's own button list is fixed by LG and cannot be edited, so the key is intercepted before it reaches the stock handler. A reboot with nothing assigned leaves every button as it came.</div>
+  <div class="pv-note" id="sc-note">Changing a button blanks the screen for a few seconds and closes whatever is open. The choice is kept when the TV restarts, and a button can be given back at any time.</div>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
@@ -1963,10 +1977,17 @@ const SC_LABELS = {
 };
 const scLabel = b => SC_LABELS[b] || (b.charAt(0).toUpperCase() + b.slice(1));
 let scBusy = false;
+let scApps = null;   // installed apps, for naming and for the picker
+
+const scAppName = id => {
+  if (!scApps) return null;
+  const a = scApps.find(x => x.id === id);
+  return a ? a.title : null;
+};
 
 function renderShortcuts(d) {
   const tb = q('tab-btn-remote');
-  // Only offered where the key handler this edits is present (webOS 9 and up).
+  // Only offered where the TV allows its buttons to be changed.
   if (tb) { tb.hidden = !(d && d.supported); updateTabArrows(); }
   const box = q('sc-list');
   if (!box || !d || !d.supported) return;
@@ -1978,36 +1999,54 @@ function renderShortcuts(d) {
     q('sc-msg').textContent = 'This TV reported no shortcut buttons.';
     return;
   }
+  const apps = scApps || [];
   box.innerHTML = buttons.map(b => {
-    const on = bound[b.button] === d.defaultApp;
+    const to = bound[b.button];
+    /* Never show the id the TV reports - "ui30" means nothing to a reader. With
+       no name to show, say what the button does instead of naming it badly. */
+    const name = to ? scAppName(to) : null;
+    const opts = ['<option value="">Leave it as it came</option>']
+      .concat(apps.map(a =>
+        `<option value="${esc(a.id)}"${a.id === to ? ' selected' : ''}>${esc(a.title)}</option>`));
     return `
-      <button class="ss-card${on ? ' on' : ''}" data-sc="${b.button}" ${d.writable ? '' : 'disabled'}>
-        <div class="ss-name"><span>${scLabel(b.button)}</span>${on ? '<span class="ss-tag">Opens dashboard</span>' : ''}</div>
-        <div class="ss-desc">${on ? 'Press it to open the dashboard on the TV. Select again to give it back to '
-                                     + esc(b.stockAppId || 'its own app') + '.'
-                                   : 'Currently opens ' + esc(b.stockAppId || 'its own app') + '.'}</div>
-      </button>`;
+      <div class="sc-row">
+        <div class="sc-main">
+          <div class="sc-name">${scLabel(b.button)}</div>
+          <div class="sc-desc">${to ? 'Now opens ' + esc(name || 'another app') + '.'
+                                    : 'Still opens what it always has.'}</div>
+        </div>
+        <div class="sc-pick">
+          <select data-sc="${esc(b.button)}" ${d.writable ? '' : 'disabled'}>${opts.join('')}</select>
+        </div>
+      </div>`;
   }).join('');
   q('sc-msg').textContent = d.writable ? '' : 'Controls are switched off in config.json.';
 }
 
 async function loadShortcuts() {
   try {
+    // The apps are needed to name what each button opens, and only change when
+    // something is installed, so they are fetched once and kept.
+    if (!scApps) {
+      try {
+        const a = await (await fetch(api('/api/apps'), { cache: 'no-store' })).json();
+        scApps = (a && a.apps) || [];
+      } catch (e) { scApps = []; }
+    }
     const d = await (await fetch(api('/api/shortcut'), { cache: 'no-store' })).json();
     renderShortcuts(d);
   } catch (e) { /* leave the tab hidden */ }
 }
 
-document.addEventListener('click', async ev => {
-  if (!ev.target.closest) return;
-  const card = ev.target.closest('.ss-card[data-sc]');
-  if (!card || card.disabled || scBusy) return;
+document.addEventListener('change', async ev => {
+  const sel = ev.target.closest && ev.target.closest('select[data-sc]');
+  if (!sel || sel.disabled || scBusy) return;
   scBusy = true;
-  const wasOn = card.classList.contains('on');
-  q('sc-msg').textContent = wasOn ? 'Giving the button back…' : 'Assigning the button…';
-  const r = await c('shortcutKey', wasOn
-    ? { button: card.dataset.sc, clear: true }
-    : { button: card.dataset.sc });
+  const appId = sel.value;
+  q('sc-msg').textContent = appId ? 'Assigning the button…' : 'Giving the button back…';
+  const r = await c('shortcutKey', appId
+    ? { button: sel.dataset.sc, appId }
+    : { button: sel.dataset.sc, clear: true });
   scBusy = false;
   if (!r || !r.ok) q('sc-msg').textContent = (r && r.error) || 'Could not change it.';
   loadShortcuts();

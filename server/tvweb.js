@@ -800,6 +800,28 @@ function assetPath(rel) {
 }
 
 /*
+ * The apps installed on this TV, for choosing what a shortcut button opens.
+ * Sorted with the everyday apps first: a list led by two dozen system entries
+ * is no use to someone picking one with a remote.
+ */
+function listApps(cb) {
+  luna('com.webos.applicationManager/listLaunchPoints', {}, function (lp) {
+    var pts = (lp && lp.launchPoints) || [];
+    var apps = [];
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i];
+      if (!p || !p.id) continue;
+      apps.push({ id: p.id, title: p.title || p.id, systemApp: !!p.systemApp });
+    }
+    apps.sort(function (a, b) {
+      if (!!a.systemApp !== !!b.systemApp) return a.systemApp ? 1 : -1;
+      return String(a.title).toLowerCase() < String(b.title).toLowerCase() ? -1 : 1;
+    });
+    cb({ ok: true, apps: apps });
+  });
+}
+
+/*
  * Pointing a remote's streaming shortcut button at another app. The work - a
  * bind-mount over the compositor's key handler and a compositor reload - belongs
  * in shell, so it lives in a script beside the assets and its JSON result is
@@ -1122,6 +1144,10 @@ var server = http.createServer(function (req, res) {
       if (r && r.ok) r.writable = CONFIG.allowControl;
       send(res, 200, JSON.stringify(r));
     });
+  }
+
+  if (pathname === '/api/apps') {
+    return listApps(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/oledcare') {

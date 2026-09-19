@@ -220,18 +220,20 @@ skipped and everything else works as before.
 
 ### Remote shortcut buttons
 
-The **Remote** tab, `/?tab=remote`. Points one of the remote's streaming buttons
-(Netflix, Prime Video, Disney+ and the rest) at the dashboard app instead, so
-the dashboard is one press away. Only the buttons the TV reports as present are
-offered, so the list matches the remote in the room. Selecting an assigned
-button again gives it back to its own app, and a reboot with nothing assigned
-leaves every button as it came.
+The **Remote** tab, `/?tab=remote`, and the same tab in the TV app. Points any
+of the remote's streaming buttons (Netflix, Prime Video, Disney+ and the rest)
+at any app installed on the TV — the dashboard app, or anything else. Only the
+buttons the TV reports as present are offered, so the list matches the remote in
+the room, and any button can be given back at any time.
+
+The choice is kept when the TV restarts. Changing one restarts the window
+manager, so the screen goes dark for a few seconds and open apps close.
 
 The TV's own button table is not usable for this: it is synchronised from LG's
 servers, which overwrite any local change at the next sync. The key is
 intercepted in the compositor's key handler instead, before the stock handler
-sees it. Changing an assignment restarts the window manager, so the screen goes
-dark for a few seconds and open apps close. webOS 9 and later.
+sees it. That patch is checked before it is applied and is not written to disk,
+so a reboot restores the stock handler if one ever misbehaves. webOS 9 and later.
 
 ### Home Assistant bridge
 

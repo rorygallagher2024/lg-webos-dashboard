@@ -27,36 +27,65 @@ body{font-family:'Manrope',sans-serif;color:#fff;
   color:rgba(255,255,255,.26);transition:color .22s ease;white-space:nowrap}
 .tab.on{color:#fff;font-weight:300}
 
-#list{flex:1 1 auto;overflow:hidden;position:relative}
+/* Two columns: the rows on the left, an explainer for whichever row is selected
+   on the right. A row's label and value never needed the full width, and the
+   space buys somewhere to say what a setting means without a second screen. */
+#main{flex:1 1 auto;display:flex;gap:2.6vw;overflow:hidden;padding-right:4vw;min-height:0}
+#list{flex:1 1 62%;overflow:hidden;position:relative}
 #rows{position:absolute;left:0;right:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+
+#hint{flex:0 0 31%;align-self:center;border-left:1px solid rgba(255,255,255,.10);
+  padding-left:2.4vw;opacity:0;transition:opacity .22s ease}
+#hint.on{opacity:1}
+.h-title{font-family:'Outfit';font-weight:200;font-size:3.4vh;line-height:1.15;
+  letter-spacing:.005em;margin-bottom:1.6vh}
+.h-body{font-family:'Manrope';font-weight:400;font-size:2.1vh;line-height:1.65;
+  color:rgba(255,255,255,.52)}
+/* What OK does here, or that it does nothing. Green only when there is
+   something to press, so the colour itself carries the distinction. */
+.h-act{font-family:'Manrope';font-weight:600;font-size:1.7vh;letter-spacing:.14em;
+  text-transform:uppercase;margin-top:2.4vh;color:#1ec15f}
+.h-act.ro{color:rgba(255,255,255,.30)}
 
 /* A row is a label and its value. Only the selected one is full white and
    slightly enlarged; the rest recede, so the eye lands on the choice. */
+/* The right padding is the scroll arrows' lane, so a long value never runs
+   underneath one. */
 .row{display:flex;align-items:baseline;justify-content:space-between;height:7.6vh;
-  padding-right:8vw;opacity:.34;transition:opacity .22s ease,transform .22s ease;
+  padding-right:3.4vw;
+  opacity:.34;transition:opacity .22s ease,transform .22s ease;
   transform-origin:left center}
 .row.sel{opacity:1;transform:scale(1.03)}
 .lbl{font-family:'Manrope';font-weight:400;font-size:3.1vh;letter-spacing:.01em}
 .val{font-family:'Outfit';font-weight:200;font-size:3.1vh;color:rgba(255,255,255,.5);
-  text-align:right;white-space:nowrap;padding-left:4vw}
+  text-align:right;white-space:nowrap;padding-left:2vw}
 .row.sel .val{color:rgba(255,255,255,.75)}
 .val.on{color:#1ec15f}
 .val.off{color:rgba(255,255,255,.28)}
-/* An actionable row: the arrow is dim until the row is the selected one, so a
-   glance down the list shows what can be pressed without shouting. */
 .val.act{color:rgba(255,255,255,.34)}
 .row.sel .val.act{color:#1ec15f}
+
+/* The mark that separates a row you can press from one you can only read. It
+   sits in a gutter every row reserves, so nothing shifts as the eye moves down
+   and the pressable ones line up as a column of their own. */
+.lbl::before{content:'';display:inline-block;width:.9vh;height:.9vh;
+  border-radius:50%;margin-right:1.6vh;vertical-align:middle;
+  background:transparent;transition:background .22s ease}
+.row.doable .lbl::before{background:rgba(255,255,255,.34)}
+.row.doable.sel .lbl::before{background:#1ec15f}
+
 /* A heading inside the list - groups rows without being selectable itself. */
 .row.head{height:5.4vh;opacity:1;transform:none}
 .row.head .lbl{font-family:'Manrope';font-weight:600;font-size:1.5vh;letter-spacing:.24em;
   text-transform:uppercase;color:rgba(255,255,255,.34)}
+.row.head .lbl::before{display:none}
 
 #msg{position:absolute;top:50%;left:0;transform:translateY(-50%);
   font-family:'Outfit';font-weight:200;font-size:4vh;color:rgba(255,255,255,.5)}
 
-/* Centred in the gutter to the right of the values, clear of both the labels
-   and the numbers, which otherwise run underneath them on a long section. */
-.more{position:absolute;right:2.6vw;font-family:'Manrope';font-size:2.4vh;
+/* In the lane the rows leave clear on the right, so neither the labels nor the
+   values ever run underneath one. */
+.more{position:absolute;right:0;font-family:'Manrope';font-size:2.4vh;
   color:rgba(255,255,255,.3);opacity:0;transition:opacity .2s;pointer-events:none}
 .more.on{opacity:1}
 #moreUp{top:0}
@@ -73,11 +102,18 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 <div id="stage">
   <div id="clock">--:--</div>
   <nav id="tabs"></nav>
-  <div id="list">
-    <div id="msg">Loading&hellip;</div>
-    <div class="more" id="moreUp">&#9650;</div>
-    <div id="rows"></div>
-    <div class="more" id="moreDown">&#9660;</div>
+  <div id="main">
+    <div id="list">
+      <div id="msg">Loading&hellip;</div>
+      <div class="more" id="moreUp">&#9650;</div>
+      <div id="rows"></div>
+      <div class="more" id="moreDown">&#9660;</div>
+    </div>
+    <aside id="hint">
+      <div class="h-title" id="hintTitle"></div>
+      <div class="h-body" id="hintBody"></div>
+      <div class="h-act" id="hintAct"></div>
+    </aside>
   </div>
   <div id="flash"></div>
 </div>
@@ -114,6 +150,8 @@ function scLabel(b) { return SC_LABELS[b] || (b.charAt(0).toUpperCase() + b.slic
 
 var tab = 0, sel = 0, busy = false, ROW_VH = 7.6, HEAD_VH = 5.4;
 var data = {}, rows = [], timer = null, flashTimer = null;
+// Non-null while the app list for one shortcut button is open over the tab.
+var picker = null;
 
 function T() { return TABS[tab]; }
 
@@ -161,17 +199,25 @@ function sysRows(d) {
   if (!d || !d.ok) return [];
   var r = [];
   r.push(head('Load'));
-  if (d.temp !== null && d.temp !== undefined) r.push({ label: 'Temperature', value: withUnit(d.temp, '°C') });
-  if (d.load !== null && d.load !== undefined) r.push({ label: 'CPU load', value: withUnit(d.load, '%') });
-  if (d.mhz) r.push({ label: 'CPU frequency', value: withUnit(d.mhz, 'MHz') });
-  if (d.gpuMhz) r.push({ label: 'GPU clock', value: withUnit(d.gpuMhz, 'MHz') });
+  if (d.temp !== null && d.temp !== undefined) r.push({ label: 'Temperature', value: withUnit(d.temp, '°C'),
+    hint: 'The main board sensor, not the panel. It climbs with brightness and with what the TV is decoding.' });
+  if (d.load !== null && d.load !== undefined) r.push({ label: 'CPU load', value: withUnit(d.load, '%'),
+    hint: 'Across all cores. Brief peaks while an app opens are normal; a sustained high figure with nothing playing is not.' });
+  if (d.mhz) r.push({ label: 'CPU frequency', value: withUnit(d.mhz, 'MHz'),
+    hint: 'The current clock. It drops when the TV is idle and rises under load.' });
+  if (d.gpuMhz) r.push({ label: 'GPU clock', value: withUnit(d.gpuMhz, 'MHz'),
+    hint: 'Drives the interface and video scaling.' });
   if (d.cores && d.cores.length)
-    r.push({ label: 'Per-core load', value: d.cores.map(function (c) { return c + '%'; }).join('  ') });
+    r.push({ label: 'Per-core load', value: d.cores.map(function (c) { return c + '%'; }).join('  '),
+      hint: 'One figure per core. An even spread is healthy; one core pinned while the rest idle points at a stuck process.' });
 
   r.push(head('Memory and storage'));
-  if (d.mem) r.push({ label: 'Memory free', value: fmtKB(d.mem.avail) + ' of ' + fmtKB(d.mem.total) });
-  if (d.swap && d.swap.total) r.push({ label: 'Swap free', value: fmtKB(d.swap.free) + ' of ' + fmtKB(d.swap.total) });
-  if (d.emmc && d.emmc.health) r.push({ label: 'eMMC health', value: d.emmc.health });
+  if (d.mem) r.push({ label: 'Memory free', value: fmtKB(d.mem.avail) + ' of ' + fmtKB(d.mem.total),
+    hint: 'Free memory is expected to be low: webOS keeps apps loaded so they reopen quickly, and releases them under pressure.' });
+  if (d.swap && d.swap.total) r.push({ label: 'Swap free', value: fmtKB(d.swap.free) + ' of ' + fmtKB(d.swap.total),
+    hint: 'Compressed memory held in RAM rather than on disk, so heavy use costs speed but does not wear the storage.' });
+  if (d.emmc && d.emmc.health) r.push({ label: 'eMMC health', value: d.emmc.health,
+    hint: 'Life left in the built-in storage, as the chip itself reports it. It falls very slowly and cannot be reset.' });
 
   r.push(head('This TV'));
   if (d.device && d.device.model) r.push({ label: 'Model', value: d.device.model });
@@ -195,36 +241,54 @@ function oledRows(d) {
 
   r.push(head('Panel life'));
   if (d.panelHours !== null && d.panelHours !== undefined)
-    r.push({ label: 'Total power-on hours', value: num(d.panelHours) });
+    r.push({ label: 'Total power-on hours', value: num(d.panelHours),
+      hint: 'Hours the panel has been lit since new. The figure the maintenance cycles below are scheduled against.' });
   if (d.hoursUntilComp !== null && d.hoursUntilComp !== undefined)
-    r.push({ label: 'Panel maintenance in', value: withUnit(Math.round(d.hoursUntilComp), 'h') });
+    r.push({ label: 'Panel maintenance in', value: withUnit(Math.round(d.hoursUntilComp), 'h'),
+      hint: 'The short compensation pass, run roughly every four hours of use. It happens by itself after the TV is switched off.' });
   if (d.hoursUntilRefresher !== null && d.hoursUntilRefresher !== undefined)
-    r.push({ label: 'Pixel refresher in', value: withUnit(Math.round(d.hoursUntilRefresher), 'h') });
+    r.push({ label: 'Pixel refresher in', value: withUnit(Math.round(d.hoursUntilRefresher), 'h'),
+      hint: 'The long calibration, due about every 2,000 hours. It takes around an hour and runs once the TV is off.' });
   if (d.compCycles !== null && d.compCycles !== undefined)
-    r.push({ label: 'Short cycles completed', value: num(d.compCycles) });
+    r.push({ label: 'Short cycles completed', value: num(d.compCycles),
+      hint: 'How many short compensation passes the panel has run.' });
   if (d.refresherCycles !== null && d.refresherCycles !== undefined)
-    r.push({ label: 'Pixel refresher cycles', value: num(d.refresherCycles) });
+    r.push({ label: 'Pixel refresher cycles', value: num(d.refresherCycles),
+      hint: 'How many long calibrations the panel has run. These are the ones that matter for wear.' });
   if (d.gsrStressCount !== null && d.gsrStressCount !== undefined)
-    r.push({ label: 'GSR stress events', value: num(d.gsrStressCount) });
+    r.push({ label: 'GSR stress events', value: num(d.gsrStressCount),
+      hint: 'How often sticky reduction has had to step in. A rising count means static content is being shown for long stretches.' });
 
   r.push(head('Protections'));
   if (d.gsr !== null && d.gsr !== undefined)
     r.push({ label: 'Global sticky reduction', value: d.gsr ? 'On' : 'Off', cls: d.gsr ? 'on' : 'off',
-             act: canSet ? 'oled' : null, key: 'gsr', on: d.gsr, guard: true });
+             act: canSet ? 'oled' : null, key: 'gsr', on: d.gsr, guard: true,
+             press: d.gsr ? 'Press OK to switch off' : 'Press OK to switch on',
+             hint: 'Dims static content - channel logos, scoreboards, menu bars - so it does not burn in. Switching it off makes permanent image retention more likely.' });
   if (d.tpc !== null && d.tpc !== undefined)
     r.push({ label: 'Temporal peak control', value: d.tpc ? 'On' : 'Off', cls: d.tpc ? 'on' : 'off',
-             act: canSet ? 'oled' : null, key: 'tpc', on: d.tpc, guard: true });
+             act: canSet ? 'oled' : null, key: 'tpc', on: d.tpc, guard: true,
+             press: d.tpc ? 'Press OK to switch off' : 'Press OK to switch on',
+             hint: 'Limits how long the panel holds peak brightness, which protects it and keeps heat down. Switching it off makes burn-in more likely.' });
   if (d.screenShift)
     r.push({ label: 'Screen shift', value: d.screenShift, cls: /on/i.test(d.screenShift) ? 'on' : 'off',
-             act: d.writable ? 'shift' : null, on: /on/i.test(d.screenShift) });
+             act: d.writable ? 'shift' : null, on: /on/i.test(d.screenShift),
+             press: 'Press OK to switch ' + (/on/i.test(d.screenShift) ? 'off' : 'on'),
+             hint: 'Nudges the whole image by a pixel now and then so a fixed edge never sits on the same pixels. Invisible in use.' });
   if (d.logoDimming)
     r.push({ label: 'Logo dimming', value: d.logoDimming, cls: /off/i.test(d.logoDimming) ? 'off' : 'on',
-             act: d.writable ? 'logo' : null, cur: String(d.logoDimming).toLowerCase() });
+             act: d.writable ? 'logo' : null, cur: String(d.logoDimming).toLowerCase(),
+             press: 'Press OK for off, light or high',
+             hint: 'Spots a station logo that has not moved and fades it slightly. Higher settings dim more of the picture around it.' });
 
   if (d.writable) {
     r.push(head('Run now'));
-    r.push({ label: 'Schedule a pixel refresher', value: '→', cls: 'act', act: 'refresh' });
-    r.push({ label: 'Cancel a scheduled refresher', value: '→', cls: 'act', act: 'refreshCancel' });
+    r.push({ label: 'Schedule a pixel refresher', value: '→', cls: 'act', act: 'refresh',
+      press: 'Press OK to schedule',
+      hint: 'Queues the long calibration for the next time the TV is switched off. It cannot run while the screen is on.' });
+    r.push({ label: 'Cancel a scheduled refresher', value: '→', cls: 'act', act: 'refreshCancel',
+      press: 'Press OK to cancel',
+      hint: 'Clears a queued calibration so the TV does not spend an hour on it after the next switch-off.' });
   }
   return r;
 }
@@ -234,8 +298,13 @@ function saverRows(d) {
   var r = [head('Screen saver')];
   d.modes.filter(function (m) { return m.available; }).forEach(function (m) {
     r.push({ label: m.label, value: m.active ? 'In use' : '', cls: m.active ? 'on' : '',
-             act: d.writable ? 'saver' : null, key: m.id });
+             act: d.writable ? 'saver' : null, key: m.id,
+             press: m.active ? 'Already in use' : 'Press OK to use this one',
+             hint: m.id === 'stock'
+               ? 'LG’s own screen saver.'
+               : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
   });
+  r.push(head('A firmware update puts LG’s own back'));
   return r;
 }
 
@@ -246,29 +315,38 @@ function privacyRows(d) {
   if (d.adblock) {
     r.push(head('Ad and tracker blocking'));
     r.push({ label: 'Blocking', value: d.adblock.enabled ? 'On' : 'Off',
-             cls: d.adblock.enabled ? 'on' : 'off', act: 'adblock', on: d.adblock.enabled });
+             cls: d.adblock.enabled ? 'on' : 'off', act: 'adblock', on: d.adblock.enabled,
+             press: d.adblock.enabled ? 'Press OK to switch off' : 'Press OK to switch on',
+             hint: 'Points LG’s advertising and telemetry domains nowhere, so the TV cannot reach them. Streaming apps are untouched.' });
     if (d.adblock.enabled) {
-      if (d.adblock.mode) r.push({ label: 'Mode', value: d.adblock.mode });
+      if (d.adblock.mode) r.push({ label: 'Mode', value: d.adblock.mode,
+        hint: 'Which list is in force: ads only, or the wider telemetry list as well.' });
       if (d.adblock.count !== null && d.adblock.count !== undefined)
-        r.push({ label: 'Domains blocked', value: num(d.adblock.count) });
+        r.push({ label: 'Domains blocked', value: num(d.adblock.count),
+          hint: 'How many addresses the list currently covers.' });
     }
   }
 
   if (d.acr) {
     r.push(head('Screen content recognition'));
     r.push({ label: d.acr.label || 'Screen content recognition',
-             value: d.acr.active ? 'Active' : 'Off', cls: d.acr.active ? 'off' : 'on' });
+             value: d.acr.active ? 'Active' : 'Off', cls: d.acr.active ? 'off' : 'on',
+             hint: 'LG calls this ACR. It samples what is on screen - including from HDMI - to work out what is being watched and build a profile from it. Turn it off in the TV’s own settings, or on the Privacy tab of the web dashboard.' });
     if (d.acr.captureState)
       r.push({ label: 'Capture', value: d.acr.capturing ? 'Capturing' : 'Stopped',
-               cls: d.acr.capturing ? 'off' : 'on' });
+               cls: d.acr.capturing ? 'off' : 'on',
+               hint: 'Whether it is sampling the screen right now, as opposed to merely being switched on.' });
   }
 
   if (d.advertisingId && d.advertisingId.available) {
     r.push(head('Advertising identifier'));
     r.push({ label: d.advertisingId.limitTrackingLabel || 'Limit ad tracking',
              value: d.advertisingId.limitTracking ? 'On' : 'Off',
-             cls: d.advertisingId.limitTracking ? 'on' : 'off' });
-    r.push({ label: 'Reset the advertising ID', value: '→', cls: 'act', act: 'resetAdId' });
+             cls: d.advertisingId.limitTracking ? 'on' : 'off',
+             hint: 'When on, apps are asked not to use the TV’s advertising ID to profile the viewer. It is a request, not an enforcement.' });
+    r.push({ label: 'Reset the advertising ID', value: '→', cls: 'act', act: 'resetAdId',
+             press: 'Press OK to reset',
+             hint: 'Issues a fresh identifier, which breaks the link to whatever has been collected against the old one. Harmless to repeat.' });
   }
 
   /* The consent flags are many and each needs its own agreement text to mean
@@ -279,39 +357,115 @@ function privacyRows(d) {
     var on = all.filter(function (c) { return c.enabled; }).length;
     r.push(head('Data consents'));
     r.push({ label: 'Consents switched on', value: on + ' of ' + all.length,
-             cls: on === 0 ? 'on' : '' });
+             cls: on === 0 ? 'on' : '',
+             hint: 'The agreements the TV records against this account. Each one needs its own wording to mean anything, so they are changed on the Privacy tab of the web dashboard rather than here.' });
   }
 
   if (d.daemons && d.daemons.length) {
     var run = d.daemons.filter(function (x) { return x.running; }).length;
     r.push({ label: 'LG data services running', value: run + ' of ' + d.daemons.length,
-             cls: run === 0 ? 'on' : '' });
+             cls: run === 0 ? 'on' : '',
+             hint: 'Background services that collect and send usage data. They can be stopped from the Privacy tab of the web dashboard.' });
   }
   return r;
 }
 
 /*
- * Pressing a row hands that button to this app, or gives it back. Changing one
- * reloads the compositor, which closes this app - so the row says so first and
- * the press is a deliberate second step rather than a surprise.
+ * Each button and what it opens. Pressing one opens the app list, so any button
+ * can be pointed at any installed app rather than only at this dashboard.
+ * Applying a change reloads the compositor, which closes this app - so the row
+ * says so before it happens rather than the screen going dark unannounced.
  */
 function shortcutRows(d) {
   if (!d || !d.ok) return [];
-  if (!d.supported) return [{ label: 'Not available on this TV', value: '' }];
+  if (!d.supported) {
+    return [{ label: 'Not available on this TV',
+              hint: 'This TV’s software does not allow its shortcut buttons to be changed. Everything else here still works.', value: '' }];
+  }
   var buttons = d.buttons || [];
   if (!buttons.length) return [{ label: 'This remote has no shortcut buttons', value: '' }];
   var bound = {};
   (d.bindings || []).forEach(function (b) { bound[b.button] = b.appId; });
 
-  var r = [head('Opens this dashboard')];
+  var r = [head('Shortcut buttons on the remote')];
   buttons.forEach(function (b) {
-    var on = bound[b.button] === d.defaultApp;
-    r.push({ label: scLabel(b.button), value: on ? 'Yes' : '',
-             cls: on ? 'on' : '',
-             act: d.writable ? 'shortcut' : null, key: b.button, on: on });
+    var to = bound[b.button];
+    /* Never fall back to the raw id the TV reports - "ui30" tells a reader
+       nothing. Where the app has no name to show, say what the button does
+       instead of naming it badly. */
+    var name = to ? appName(to) : null;
+    r.push({ label: scLabel(b.button),
+             value: to ? (name || 'Changed') : 'Unchanged',
+             cls: to ? 'on' : '',
+             act: d.writable ? 'pickApp' : null, key: b.button, on: !!to,
+             press: 'Press OK to choose what it opens',
+             hint: to
+               ? 'Now opens ' + (name || 'another app') + '. Press OK to choose something else, or to give the button back.'
+               : 'Still opens what it always has. Press OK to point it at any app on this TV instead.' });
   });
-  r.push(head('The screen reloads when this changes'));
+  r.push(head('Changing one blanks the screen for a few seconds'));
   return r;
+}
+
+/*
+ * The app list for the picker, fetched once and kept: it costs a Luna call and
+ * the installed apps do not change while this is open.
+ */
+var appList = null;
+
+function appName(id) {
+  if (!appList) return null;
+  for (var i = 0; i < appList.length; i++) if (appList[i].id === id) return appList[i].title;
+  return null;
+}
+
+function openPicker(button) {
+  picker = { button: button };
+  sel = 0; rows = [];
+  renderTabs();
+  render();
+  if (appList) return showPicker();
+  fetch('/api/apps', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      appList = (d && d.apps) || [];
+      if (picker) showPicker();
+    })
+    .catch(function () { if (picker) showPicker(); });
+}
+
+function showPicker() {
+  var b = picker.button;
+  var current = null;
+  var st = data.remote;
+  if (st && st.bindings) {
+    st.bindings.forEach(function (x) { if (x.button === b) current = x.appId; });
+  }
+  rows = [head('What the ' + scLabel(b) + ' button should open')];
+  // Putting it back comes first: it is the way out of a choice someone regrets.
+  rows.push({ label: 'Leave it as it came', value: current ? '' : 'In use',
+              cls: current ? '' : 'on', act: 'assign', key: b, appId: null,
+              press: current ? 'Press OK to give the button back' : 'Already as it came',
+              hint: 'The button goes back to doing what it did out of the box.' });
+  (appList || []).forEach(function (a) {
+    rows.push({ label: a.title, value: current === a.id ? 'In use' : '',
+                cls: current === a.id ? 'on' : '',
+                act: 'assign', key: b, appId: a.id,
+                press: current === a.id ? 'Already in use' : 'Press OK to use this app',
+                hint: 'The ' + scLabel(b) + ' button will open ' + a.title + ' instead.' });
+  });
+  sel = firstSel();
+  render();
+}
+
+function closePicker() {
+  picker = null;
+  sel = 0; rows = [];
+  renderTabs();
+  var cached = data[T().key];
+  if (cached) { rows = T().build(cached) || []; sel = firstSel(); }
+  render();
+  fetchTab(!!cached);
 }
 
 function svcRows(d) {
@@ -319,10 +473,16 @@ function svcRows(d) {
   var r = [head('Service menu')];
   if (d.lockable)
     r.push({ label: 'Lock', value: d.locked ? 'Locked' : 'Unlocked',
-             cls: d.locked ? 'on' : 'off', act: d.writable ? 'lock' : null, on: d.locked });
+             cls: d.locked ? 'on' : 'off', act: d.writable ? 'lock' : null, on: d.locked,
+             press: d.locked ? 'Press OK to unlock' : 'Press OK to lock',
+             hint: 'Locked keeps the engineering menus shut even to someone who knows the button sequence.' });
   if (d.app && d.writable) {
-    r.push({ label: 'Open EZ Adjust', value: '→', cls: 'act', act: 'menu', key: 'ezAdjust' });
-    r.push({ label: 'Open In Start', value: '→', cls: 'act', act: 'menu', key: 'inStart' });
+    r.push({ label: 'Open EZ Adjust', value: '→', cls: 'act', act: 'menu', key: 'ezAdjust',
+             press: 'Press OK to open',
+             hint: 'LG’s engineering menu. It can change panel calibration and hardware settings the normal menus keep out of reach, and some are not easy to put back. The TV asks for its PIN.' });
+    r.push({ label: 'Open In Start', value: '→', cls: 'act', act: 'menu', key: 'inStart',
+             press: 'Press OK to open',
+             hint: 'The factory setup menu, with model and region settings. Changing these can leave the TV misconfigured. The TV asks for its PIN.' });
   }
   if (r.length === 1) r.push({ label: 'Not available on this TV', value: '' });
   return r;
@@ -343,12 +503,30 @@ function render() {
   msg.style.display = 'none';
   box.innerHTML = rows.map(function (r, i) {
     if (r.head) return '<div class="row head"><span class="lbl">' + esc(r.label) + '</span></div>';
-    return '<div class="row' + (i === sel ? ' sel' : '') + '">' +
+    return '<div class="row' + (i === sel ? ' sel' : '') + (r.act ? ' doable' : '') + '">' +
              '<span class="lbl">' + esc(r.label) + '</span>' +
              '<span class="val' + (r.cls ? ' ' + r.cls : '') + '">' + esc(r.value) + '</span>' +
            '</div>';
   }).join('');
   position();
+  renderHint();
+}
+
+/*
+ * The explainer for the selected row. Rows carry their own text; where one has
+ * none the panel still says whether OK does anything, because that is the part
+ * a reader cannot work out by looking.
+ */
+function renderHint() {
+  var el = document.getElementById('hint');
+  var r = rows[sel];
+  if (!r || r.head) { el.className = ''; return; }
+  document.getElementById('hintTitle').textContent = r.label;
+  document.getElementById('hintBody').textContent = r.hint || '';
+  var act = document.getElementById('hintAct');
+  act.textContent = r.act ? (r.press || 'Press OK to change') : 'View only';
+  act.className = 'h-act' + (r.act ? '' : ' ro');
+  el.className = 'on';
 }
 
 /* Headings are not landing places, so the selection skips over them and the
@@ -392,7 +570,12 @@ function move(d) {
 }
 
 function renderTabs() {
-  document.getElementById('tabs').innerHTML = TABS.map(function (t, i) {
+  var el = document.getElementById('tabs');
+  if (picker) {
+    el.innerHTML = '<div class="tab on">◀ ' + esc(scLabel(picker.button)) + '</div>';
+    return;
+  }
+  el.innerHTML = TABS.map(function (t, i) {
     return '<div class="tab' + (i === tab ? ' on' : '') + '">' + esc(t.label) + '</div>';
   }).join('');
 }
@@ -414,6 +597,7 @@ function fetchTab(keepSel) {
     .then(function (d) {
       if (T().key !== key) return;        // the user moved on while this was in flight
       data[key] = d;
+      if (picker) return;                 // the app list is over this tab; leave its rows alone
       rows = t.build(d) || [];
       if (!keepSel || sel >= rows.length || (rows[sel] && rows[sel].head)) sel = firstSel();
       render();
@@ -429,8 +613,23 @@ function fetchTab(keepSel) {
 
 function openTab(i) {
   if (timer) { clearInterval(timer); timer = null; }
+  picker = null;
   tab = i; sel = 0; rows = [];
   renderTabs();
+  /* The buttons name the app they open, and the TV reports only its id, so the
+     names have to be in hand before that tab can render properly. */
+  if (TABS[i].key === 'remote' && !appList) {
+    fetch('/api/apps', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        appList = (d && d.apps) || [];
+        if (!picker && T().key === 'remote' && data.remote) {
+          rows = T().build(data.remote) || [];
+          render();
+        }
+      })
+      .catch(function () {});
+  }
   var cached = data[T().key];
   if (cached) { rows = T().build(cached) || []; sel = firstSel(); }
   render();
@@ -454,8 +653,11 @@ function send(body, note) {
   }).then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (res) {
       busy = false;
-      if (res && res.ok === false) flash(res.error || 'That did not work');
-      else if (note) flash(note);
+      if (res && res.ok === false) { flash(res.error || 'That did not work'); return fetchTab(true); }
+      if (note) flash(note);
+      // A choice made in the app list is done with once it lands, so step back
+      // to the buttons and let the fresh state come from there.
+      if (picker) return closePicker();
       fetchTab(true);
     })
     .catch(function () { busy = false; flash('That did not work'); });
@@ -466,6 +668,13 @@ function activate() {
   var r = rows[sel];
   if (!r || !r.act) return;
   switch (r.act) {
+    case 'pickApp':
+      return openPicker(r.key);
+    case 'assign':
+      return send({ action: 'shortcutKey',
+                    value: r.appId ? { button: r.key, appId: r.appId }
+                                   : { button: r.key, clear: true } },
+                  r.appId ? 'Assigning…' : 'Putting it back…');
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },
                   r.on ? 'Switched off' : 'Switched on');
@@ -500,6 +709,19 @@ function activate() {
 
 document.addEventListener('keydown', function (e) {
   var k = e.key, c = e.keyCode;
+
+  /* In the app list, Left and Back step back to the buttons rather than
+     changing tab or closing the app. */
+  if (picker) {
+    if (c === 37 || k === 'ArrowLeft' || c === 461 ||
+        k === 'GoBack' || k === 'BrowserBack' || k === 'Backspace') {
+      closePicker(); e.preventDefault();
+    } else if (c === 38 || k === 'ArrowUp')   { move(-1);   e.preventDefault(); }
+      else if (c === 40 || k === 'ArrowDown') { move(1);    e.preventDefault(); }
+      else if (c === 13 || k === 'Enter')     { activate(); e.preventDefault(); }
+    return;
+  }
+
   if      (c === 37 || k === 'ArrowLeft')  { switchTab(-1); e.preventDefault(); }
   else if (c === 39 || k === 'ArrowRight') { switchTab(1);  e.preventDefault(); }
   else if (c === 38 || k === 'ArrowUp')    { move(-1);      e.preventDefault(); }

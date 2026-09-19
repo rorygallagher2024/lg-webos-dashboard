@@ -160,14 +160,18 @@ reload() { systemctl restart --no-block surface-manager 2>/dev/null; }
 
 # Unmount first so $KF is the stock file for both the copy and the rebuild, and
 # so the staged file being replaced is not the one currently mounted.
+#
+# $1 = "noreload" to leave the compositor alone, which is right at boot when it
+# has not started yet: the mount is already in place when it first reads the
+# file, so there is nothing to re-read and no restart to sit through.
 apply() {
   unmount_kf || return 1
   save_stock || return 1
   build || return 1
   # With nothing bound the stock file is what should be there, so leave it.
-  [ -s "$BINDINGS" ] || { reload; return 0; }
+  [ -s "$BINDINGS" ] || { [ "$1" = noreload ] || reload; return 0; }
   mount --bind "$STAGED" "$KF" 2>/dev/null || return 1
-  reload
+  [ "$1" = noreload ] || reload
 }
 
 revert() {
@@ -235,7 +239,13 @@ case "$1" in
     [ -s "$BINDINGS" ] || exit 0
     supported || exit 0
     buttons_json > /dev/null      # refresh keys.tsv before the lookup
-    apply
+    # Racing the compositor on purpose: mounting before it starts saves a
+    # restart, and losing the race only costs the restart we would have done.
+    if systemctl is-active --quiet surface-manager 2>/dev/null; then
+      apply
+    else
+      apply noreload
+    fi
     ;;
 
   *)

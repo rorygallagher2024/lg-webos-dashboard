@@ -43,6 +43,15 @@ if [ -f /var/lib/tvweb/screensaver/.tvweb-screensaver ]; then
   fi
 fi
 
+# Re-apply any shortcut-button remaps chosen in the dashboard. Done here rather
+# than in the delayed block below to get the bind-mount in before the compositor
+# first reads the key handler: win that race and the remap costs no restart at
+# all. The script self-guards, does nothing when none are set, and restarts the
+# compositor only if it finds it already up.
+if [ -s /var/lib/tvweb/shortcut/bindings ]; then
+  sh /var/lib/tvweb/assets/shortcut-key.sh boot >/dev/null 2>&1 || true
+fi
+
 # Detach fully so upstart/webosbrew startup is never held up by this.
 # Prefer tvwebctl: it starts the watchdog alongside the server. The direct
 # line stays as a fallback for installs that predate that script.
@@ -58,13 +67,6 @@ fi
     while read -r job; do
       [ -n "$job" ] && /sbin/initctl stop "$job" >/dev/null 2>&1
     done < /var/lib/tvweb/services_stopped
-  fi
-
-  # Re-apply any shortcut-button remaps chosen in the dashboard. The bind-mount
-  # they use does not survive a reboot, which is also the recovery path if one
-  # ever misbehaves. The script self-guards and does nothing when none are set.
-  if [ -s /var/lib/tvweb/shortcut/bindings ]; then
-    sh /var/lib/tvweb/assets/shortcut-key.sh boot >/dev/null 2>&1 || true
   fi
 
   if [ -x /var/lib/tvweb/tvwebctl ]; then
