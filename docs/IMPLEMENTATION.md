@@ -287,6 +287,43 @@ reads as a call that succeeded silently. Use `ssh -tt`. Calls made by `tvweb.js`
 on the TV itself are unaffected - this bites when testing by hand, and it is an
 easy way to convince yourself a change worked when nothing ran.
 
+## Shortcut button mapping is owned by LG's servers
+
+The remote's streaming buttons (Netflix, Prime Video, Disney+ …) resolve through
+`mapping_info` in the settings service, `category: "other"`, which
+`/usr/lib/qml/KeyFilters/appLaunch.js` reads at compositor start. Writing it
+works and persists, so it looks like the place to remap a button - but
+`cb_getHotkeyInfo()` treats LG's cloud response as authoritative: it overwrites
+the in-memory table and then writes that back over the settings key. Measured on
+a C2 (webOS 9), a `rakutentv` remap read back correctly and then returned to the
+stock `ui30` after a compositor restart, the payload shrinking 8319 to 7248
+bytes as LG pushed its own list.
+
+Two further details from that file:
+
+* The subscription at `appLaunch.js:615` is registered *without*
+  `"subscribe": true`, so even an unclobbered value is read only at compositor
+  start. Any mapping change needs a `surface-manager` restart regardless.
+* `isActive` on each entry marks the buttons the model and its remote actually
+  have, which is the per-model list to offer and needs no hardcoded table. The
+  button-to-key-constant pairs come out of `getPowerOnReason()` in the same
+  file, so both follow the firmware rather than this repository.
+
+The remap therefore catches the key earlier: `systemUi.js` runs before
+`appLaunch.js`, so a `case WebOS.Key_webOS_<Name>:` added to
+`handleSystemKeys()` that returns `KeyPolicy.Accepted` launches the chosen app
+and the CP-hotkey handler never sees the press. `shortcut-key.sh` bind-mounts a
+patched copy, rebuilt each time from a pristine original so cases cannot
+compound, and refuses to mount anything `node --check` rejects - a key filter
+that does not parse takes the compositor down with it. The mount does not
+survive a reboot, so a power cycle is always the way back; the boot hook
+re-applies it, before the compositor starts where it can, which saves a restart.
+
+Two traps when working on it: validate the staged copy under a name ending
+`.js`, since `node --check` refuses an unknown extension like `.tmp` and the
+check then fails every time; and `/var/log/messages` timestamps are UTC while
+`date` is local, which makes a fresh button press look an hour stale.
+
 ## tvpower reboot does not reboot
 
 `luna://com.webos.service.tvpower/power/reboot` accepts the request, validates

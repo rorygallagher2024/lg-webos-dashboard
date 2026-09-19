@@ -86,7 +86,8 @@ A custom Home Assistant dashboard for an LG TV:
 ## Features
 
 Each has a tab of its own in the dashboard, and a deep link to it. OLED Care
-appears on OLED TVs only. The page works with no internet access, and has a dark/light mode toggle (via the UI or `/?theme=light`)
+appears on OLED TVs only, and Remote only where the TV allows its shortcut
+buttons to be changed. The page works with no internet access, and has a dark/light mode toggle (via the UI or `/?theme=light`)
 
 ### Remote control
 
@@ -207,33 +208,26 @@ A firmware update restores the LG default.
 
 An optional app on the TV's home screen, driven by the remote, for when there is
 no phone or laptop to hand. Left and right move between System, OLED Care,
-Screen Saver, Privacy and Service Menu; up and down move within one; OK acts on
-the selected row. It reads the same data and uses the same controls as the web
-dashboard, so the two never disagree.
+Screen Saver, Privacy, Remote and Service Menu; up and down move within one; OK
+acts on the selected row. A panel beside the list explains whichever row is
+selected and says whether OK does anything to it.
 
-It is offered during installation rather than added by default, and is not
-needed for the web dashboard, which serves to any browser on the network
+It is offered during installation rather than added by default; answering no
+changes nothing else, since the dashboard reaches any browser on the network
 regardless. To add it later, run `./deploy.sh <tv-ip>` again and say yes; to be
 rid of it, delete it from the TV's home screen as with any other app. webOS 9
-and later, where the TV accepts an unsigned app; elsewhere the install step is
-skipped and everything else works as before.
+and later; elsewhere the step is skipped and everything else works as before.
 
 ### Remote shortcut buttons
 
 The **Remote** tab, `/?tab=remote`, and the same tab in the TV app. Points any
-of the remote's streaming buttons (Netflix, Prime Video, Disney+ and the rest)
-at any app installed on the TV — the dashboard app, or anything else. Only the
-buttons the TV reports as present are offered, so the list matches the remote in
-the room, and any button can be given back at any time.
+of the remote's streaming buttons — Netflix, Prime Video, Disney+ and the rest —
+at any app on the TV. Only the buttons the remote actually has are offered, and
+any of them can be given back at any time.
 
-The choice is kept when the TV restarts. Changing one restarts the window
-manager, so the screen goes dark for a few seconds and open apps close.
-
-The TV's own button table is not usable for this: it is synchronised from LG's
-servers, which overwrite any local change at the next sync. The key is
-intercepted in the compositor's key handler instead, before the stock handler
-sees it. That patch is checked before it is applied and is not written to disk,
-so a reboot restores the stock handler if one ever misbehaves. webOS 9 and later.
+The choice is kept when the TV restarts. Changing one blanks the screen for a
+few seconds and closes whatever is open. If a button ever misbehaves, a reboot
+puts it back as it came. webOS 9 and later.
 
 ### Home Assistant bridge
 
@@ -323,11 +317,10 @@ by checking that the dashboard answers. When it says `done`, open
 says why.
 
 Partway through it asks whether to add the dashboard to the TV's home screen as
-an app, so it can be opened on the TV itself with the remote. Answering no
-changes nothing else — the dashboard is served to browsers either way.
-`--app` and `--no-app` answer in advance, which is what an unattended install
-needs; unanswered, it does not install the app. See
-[The dashboard on the TV](#the-dashboard-on-the-tv).
+an app, so it can be opened on the TV itself with the remote — see
+[The dashboard on the TV](#the-dashboard-on-the-tv). Answering no changes
+nothing else. `--app` and `--no-app` answer in advance; unanswered, no app is
+installed.
 
 The server starts again by itself whenever the TV restarts. To try it without
 that, add `--no-persist`, and it runs only until the TV next restarts. Setting
