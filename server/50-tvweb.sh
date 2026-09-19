@@ -60,6 +60,13 @@ fi
     done < /var/lib/tvweb/services_stopped
   fi
 
+  # Re-apply any shortcut-button remaps chosen in the dashboard. The bind-mount
+  # they use does not survive a reboot, which is also the recovery path if one
+  # ever misbehaves. The script self-guards and does nothing when none are set.
+  if [ -s /var/lib/tvweb/shortcut/bindings ]; then
+    sh /var/lib/tvweb/assets/shortcut-key.sh boot >/dev/null 2>&1 || true
+  fi
+
   if [ -x /var/lib/tvweb/tvwebctl ]; then
     /var/lib/tvweb/tvwebctl start
   else

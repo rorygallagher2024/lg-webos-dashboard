@@ -218,6 +218,21 @@ rid of it, delete it from the TV's home screen as with any other app. webOS 9
 and later, where the TV accepts an unsigned app; elsewhere the install step is
 skipped and everything else works as before.
 
+### Remote shortcut buttons
+
+The **Remote** tab, `/?tab=remote`. Points one of the remote's streaming buttons
+(Netflix, Prime Video, Disney+ and the rest) at the dashboard app instead, so
+the dashboard is one press away. Only the buttons the TV reports as present are
+offered, so the list matches the remote in the room. Selecting an assigned
+button again gives it back to its own app, and a reboot with nothing assigned
+leaves every button as it came.
+
+The TV's own button table is not usable for this: it is synchronised from LG's
+servers, which overwrite any local change at the next sync. The key is
+intercepted in the compositor's key handler instead, before the stock handler
+sees it. Changing an assignment restarts the window manager, so the screen goes
+dark for a few seconds and open apps close. webOS 9 and later.
+
 ### Home Assistant bridge
 
 The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where it

@@ -622,6 +622,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden>OLED Care</button>
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
+  <button type="button" role="tab" data-tab="remote" id="tab-btn-remote" hidden>Remote</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
   <button type="button" role="tab" data-tab="server">Server</button>
   </nav>
@@ -937,6 +938,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
 
   <div class="pv-note" id="ss-note">Note: if a firmware update is applied, the screen saver will be restored to the LG default.</div>
+</section>
+
+<section class="priv panel" id="remotepane" role="tabpanel" hidden>
+  <div class="lbl">Remote shortcut buttons</div>
+  <div id="sc-list" class="ss-list"></div>
+  <div class="sub" id="sc-msg"></div>
+  <div class="pv-note" id="sc-note">Only the buttons this remote actually has are listed. Changing one restarts the TV's window manager, so the screen goes dark for a few seconds and open apps close.<br>The TV's own button list is fixed by LG and cannot be edited, so the key is intercepted before it reaches the stock handler. A reboot with nothing assigned leaves every button as it came.</div>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
@@ -1936,6 +1944,75 @@ async function toggleAutoCheck() {
   if (r && r.ok) renderUpdate(r); else loadUpdate();
 }
 
+// ---- remote shortcut buttons ----
+/*
+ * The labels LG prints on the buttons, which the TV reports only by its own
+ * internal name. Anything not listed falls back to that name capitalised, so a
+ * button this build has not seen still appears rather than being dropped.
+ */
+const SC_LABELS = {
+  netflix: 'Netflix', amazon: 'Prime Video', disneyplus: 'Disney+',
+  rakutentv: 'Rakuten TV', lgchannels: 'LG Channels', movies: 'Movies',
+  apps: 'Apps', new: 'LG Channels', ivi: 'ivi', globoplay: 'Globoplay',
+  okko: 'Okko', kinopoisk: 'Kinopoisk', watchaplay: 'Watcha', unext: 'U-NEXT',
+  hotstar: 'Hotstar', fptplay: 'FPT Play', shahid: 'Shahid', wavve: 'Wavve',
+  coupangplay: 'Coupang Play', stan: 'Stan', slingtv: 'Sling TV', tver: 'TVer',
+  hulu: 'Hulu', nhkplus: 'NHK Plus', tod: 'TOD', sonyliv: 'SonyLIV',
+  tv360: 'TV360', vtvgo: 'VTV Go', freeviewplay: 'Freeview Play',
+  wink: 'Wink', start: 'Start', shop: 'Shop'
+};
+const scLabel = b => SC_LABELS[b] || (b.charAt(0).toUpperCase() + b.slice(1));
+let scBusy = false;
+
+function renderShortcuts(d) {
+  const tb = q('tab-btn-remote');
+  // Only offered where the key handler this edits is present (webOS 9 and up).
+  if (tb) { tb.hidden = !(d && d.supported); updateTabArrows(); }
+  const box = q('sc-list');
+  if (!box || !d || !d.supported) return;
+  const bound = {};
+  (d.bindings || []).forEach(b => { bound[b.button] = b.appId; });
+  const buttons = d.buttons || [];
+  if (!buttons.length) {
+    box.innerHTML = '';
+    q('sc-msg').textContent = 'This TV reported no shortcut buttons.';
+    return;
+  }
+  box.innerHTML = buttons.map(b => {
+    const on = bound[b.button] === d.defaultApp;
+    return `
+      <button class="ss-card${on ? ' on' : ''}" data-sc="${b.button}" ${d.writable ? '' : 'disabled'}>
+        <div class="ss-name"><span>${scLabel(b.button)}</span>${on ? '<span class="ss-tag">Opens dashboard</span>' : ''}</div>
+        <div class="ss-desc">${on ? 'Press it to open the dashboard on the TV. Select again to give it back to '
+                                     + esc(b.stockAppId || 'its own app') + '.'
+                                   : 'Currently opens ' + esc(b.stockAppId || 'its own app') + '.'}</div>
+      </button>`;
+  }).join('');
+  q('sc-msg').textContent = d.writable ? '' : 'Controls are switched off in config.json.';
+}
+
+async function loadShortcuts() {
+  try {
+    const d = await (await fetch(api('/api/shortcut'), { cache: 'no-store' })).json();
+    renderShortcuts(d);
+  } catch (e) { /* leave the tab hidden */ }
+}
+
+document.addEventListener('click', async ev => {
+  if (!ev.target.closest) return;
+  const card = ev.target.closest('.ss-card[data-sc]');
+  if (!card || card.disabled || scBusy) return;
+  scBusy = true;
+  const wasOn = card.classList.contains('on');
+  q('sc-msg').textContent = wasOn ? 'Giving the button back…' : 'Assigning the button…';
+  const r = await c('shortcutKey', wasOn
+    ? { button: card.dataset.sc, clear: true }
+    : { button: card.dataset.sc });
+  scBusy = false;
+  if (!r || !r.ok) q('sc-msg').textContent = (r && r.error) || 'Could not change it.';
+  loadShortcuts();
+});
+
 async function rollbackUpdate() {
   const v = q('upd-rollback').dataset.v, from = updInstalled;
   if (!confirm('Put v' + v + ' back?')) return;
@@ -2409,6 +2486,7 @@ const TABS = {
   servicemenu: 'svcpane',
   screensaver: 'sspane',
   privacy:     'privpane',
+  remote:      'remotepane',
   mqtt:        'mqttpane',
   server:      'serverpane'
 };
@@ -2447,6 +2525,7 @@ function showTab(name) {
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();
+  if (name === 'remote') loadShortcuts();
   if (name === 'privacy') loadPrivacy();
   if (name === 'mqtt') loadSettings();
 }
@@ -3181,6 +3260,13 @@ document.addEventListener('visibilitychange', () => {
 tick();
 startPolling();
 loadUpdate();   // reads what the server already knows; it does not reach GitHub
+/*
+ * Once, and late: this is the only way to learn whether the TV has shortcut
+ * buttons to offer, and the tab stays hidden until it answers. It reads the
+ * settings bus through a script and can take seconds, so it is kept out of the
+ * telemetry poll and off the opening render.
+ */
+setTimeout(loadShortcuts, 1500);
 </script>
 </body>
 </html>
