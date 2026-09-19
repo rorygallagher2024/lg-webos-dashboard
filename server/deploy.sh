@@ -43,7 +43,10 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=accept-new)
 STAGE=/var/lib/tvweb/.deploy     # on the TV; beside the install so moves are renames
 
-FILES="tvweb.js tvwebctl assets/ui.html assets/fonts/Outfit.ttf assets/fonts/Manrope.ttf \
+FILES="tvweb.js tvwebctl assets/ui.html assets/launcher.html assets/launcher-app/appinfo.json assets/launcher-app/index.html assets/launcher-app/packageinfo.json \
+assets/launcher-app/install-app.sh assets/launcher-app/home-mode.sh \
+assets/launcher-app/assets/icon80.png assets/launcher-app/assets/icon130.png \
+assets/fonts/Outfit.ttf assets/fonts/Manrope.ttf \
 assets/fonts/OFL-Outfit.txt assets/fonts/OFL-Manrope.txt \
 assets/screensavers/clock.qml assets/screensavers/fireworks.qml \
 assets/screensavers/starfield.qml assets/screensavers/vitals.qml assets/screensavers/star.png \
@@ -124,6 +127,9 @@ cd / && rm -rf "\$S"
 sleep 4
 "\$D/tvwebctl" status
 tail -6 "\$D/tvweb.log"
+# Best effort: add the launcher to the home screen. Self-guards and never fails
+# the install where the TV does not support it.
+sh "\$D/assets/launcher-app/install-app.sh" 2>&1 || true
 EOF
 }
 

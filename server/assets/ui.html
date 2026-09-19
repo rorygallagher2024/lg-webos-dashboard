@@ -624,6 +624,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
   <button type="button" role="tab" data-tab="server">Server</button>
+  <button type="button" role="tab" data-tab="launcher" id="tab-btn-launcher" hidden>Launcher</button>
   </nav>
   <button type="button" class="tabs-arrow right" id="tabs-next" hidden aria-label="Scroll tabs right" onclick="scrollTabs(1)">&#8250;</button>
 </div>
@@ -1133,6 +1134,12 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
     <div class="sub" id="upd-msg"></div>
   </div>
+</section>
+
+<section class="priv panel" id="launcherpane" role="tabpanel" hidden>
+  <div id="launcher-list" class="ss-list"></div>
+  <div class="sub" id="launcher-msg"></div>
+  <div class="pv-note" id="launcher-note">Switching either way reloads the screen for a moment. The choice is kept after a restart.</div>
 </section>
 </main>
 
@@ -1936,6 +1943,46 @@ async function toggleAutoCheck() {
   if (r && r.ok) renderUpdate(r); else loadUpdate();
 }
 
+// ---- launcher-as-Home: what the Home button opens ----
+function renderLauncher(d) {
+  const tb = q('tab-btn-launcher');
+  // Only offered where the TV supports it (the webOS 9 key handler is present).
+  if (tb) { tb.hidden = !(d && d.supported); updateTabArrows(); }
+  const box = q('launcher-list');
+  if (!box || !d || !d.supported) return;
+  const custom = !!d.active;
+  const modes = [
+    { id: 'stock', label: 'LG default', active: !custom,
+      desc: 'The LG home screen, with its rows of apps and promotions.' },
+    { id: 'custom', label: 'Minimal launcher', active: custom,
+      desc: 'A fast, minimal launcher: the inputs and apps in one list, and none of the promotions.' }
+  ];
+  box.innerHTML = modes.map(m => `
+    <button class="ss-card${m.active ? ' on' : ''}" data-home="${m.id}">
+      <div class="ss-name"><span>${m.label}</span>${m.active ? '<span class="ss-tag">In use</span>' : ''}</div>
+      <div class="ss-desc">${m.desc}</div>
+    </button>`).join('');
+  const msg = q('launcher-msg');
+  if (msg) msg.textContent = (d.enabled && !d.active)
+    ? 'Selected; it takes effect after the next restart.' : '';
+}
+async function loadLauncher() {
+  try {
+    const d = await (await fetch(api('/api/launcher'), { cache: 'no-store' })).json();
+    renderLauncher(d);
+  } catch (e) { /* leave the tab hidden */ }
+}
+document.addEventListener('click', async ev => {
+  if (!ev.target.closest) return;
+  const card = ev.target.closest('.ss-card[data-home]');
+  if (!card || card.disabled || card.classList.contains('on')) return;
+  card.disabled = true;
+  q('launcher-msg').textContent = 'Switching…';
+  const r = await c('launcherHome', card.dataset.home === 'custom');
+  if (!r || !r.ok) q('launcher-msg').textContent = (r && r.error) || 'Could not switch.';
+  loadLauncher();
+});
+
 async function rollbackUpdate() {
   const v = q('upd-rollback').dataset.v, from = updInstalled;
   if (!confirm('Put v' + v + ' back?')) return;
@@ -2007,6 +2054,9 @@ fetch(api('/api/caps')).then(r => r.json()).then(cp => {
     q('pwnote').textContent = 'Disabled in config (allowPower: false).';
   }
 }).catch(() => {});
+
+// Reveal the Launcher tab where the TV supports switching the Home key.
+loadLauncher();
 
 
 /* ---- privacy panel ----------------------------------------------------
@@ -2410,7 +2460,8 @@ const TABS = {
   screensaver: 'sspane',
   privacy:     'privpane',
   mqtt:        'mqttpane',
-  server:      'serverpane'
+  server:      'serverpane',
+  launcher:    'launcherpane'
 };
 let activeTab = null;
 // null until the first telemetry says either way.
@@ -2444,6 +2495,7 @@ function showTab(name) {
   cfgPollStatus(name === 'mqtt');
   if (name === 'system') loadHdmiOnce();
   if (name === 'server') checkOnOpen();
+  if (name === 'launcher') loadLauncher();
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();

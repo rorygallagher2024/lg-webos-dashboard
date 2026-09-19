@@ -31,7 +31,7 @@ jobs:
 
       # Preinstalled on ubuntu-latest.
       - name: shell scripts
-        run: shellcheck server/deploy.sh server/tvwebctl server/50-tvweb.sh tvstats.sh
+        run: shellcheck server/deploy.sh server/tvwebctl server/50-tvweb.sh server/assets/launcher-app/install-app.sh server/assets/launcher-app/home-mode.sh tvstats.sh
 
       - name: TypeScript type check
         run: npm ci && npx tsc

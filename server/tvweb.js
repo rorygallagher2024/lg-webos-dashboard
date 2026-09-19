@@ -666,6 +666,14 @@ function doControl(action, value, cb) {
         cb(r);
       });
 
+    // Point the Home key at the tvweb launcher, or put the stock home back. The
+    // switch reloads the compositor, so the screen blinks; the reply carries the
+    // new state back to the dashboard.
+    case 'launcherHome':
+      var lhOn = (value === true || value === 'on' || value === 'ON'
+                  || value === 'true' || value === 1 || value === '1');
+      return homeMode(lhOn ? 'enable' : 'disable', function (r) { cb(r); });
+
     case 'toast':
       /* Both the payload's sourceId and luna-send's -a have to name an app the
          bus already knows; "tvweb" is rejected as an Unknown Source. */
@@ -779,6 +787,24 @@ function assetPath(rel) {
 }
 
 /*
+ * The launcher-as-Home switch. The work - a bind-mount over the compositor's key
+ * handler and a compositor restart - belongs in shell, so it lives in a script
+ * beside the launcher app. Its result is printed as a JSON line, which is read
+ * back here. Absent script (an older deploy) reports unsupported rather than
+ * erroring, so the dashboard simply hides the switch.
+ */
+function homeMode(cmd, cb) {
+  var script = assetPath('launcher-app/home-mode.sh');
+  if (!script) return cb({ ok: true, supported: false, enabled: false, active: false });
+  execFile('/bin/sh', [script, cmd], { timeout: 30000 }, function (err, stdout) {
+    var out = String(stdout || '').trim();
+    var last = out.split('\n').pop();   // the script prints its JSON result last
+    try { return cb(JSON.parse(last)); }
+    catch (e) { return cb({ ok: !err, error: err ? err.message : 'unreadable result' }); }
+  });
+}
+
+/*
  * Shown in place of the dashboard when its asset is missing. Deliberately
  * plain and self-contained: it names what is absent and where it was looked
  * for, because the fix is a redeploy and the reader needs to know that rather
@@ -855,6 +881,56 @@ var MIME = {
 };
 
 // ---------------------------------------------------------------- server
+/*
+ * The launcher's data. Inputs first (connected ones matter most), then the app
+ * grid, both from the Luna services LG's own home reads, so the list tracks
+ * installs, removals and plugged-in sources with no state of our own.
+ */
+function buildLaunchpoints(cb) {
+  luna('com.webos.service.eim/getAllInputStatus', {}, function (eim) {
+    var inputs = [];
+    var devs = (eim && (eim.devices || eim.deviceList)) || [];
+    for (var i = 0; i < devs.length; i++) {
+      var d = devs[i];
+      if (!d || !d.appId) continue;
+      inputs.push({ id: d.appId, title: d.label || d.appId,
+                    connected: d.connected !== false, kind: 'input' });
+    }
+    luna('com.webos.applicationManager/listLaunchPoints', {}, function (lp) {
+      var apps = [];
+      var pts = (lp && lp.launchPoints) || [];
+      for (var j = 0; j < pts.length; j++) {
+        var p = pts[j];
+        if (!p || !p.id) continue;
+        // The absolute icon path is proxied through /api/icon; a full path is a
+        // file, a bare name is relative to the app and left for the client to skip.
+        var icon = p.icon && p.icon.charAt(0) === '/' ? '/api/icon?path=' + encodeURIComponent(p.icon) : '';
+        apps.push({ id: p.id, title: p.title || p.id, icon: icon,
+                    iconColor: p.iconColor || '', systemApp: !!p.systemApp, kind: 'app' });
+      }
+      cb({ ok: true, inputs: inputs, apps: apps });
+    });
+  });
+}
+
+// Icons live under the app trees; nothing else is served, so a crafted path
+// cannot read arbitrary files.
+function serveIcon(p, res) {
+  p = String(p || '');
+  // App icons live in several trees (built-ins under /mnt/otncabi, store apps
+  // under /media/cryptofs/apps). Allow anything inside a palm applications or
+  // cryptofs apps directory, and nothing else.
+  var ok = /\/palm\/applications\//.test(p) || /\/cryptofs\/apps\//.test(p) || p.indexOf('/mnt/lg/') === 0;
+  if (!ok || p.indexOf('..') !== -1 || p.charAt(0) !== '/') return send(res, 403, 'no');
+  fs.readFile(p, function (err, data) {
+    if (err) return send(res, 404, 'no');
+    var ext = (p.split('.').pop() || '').toLowerCase();
+    var mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'svg' ? 'image/svg+xml' : 'image/png';
+    res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'max-age=3600' });
+    res.end(data);
+  });
+}
+
 function send(res, code, body, type) {
   /*
    * No Access-Control-Allow-Origin. The telemetry includes what is currently
@@ -1069,6 +1145,24 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/hdmi') {
     return telemetry.hdmiInputs(function (r) { send(res, 200, JSON.stringify(r)); });
+  }
+
+  // The data our launcher renders: connected inputs, then the app grid, from
+  // the same Luna sources LG's own home uses.
+  if (pathname === '/api/launchpoints') {
+    return buildLaunchpoints(function (r) { send(res, 200, JSON.stringify(r)); });
+  }
+
+  // Proxy an app/input icon by its on-TV path, so the launcher (a web app that
+  // cannot read file://) can show real artwork. Only paths under the app dirs.
+  if (pathname === '/api/icon') {
+    return serveIcon(u.query.path, res);
+  }
+
+  // Whether the launcher is the Home target, whether the switch is even
+  // available on this TV, and whether it is applied right now.
+  if (pathname === '/api/launcher') {
+    return homeMode('status', function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/servicemenu') {

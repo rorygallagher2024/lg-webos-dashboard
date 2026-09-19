@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{height:100%;margin:0;background:#000}</style>
+</head><body>
+<script>
+/* Thin wrapper: the launcher UI, its fonts, icons and data all come from the
+   tvweb server on this TV, so loading it there keeps everything same-origin.
+   Kept as an app of its own so the Home key (or an app button) can launch it
+   without touching LG's home app. */
+location.replace('http://localhost:8080/assets/launcher.html');
+</script>
+</body></html>

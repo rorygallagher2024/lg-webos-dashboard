@@ -47,13 +47,23 @@ fi
 # Prefer tvwebctl: it starts the watchdog alongside the server. The direct
 # line stays as a fallback for installs that predate that script.
 (
-  sleep 20   # let the TV finish booting before adding load
+  # A short buffer so the server does not contend with the busiest part of boot,
+  # then start: the sooner it is up, the sooner Home Assistant has the TV's state
+  # after a power-on (and the sooner the launcher, if it is the home, can load).
+  # The server retries MQTT, so it is fine to start before the network settles.
+  sleep 5
   /usr/bin/pkill -9 -f tvweb.js 2>/dev/null || true
   sleep 1
   if [ -f /var/lib/tvweb/services_stopped ]; then
     while read -r job; do
       [ -n "$job" ] && /sbin/initctl stop "$job" >/dev/null 2>&1
     done < /var/lib/tvweb/services_stopped
+  fi
+
+  # Re-apply the launcher-as-Home choice made in the dashboard. The compositor is
+  # up by now, so this reloads it once; the script self-guards and never loops.
+  if [ -f /var/lib/tvweb/home/enabled ]; then
+    sh /var/lib/tvweb/assets/launcher-app/home-mode.sh boot >/dev/null 2>&1 || true
   fi
 
   if [ -x /var/lib/tvweb/tvwebctl ]; then
