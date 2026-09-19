@@ -1,0 +1,13 @@
+{
+  "id": "com.tvweb.dashboard",
+  "version": "1.0.0",
+  "vendor": "tvweb",
+  "type": "web",
+  "main": "index.html",
+  "title": "TV Dashboard",
+  "icon": "assets/icon80.png",
+  "largeIcon": "assets/icon130.png",
+  "iconColor": "#000000",
+  "bgColor": "#000000",
+  "disableBackHistoryAPI": true
+}

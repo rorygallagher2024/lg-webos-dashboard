@@ -14,36 +14,61 @@
 # Neither needs anything on this computer beyond bash and its standard tools,
 # which Git Bash on Windows has, and neither needs the TV to reach the internet.
 #
-# Usage: ./deploy.sh <tv-ip> [--no-persist] [--telnet]
+# Usage: ./deploy.sh <tv-ip> [--no-persist] [--telnet] [--app|--no-app]
 #   --no-persist  skip the boot hook, so the server does not come back after
 #                 the TV restarts
 #   --telnet      use telnet even when SSH works
+#   --app         add the dashboard app to the TV's home screen
+#   --no-app      leave the home screen alone
+# Without --app or --no-app this asks, and assumes no where there is nobody to
+# ask - the dashboard is served to browsers either way, so the app is an extra.
 
 set -e
 
 TV=""
 PERSIST=1
 FORCE_TELNET=""
+APP=""
+APP_SET=""
 for a in "$@"; do
   case "$a" in
     --persist)    PERSIST=1 ;;          # the default; still accepted
     --no-persist) PERSIST="" ;;
     --telnet)     FORCE_TELNET=1 ;;
+    --app)        APP=1;  APP_SET=1 ;;
+    --no-app)     APP=""; APP_SET=1 ;;
     -*)           echo "unknown option: $a" >&2; exit 2 ;;
     *)            TV="$a" ;;
   esac
 done
 if [ -z "$TV" ]; then
-  echo "usage: $0 <tv-ip> [--no-persist] [--telnet]" >&2
+  echo "usage: $0 <tv-ip> [--no-persist] [--telnet] [--app|--no-app]" >&2
   echo "  <tv-ip> is the TV's address, from Settings > Network on the TV." >&2
   exit 2
+fi
+
+# The app is a tile on the TV's home screen that opens the same dashboard a
+# browser gets. Not everyone wants another tile, so it is asked for rather than
+# assumed; with no terminal to ask at, it is left out.
+if [ -z "$APP_SET" ]; then
+  if [ -t 0 ]; then
+    printf 'Add the dashboard to the TV'\''s home screen as an app? [y/N] '
+    read -r reply || reply=""
+    case "$reply" in [Yy]*) APP=1 ;; *) APP="" ;; esac
+  else
+    APP=""
+  fi
 fi
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=accept-new)
 STAGE=/var/lib/tvweb/.deploy     # on the TV; beside the install so moves are renames
 
-FILES="tvweb.js tvwebctl assets/ui.html assets/fonts/Outfit.ttf assets/fonts/Manrope.ttf \
+FILES="tvweb.js tvwebctl assets/ui.html assets/dashboard.html \
+assets/dashboard-app/appinfo.json assets/dashboard-app/index.html \
+assets/dashboard-app/packageinfo.json assets/dashboard-app/install-app.sh \
+assets/dashboard-app/assets/icon80.png assets/dashboard-app/assets/icon130.png \
+assets/fonts/Outfit.ttf assets/fonts/Manrope.ttf \
 assets/fonts/OFL-Outfit.txt assets/fonts/OFL-Manrope.txt \
 assets/screensavers/clock.qml assets/screensavers/fireworks.qml \
 assets/screensavers/starfield.qml assets/screensavers/vitals.qml assets/screensavers/star.png \
@@ -85,6 +110,15 @@ elif command -v md5 >/dev/null 2>&1; then
   SUM=$(md5 -q "$WORK/bundle.tar")
 fi
 
+# The last line of the install, added only when the app was asked for. It never
+# fails the install: the dashboard is served to browsers whether or not the TV
+# gets a tile for it. $D is the TV's own variable, so it stays unexpanded here.
+APP_STEP=""
+if [ -n "$APP" ]; then
+  # shellcheck disable=SC2016  # $D is the TV's variable, expanded there, not here
+  APP_STEP='sh "$D/assets/dashboard-app/install-app.sh" 2>&1 || true'
+fi
+
 # What runs on the TV once the bundle is there, whichever way it arrived. It
 # reports with TVWEB_ lines, which are how this script learns what happened.
 install_script() {
@@ -124,6 +158,7 @@ cd / && rm -rf "\$S"
 sleep 4
 "\$D/tvwebctl" status
 tail -6 "\$D/tvweb.log"
+$APP_STEP
 EOF
 }
 

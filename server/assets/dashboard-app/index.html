@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{height:100%;margin:0;background:#000}</style>
+</head><body>
+<script>
+/* Thin wrapper: the dashboard UI, its fonts and its data all come from the
+   tvweb server on this TV, so loading it there keeps everything same-origin.
+   The app exists only to give that page a tile on the home screen. */
+location.replace('http://localhost:8080/assets/dashboard.html');
+</script>
+</body></html>

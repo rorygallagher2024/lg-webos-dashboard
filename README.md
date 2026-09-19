@@ -203,6 +203,21 @@ A firmware update restores the LG default.
   <a href="docs/screenshots/screensaver-starfield.png"><img src="docs/screenshots/screensaver-starfield.png" alt="Starscape screen saver on OLED: drifting stars and meteor with ion trail" width="700"></a>
 </p>
 
+### The dashboard on the TV
+
+An optional app on the TV's home screen, driven by the remote, for when there is
+no phone or laptop to hand. Left and right move between System, OLED Care,
+Screen Saver, Privacy and Service Menu; up and down move within one; OK acts on
+the selected row. It reads the same data and uses the same controls as the web
+dashboard, so the two never disagree.
+
+It is offered during installation rather than added by default, and is not
+needed for the web dashboard, which serves to any browser on the network
+regardless. To add it later, run `./deploy.sh <tv-ip>` again and say yes; to be
+rid of it, delete it from the TV's home screen as with any other app. webOS 9
+and later, where the TV accepts an unsigned app; elsewhere the install step is
+skipped and everything else works as before.
+
 ### Home Assistant bridge
 
 The **MQTT** tab, `/?tab=mqtt`. Publishes the TV to an MQTT broker, where it
@@ -289,6 +304,13 @@ For example, `./deploy.sh 192.168.1.50`. It takes about ten seconds and finishes
 by checking that the dashboard answers. When it says `done`, open
 **`http://<tv-ip>:8080/`** in a browser. If anything goes wrong, it stops and
 says why.
+
+Partway through it asks whether to add the dashboard to the TV's home screen as
+an app, so it can be opened on the TV itself with the remote. Answering no
+changes nothing else — the dashboard is served to browsers either way.
+`--app` and `--no-app` answer in advance, which is what an unattended install
+needs; unanswered, it does not install the app. See
+[The dashboard on the TV](#the-dashboard-on-the-tv).
 
 The server starts again by itself whenever the TV restarts. To try it without
 that, add `--no-persist`, and it runs only until the TV next restarts. Setting
