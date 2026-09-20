@@ -657,6 +657,12 @@ function doControl(action, value, cb) {
       var prot = (value && typeof value === 'object') ? value : {};
       return oled.setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
 
+    case 'tvAppInstall':
+      return tvApp('install', cb);
+
+    case 'tvAppRemove':
+      return tvApp('remove', cb);
+
     case 'rcu':
       var rcuName = String(value || '').trim().toLowerCase();
       if (rcuName === 'home') {
@@ -815,6 +821,28 @@ function assetPath(rel) {
     catch (e) {}
   }
   return null;
+}
+
+/*
+ * The app that puts this dashboard on the TV's own screen. Installing it is a
+ * packaging job for shell, so it lives in a script beside the app's files and
+ * its result is read back here. An absent script - an older deploy, or a TV
+ * that will not take an unsigned app - reports unsupported, and the dashboard
+ * hides the control rather than offering something that cannot work.
+ */
+function tvApp(action, cb) {
+  var script = assetPath('dashboard-app/install-app.sh');
+  if (!script) return cb({ ok: true, supported: false, installed: false });
+  execFile('/bin/sh', [script, action], { timeout: 90000 }, function (err, stdout) {
+    var out = String(stdout || '').trim();
+    var last = out.split('\n').pop();
+    try { return cb(JSON.parse(last)); }
+    catch (e) {
+      // install prints a sentence rather than JSON, so read its wording.
+      if (action === 'install') return cb({ ok: /added to the home screen/.test(out) });
+      return cb({ ok: !err, error: err ? err.message : 'unreadable result' });
+    }
+  });
 }
 
 /*
@@ -1114,6 +1142,13 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/servicemenu') {
     return oled.serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
+  }
+
+  if (pathname === '/api/tvapp') {
+    return tvApp('status', function (r) {
+      if (r && r.ok) r.writable = CONFIG.allowControl;
+      send(res, 200, JSON.stringify(r));
+    });
   }
 
   if (pathname === '/api/oledcare') {

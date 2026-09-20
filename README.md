@@ -217,9 +217,10 @@ selected and says whether OK does anything to it.
 
 It is offered during installation rather than added by default; answering no
 changes nothing else, since the dashboard reaches any browser on the network
-regardless. To add it later, run `./deploy.sh <tv-ip>` again and say yes; to be
-rid of it, delete it from the TV's home screen as with any other app. Where a
-TV will not take it, the step is skipped and everything else works as before.
+regardless. It can be added or removed at any time from the **Server** tab,
+which is also where it turns up for anyone who updated in place rather than
+re-running the installer. Where a TV will not take it, the control is hidden
+and everything else works as before.
 
 ### Home Assistant bridge
 
@@ -234,6 +235,7 @@ the bridge's connection state and last publish time beside them.
 The **Server** tab, `/?tab=server`. The installed version, whether a newer
 release is out, and buttons to install it or roll back to the version before.
 **Check daily** looks on its own and lets Home Assistant offer the update.
+It also adds or removes [the app on the TV's home screen](#the-dashboard-on-the-tv).
 [Updating](#updating) covers installs from before the tab existed.
 
 ---

@@ -1121,6 +1121,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         </div>
         <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
       </div>
+      <div class="prot-row" id="tvapp-row" hidden>
+        <div class="prot-main">
+          <div class="prot-title">App on the TV's home screen</div>
+          <div class="prot-desc" id="tvapp-desc">Opens this dashboard on the TV itself, driven by the remote.</div>
+        </div>
+        <div class="prot-status"><button type="button" class="pill idle" id="tvapp-btn" onclick="toggleTvApp()">&mdash;</button></div>
+      </div>
     </div>
     <div class="btns" id="upd-btns">
       <button type="button" id="upd-check" onclick="checkNow()">Check now</button>
@@ -1936,6 +1943,49 @@ async function toggleAutoCheck() {
   if (r && r.ok) renderUpdate(r); else loadUpdate();
 }
 
+// ---- the app on the TV's home screen ----
+/*
+ * Offered here because an in-place update installs no app: it copies files and
+ * runs nothing, so without this the only way to get the tile is to re-run
+ * deploy.sh. Hidden where the TV will not take an unsigned app.
+ */
+let tvAppBusy = false;
+
+function renderTvApp(d) {
+  const row = q('tvapp-row');
+  if (!row) return;
+  row.hidden = !(d && d.supported);
+  if (!d || !d.supported) return;
+  const btn = q('tvapp-btn');
+  btn.textContent = d.installed ? 'Added' : 'Not added';
+  btn.className = 'pill ' + (d.installed ? 'good' : 'idle');
+  btn.disabled = !d.writable || tvAppBusy;
+  q('tvapp-desc').textContent = d.installed
+    ? 'Opens this dashboard on the TV itself, driven by the remote. Remove it to take the tile off the home screen.'
+    : 'Adds a tile that opens this dashboard on the TV itself, driven by the remote.';
+}
+
+async function loadTvApp() {
+  try {
+    const d = await (await fetch(api('/api/tvapp'), { cache: 'no-store' })).json();
+    renderTvApp(d);
+  } catch (e) { /* leave the row hidden */ }
+}
+
+async function toggleTvApp() {
+  if (tvAppBusy) return;
+  const btn = q('tvapp-btn');
+  const adding = btn.textContent !== 'Added';
+  if (!adding && !confirm("Take the dashboard off the TV's home screen?")) return;
+  tvAppBusy = true;
+  btn.disabled = true;
+  btn.textContent = adding ? 'Adding\u2026' : 'Removing\u2026';
+  const r = await c(adding ? 'tvAppInstall' : 'tvAppRemove');
+  tvAppBusy = false;
+  if (!r || !r.ok) q('upd-msg').textContent = (r && r.error) || 'Could not change it.';
+  loadTvApp();
+}
+
 async function rollbackUpdate() {
   const v = q('upd-rollback').dataset.v, from = updInstalled;
   if (!confirm('Put v' + v + ' back?')) return;
@@ -2444,6 +2494,7 @@ function showTab(name) {
   cfgPollStatus(name === 'mqtt');
   if (name === 'system') loadHdmiOnce();
   if (name === 'server') checkOnOpen();
+  if (name === 'server') loadTvApp();
   if (name === 'oledcare') loadOledCare();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();
