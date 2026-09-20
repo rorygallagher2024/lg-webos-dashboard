@@ -723,10 +723,10 @@ function appsRows(d) {
 
   var sys = d.systemTiles || [];
   if (sys.length > 0) {
-    r.push(head('Home Screen System Tiles'));
+    r.push(head('Hide Home Screen System Apps'));
     var tileHidingEnabled = !!d.tileHidingEnabled;
     r.push({
-      label: 'System Tile Hiding',
+      label: 'System App Hiding',
       value: tileHidingEnabled ? 'Enabled' : 'Disabled',
       cls: tileHidingEnabled ? 'on' : 'off',
       act: 'tileHiding',
