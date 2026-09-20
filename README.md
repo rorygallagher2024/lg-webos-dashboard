@@ -12,7 +12,7 @@ The dashboard runs standalone on the TV with zero external dependencies.
 * **webOS**: 3.4 through 25 confirmed (2016–2025 models; other versions likely work as well)
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (telnet) or SSH &mdash; no external dependencies or internet access needed on the TV
-* **Tested hardware**: 12 models verified so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030) &mdash; other rooted models should work; [see full table](#tested-tvs)
+* **Tested hardware**: 13 models verified so far (B7, B8, C8, C9, C1, C2, B4, G4, C5, UH6030, UH610V) &mdash; other rooted models should work; [see full table](#tested-tvs)
 
 [What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt-optional) • [Managing the server](#managing-the-server) • [Security](#security)
 
@@ -248,6 +248,7 @@ versions and panel types.
 | OLED55C9PLA | 4.9.0 | 05.30.40 | OLED | Working fine |
 | OLED55C1PUB | 6.x (6.3+) | 03.53.45 | OLED | SSH install and MQTT bridge confirmed |
 | 55UH6030-UC | 3.4.3 | &mdash; | LCD | |
+| 43UH610V-ZB | 3.4.3 | 05.70.50 | LCD | No SoC temp, eMMC wear, or OLED metrics by hardware design |
 | OLED55G42LW | 24 | 33.31.68 | OLED | Rooted with slopbro, not the Homebrew Channel |
 | OLED42C24LA | 9.2.2 (22+) | 23.25.55 | OLED | Rooted with jsbro-autoroot |
 | OLED65B7V-Z | 3.9.3 | 06.10.65 | OLED | No SoC temperature or eMMC wear readings |

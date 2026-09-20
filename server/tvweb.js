@@ -343,14 +343,37 @@ function sendMediaKey(cmd, cb) {
 // gets, so nothing behind it sees this.
 var KEY_BACK = 158;
 
-function injectKey(code, cb) {
-  var fd = null;
+var rcuDevicePath = null;
+function getRcuDevicePath() {
+  if (rcuDevicePath) return rcuDevicePath;
   try {
-    fd = fs.openSync('/dev/input/event1', 'w');
+    var devices = fs.readFileSync('/proc/bus/input/devices', 'utf8');
+    var m = /Name="LGE RCU"[\s\S]*?Handlers=[^\n]*?(event\d+)/.exec(devices);
+    if (!m) m = /Name="Smart Remote RCU Input"[\s\S]*?Handlers=[^\n]*?(event\d+)/.exec(devices);
+    if (m && m[1]) {
+      rcuDevicePath = '/dev/input/' + m[1];
+      return rcuDevicePath;
+    }
+  } catch (e) {}
+  rcuDevicePath = '/dev/input/event1';
+  return rcuDevicePath;
+}
+
+function injectKey(code, cb, delayMs) {
+  var fd = null;
+  var dev = getRcuDevicePath();
+  try {
+    fd = fs.openSync(dev, 'w');
   } catch (e) {
-    if (cb) cb(false);
-    return;
+    if (dev !== '/dev/input/event1') {
+      try { fd = fs.openSync('/dev/input/event1', 'w'); } catch (e2) {}
+    }
+    if (!fd) {
+      if (cb) cb(false);
+      return;
+    }
   }
+  var delay = (typeof delayMs === 'number') ? delayMs : 50;
   function makeEv(type, c, val) {
     var b = zeroBuffer(16);
     b.writeUInt16LE(type, 8);
@@ -370,7 +393,7 @@ function injectKey(code, cb) {
       } catch (e2) {
         if (cb) cb(false);
       }
-    }, 50);
+    }, delay);
   } catch (e) {
     try { fs.closeSync(fd); } catch (e3) {}
     if (cb) cb(false);
@@ -424,8 +447,8 @@ var INPUTS = ha.INPUTS;
  * IR_KEY_BACK in /usr/share/X11/xkb/keycodes/lg less the 8 that xkb adds - and
  * measured on a C2 it is the one that acts; evdev's 158 is taken as a dismissal
  * rather than a step back. The service refuses anything above about 512, which
- * rules out the rest of LG's table, and no code was found for Home at all, so
- * that launches the home app instead.
+ * rules out the rest of LG's table. Home is launched as com.webos.app.home on
+ * webOS 6+ and falls back to injectKey(125) for the webOS 3-5 ribbon.
  */
 var RCU_KEYS = {
   up: 103,
@@ -632,10 +655,21 @@ function doControl(action, value, cb) {
     case 'rcu':
       var rcuName = String(value || '').trim().toLowerCase();
       if (rcuName === 'home') {
-        // No keycode reaches the home screen - the service rejects LG's own -
-        // so ask the application manager for it directly.
+        // webOS 6+ (2021+) uses com.webos.app.home as a standalone app.
+        // webOS 3-5 (2016-2020) does not have com.webos.app.home (the launcher
+        // is a system UI component); KEY_LEFTMETA (125) with a 100ms press/release
+        // delay triggers the native home ribbon across webOS versions.
         return luna('com.webos.applicationManager/launch', { id: 'com.webos.app.home' },
-                    function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
+                    function (r) {
+                      if (r && r.returnValue) {
+                        telemetry.clearCache();
+                        return cb({ ok: true });
+                      }
+                      injectKey(125, function (ok) {
+                        telemetry.clearCache();
+                        cb({ ok: ok });
+                      }, 100);
+                    });
       }
       if (!RCU_KEYS.hasOwnProperty(rcuName)) {
         return cb({ ok: false, error: 'unknown key: ' + rcuName });
