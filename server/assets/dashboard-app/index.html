@@ -1,11 +1,124 @@
 <!doctype html>
-<html><head><meta charset="utf-8">
-<style>html,body{height:100%;margin:0;background:#000}</style>
-</head><body>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>TV Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;color:#fff;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif}
+body{display:flex;display:-webkit-flex;align-items:center;-webkit-align-items:center;justify-content:center;-webkit-justify-content:center;flex-direction:column;-webkit-flex-direction:column;cursor:none}
+#card{display:flex;display:-webkit-flex;flex-direction:column;-webkit-flex-direction:column;align-items:center;-webkit-align-items:center;text-align:center;padding:4vh 4vw}
+.spinner{width:46px;height:46px;border:3px solid rgba(255,255,255,.12);border-top-color:#1ec15f;border-radius:50%;margin-bottom:3.2vh;animation:spin 1s linear infinite;-webkit-animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@-webkit-keyframes spin{to{-webkit-transform:rotate(360deg)}}
+.title{font-size:3.6vh;font-weight:400;letter-spacing:.02em;margin-bottom:1.4vh;color:#fff}
+.status{font-size:2.2vh;color:rgba(255,255,255,.65);min-height:3.2vh}
+.dots::after{content:'...';display:inline-block;width:1.8em;text-align:left;animation:dots 1.5s steps(4,end) infinite;-webkit-animation:dots 1.5s steps(4,end) infinite}
+@keyframes dots{0%,20%{content:''}40%{content:'.'}60%{content:'..'}80%,100%{content:'...'}}
+@-webkit-keyframes dots{0%,20%{content:''}40%{content:'.'}60%{content:'..'}80%,100%{content:'...'}}
+#retry{display:none;margin-top:3.5vh;padding:1.4vh 3.2vw;font-size:2vh;font-weight:500;color:#000;background:#1ec15f;border:none;border-radius:.8vh;cursor:pointer;outline:none}
+#retry.on{display:inline-block}
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="spinner"></div>
+  <div class="title">TV Dashboard</div>
+  <div id="status" class="status">Connecting to TV service<span class="dots"></span></div>
+  <button id="retry">Press OK to Retry</button>
+</div>
+
 <script>
-/* Thin wrapper: the dashboard UI, its fonts and its data all come from the
-   tvweb server on this TV, so loading it there keeps everything same-origin.
-   The app exists only to give that page a tile on the home screen. */
-location.replace('http://localhost:8080/assets/dashboard.html?t=' + Date.now());
+/*
+ * Standby launcher for the on-TV dashboard app.
+ *
+ * Rather than an immediate location.replace() that triggers an LG "Network Connection Error"
+ * screen when the TV has just booted and the background tvweb server is still initializing,
+ * this wrapper remains on its local black screen, displays a smooth OLED loading sequence,
+ * and actively probes for the server to become ready.
+ *
+ * Once port 8080 responds with HTTP 200, it navigates cleanly to the dashboard on the
+ * System tab. If the server is already running, the first probe succeeds in <100ms.
+ */
+(function () {
+  var navigated = false;
+  var probeCount = 0;
+  var statusEl = document.getElementById('status');
+  var retryBtn = document.getElementById('retry');
+
+  function openDashboard() {
+    if (navigated) return;
+    navigated = true;
+    location.replace('http://localhost:8080/assets/dashboard.html?tab=system&t=' + Date.now());
+  }
+
+  function probe() {
+    if (navigated) return;
+    probeCount++;
+
+    if (probeCount === 12 && statusEl) {
+      statusEl.innerHTML = 'Waiting for background service to initialize<span class="dots"></span>';
+    } else if (probeCount >= 30 && statusEl) {
+      statusEl.textContent = 'Service is taking longer than usual to start.';
+      if (retryBtn) retryBtn.className = 'on';
+    }
+
+    // 1. Primary probe via XMLHttpRequest
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'http://localhost:8080/api/caps?t=' + Date.now(), true);
+      xhr.timeout = 1200;
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 400) {
+          openDashboard();
+        }
+      };
+      xhr.onerror = function () {
+        if (!navigated) setTimeout(probe, 750);
+      };
+      xhr.ontimeout = function () {
+        if (!navigated) setTimeout(probe, 750);
+      };
+      xhr.send();
+    } catch (e) {
+      // 2. Fallback probe via Image load in case XHR has origin restrictions
+      var img = new Image();
+      img.onload = function () { openDashboard(); };
+      img.onerror = function () {
+        if (!navigated) setTimeout(probe, 750);
+      };
+      img.src = 'http://localhost:8080/assets/dashboard-app/assets/icon80.png?t=' + Date.now();
+    }
+  }
+
+  // Handle remote control keys:
+  // 13 = Enter / OK
+  // 461 = webOS Back button
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode || e.which;
+    if (k === 13) {
+      if (retryBtn) retryBtn.className = '';
+      if (statusEl) statusEl.innerHTML = 'Connecting to TV service<span class="dots"></span>';
+      probeCount = 0;
+      probe();
+    } else if (k === 461) {
+      window.close();
+    }
+  });
+
+  if (retryBtn) {
+    retryBtn.addEventListener('click', function () {
+      retryBtn.className = '';
+      if (statusEl) statusEl.innerHTML = 'Connecting to TV service<span class="dots"></span>';
+      probeCount = 0;
+      probe();
+    });
+  }
+
+  // Initial immediate probe
+  probe();
+})();
 </script>
-</body></html>
+</body>
+</html>

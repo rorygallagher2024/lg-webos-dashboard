@@ -418,6 +418,15 @@ function installUpdate(cb) {
                 }
               }
 
+              var devAppIdx = '/media/developer/apps/usr/palm/applications/com.tvweb.dashboard/index.html';
+              if (fs.existsSync(devAppIdx) && fs.existsSync(path.join(src, 'assets/dashboard-app/index.html'))) {
+                try {
+                  installFile(path.join(src, 'assets/dashboard-app/index.html'), devAppIdx, false);
+                } catch (e) {
+                  console.error('update: could not refresh the installed app wrapper: ' + e.message);
+                }
+              }
+
               rmrf(stageDir, function () {
                 setUpdateState('installed');
                 console.log('update: installed v' + ver + ' over v' + currentVersion +
