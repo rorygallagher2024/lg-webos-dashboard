@@ -960,11 +960,14 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
     <div>
       <div class="pv-h">Home Screen System Tiles</div>
-      <div class="pv-sub">Non-removable LG system apps (Gallery, Music, Sports, Always Ready, Alexa, etc.). Hiding strips the tile from the home launcher ribbon without touching rootfs partitions. Completely reversible at any time.</div>
+      <div class="pv-sub">Non-removable LG system apps (Gallery, Music, Sports, Always Ready, Alexa, etc.).</div>
       <div class="btns" style="margin-top:14px;max-width:520px">
-        <button type="button" id="apps-restore-all" onclick="unhideAllTiles()">Restore all system tiles</button>
+        <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)">Off (Stock)</button>
+        <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)">On (Custom)</button>
+        <button type="button" id="apps-restore-all" onclick="unhideAllTiles()" style="margin-left:auto">Restore all</button>
       </div>
       <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
+      <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b>Note:</b> On a cold boot (or with Quick Start+ disabled), applying tile overrides requires a fast app manager reload ~5 seconds into startup, which may cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</div>
     </div>
   </div>
 
@@ -2571,17 +2574,52 @@ function renderApps() {
   }
 
   // Render System Tiles
+  const tileHidingEnabled = !!d.tileHidingEnabled;
+  const tilesDisc = q('disc-system-tiles');
   const tilesList = q('apps-tiles-list');
   const hiddenCount = q('apps-hidden-count');
   const tilesSummary = q('apps-tiles-summary');
+  const warningBox = q('tile-hiding-warning');
+  const btnOff = q('tile-hiding-off');
+  const btnOn = q('tile-hiding-on');
+  const restoreBtn = q('apps-restore-all');
   const tiles = d.systemTiles || [];
   const numHidden = d.hiddenCount || 0;
 
-  if (hiddenCount) hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' tiles' : 'All ' + tiles.length + ' tiles visible';
-  if (tilesSummary) tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' tiles';
+  if (btnOff && btnOn) {
+    btnOff.classList.toggle('on', !tileHidingEnabled);
+    btnOn.classList.toggle('on', tileHidingEnabled);
+    btnOff.disabled = !d.writable;
+    btnOn.disabled = !d.writable;
+  }
+  if (restoreBtn) {
+    restoreBtn.style.display = tileHidingEnabled ? '' : 'none';
+    restoreBtn.disabled = !d.writable || numHidden === 0;
+  }
+  if (warningBox) {
+    warningBox.hidden = !tileHidingEnabled;
+  }
+
+  if (hiddenCount) {
+    if (!tileHidingEnabled) {
+      hiddenCount.textContent = 'Disabled (stock TV behavior, zero boot delay)';
+    } else {
+      hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' tiles' : 'Enabled · all ' + tiles.length + ' tiles visible';
+    }
+  }
+
+  if (tilesSummary) {
+    if (!tileHidingEnabled) {
+      tilesSummary.textContent = 'Disabled';
+    } else {
+      tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' tiles';
+    }
+  }
 
   if (tilesList) {
-    if (tiles.length === 0) {
+    if (!tileHidingEnabled) {
+      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">System tile hiding is currently disabled. Toggle on above to customize home screen tile visibility.</div>';
+    } else if (tiles.length === 0) {
       tilesList.innerHTML = '<div class="sub" style="padding:16px 0">No eligible system tiles found.</div>';
     } else {
       tilesList.innerHTML = tiles.map(tile => {
@@ -2792,8 +2830,39 @@ async function unhideAllTiles() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Restore all system tiles';
+      btn.textContent = 'Restore all';
     }
+  }
+}
+
+async function setTileHiding(enabled) {
+  const btnOff = q('tile-hiding-off');
+  const btnOn = q('tile-hiding-on');
+  if (btnOff) btnOff.disabled = true;
+  if (btnOn) btnOn.disabled = true;
+  try {
+    const res = await fetch(api('/api/apps/tile-hiding'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enabled })
+    });
+    const d = await res.json();
+    if (d && d.ok) {
+      if (appsData) {
+        appsData.tileHidingEnabled = enabled;
+        renderApps();
+      }
+      await loadApps();
+    } else {
+      alert('Could not update tile hiding: ' + ((d && d.error) || 'unknown error'));
+      renderApps();
+    }
+  } catch (e) {
+    alert('Error updating tile hiding: ' + e.message);
+    renderApps();
+  } finally {
+    if (btnOff) btnOff.disabled = false;
+    if (btnOn) btnOn.disabled = false;
   }
 }
 

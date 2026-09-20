@@ -37,8 +37,10 @@ This is a server that runs directly on a rooted LG webOS TV, providing both a li
    dashboard. Includes an on-TV blocker for LG's ad and telemetry
    endpoints, and a switch for the two diagnostics services that upload to LG.
 
-3. **[App management and home screen cleanup](#apps-and-home-screen-launcher).** Permanently
+3. **[App management, debloating and home screen cleanup](#apps-and-home-screen-launcher).** Permanently
    uninstall store downloads and sideloaded apps to reclaim internal flash storage,
+   disable unnecessary background system services (TV Data Exchanger, Connected Car
+   listeners, USB camera watcher, browser preloaders) to free up RAM and CPU cycles,
    and hide non-removable built-in LG system tiles (Gallery, Music, Sports, Always
    Ready, Camera, User Guide, etc.) from the home launcher ribbon. Fully reversible
    at any time.
@@ -147,10 +149,11 @@ of, most of which is absent from its own settings menu.
 
 ### Apps and home screen launcher
 
-The **Apps** tab, `/?tab=apps`. Manage installed applications and tidy the TV's home screen ribbon.
+The **Apps** tab, `/?tab=apps`. Manage installed applications, debloat unnecessary background services, and tidy the TV's home screen ribbon.
 
 * **Installed applications:** Store downloads and sideloaded packages with version and vendor details, and a one-click uninstall action to permanently delete apps and free up internal eMMC flash storage.
-* **Home screen system tiles:** Hide non-removable LG system tiles (Gallery, Music, Sports, Always Ready, Camera, User Guide, Device Connector, Alexa, Google Assistant, etc.) from the home launcher ribbon. Operates non-destructively via reversible `appinfo.json` bind-mounts.
+* **Background system services:** Safely disable unnecessary background services and daemons that consume RAM and CPU cycles (such as TV Data Exchanger, USB camera watcher, Connected Car listeners, and browser preloading). Only services actually present on your TV model are displayed, and disabled states are persisted across reboots.
+* **Home screen system tiles:** Hide non-removable LG system tiles (Gallery, Music, Sports, Always Ready, Camera, User Guide, Device Connector, Alexa, Google Assistant, etc.) from the home launcher ribbon. Operates non-destructively via reversible `appinfo.json` bind-mounts. Includes a master toggle to instantly return to stock behavior.
 * **Restore all:** A single action restores all system tiles to their default visible state instantly.
 * **Strict system safeguards:** Core TV services (`Live TV`, `Settings`, `Launcher`, input switchers, and the dashboard itself) are strictly protected and can never be hidden or uninstalled.
 * **Available on TV and Web:** Manage apps from any browser or directly on the TV using the remote control in the on-TV dashboard app.

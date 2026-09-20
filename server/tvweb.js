@@ -741,6 +741,12 @@ function doControl(action, value, cb) {
                   function (r) { cb({ ok: !!(r && r.returnValue), error: r && r.errorText }); },
                   TOAST_SOURCE);
 
+    case 'tileHiding':
+      return appsModule.setTileHidingEnabled(!!value, function (r) {
+        telemetry.clearCache();
+        cb(r);
+      });
+
     case 'powerOff':
       if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
       return luna('com.webos.service.tvpower/power/powerOff', { reason: 'remoteKey' },
@@ -1343,6 +1349,14 @@ var server = http.createServer(function (req, res) {
   if (pathname === '/api/apps/unhide-all' && req.method === 'POST') {
     return readJsonBody(req, res, function () {
       appsModule.unhideAllTiles(function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
+  if (pathname === '/api/apps/tile-hiding' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.setTileHidingEnabled(body && body.enabled, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
     });

@@ -286,6 +286,87 @@ test('getApps categorizes /media/system apps as built-in system tiles', function
   });
 });
 
+test('isTileHidingEnabled detects flag file and auto-migrates from hidden_apps', function () {
+  var flagFile = '/var/lib/tvweb/tile_hiding_enabled';
+  var hiddenFile = '/var/lib/tvweb/hidden_apps';
+
+  delete mockEnv.files[flagFile];
+  delete mockEnv.files[hiddenFile];
+  assert.strictEqual(apps.isTileHidingEnabled(), false);
+
+  mockEnv.files[flagFile] = '1\n';
+  assert.strictEqual(apps.isTileHidingEnabled(), true);
+
+  mockEnv.files[flagFile] = '0\n';
+  assert.strictEqual(apps.isTileHidingEnabled(), false, 'Explicit 0 in flag file must evaluate to false');
+
+  delete mockEnv.files[flagFile];
+  mockEnv.files[hiddenFile] = 'com.webos.app.igallery\n';
+  assert.strictEqual(apps.isTileHidingEnabled(), true);
+  assert.strictEqual(mockEnv.files[flagFile].trim(), '1', 'Should auto-create flag file with 1 when hidden_apps has content');
+
+  // Even if hidden_apps exists, if flag file is set to '0', it stays disabled
+  mockEnv.files[flagFile] = '0\n';
+  assert.strictEqual(apps.isTileHidingEnabled(), false, 'Explicitly disabled flag must override existing hidden_apps file');
+
+  delete mockEnv.files[flagFile];
+  delete mockEnv.files[hiddenFile];
+});
+
+test('setTileHidingEnabled toggles flag file and requires allowControl', function (done) {
+  var flagFile = '/var/lib/tvweb/tile_hiding_enabled';
+
+  // Disabled when allowControl is false
+  apps.init({ config: { allowControl: false } });
+  apps.setTileHidingEnabled(true, function (res) {
+    assert.strictEqual(res.ok, false);
+    assert.ok(res.error.indexOf('disabled') !== -1);
+
+    // Enabled when allowControl is true
+    apps.init({
+      config: { allowControl: true },
+      luna: function (uri, params, cb) { cb({ returnValue: true }); }
+    });
+
+    apps.setTileHidingEnabled(true, function (r1) {
+      assert.strictEqual(r1.ok, true);
+      assert.strictEqual(r1.tileHidingEnabled, true);
+      assert.strictEqual(mockEnv.files[flagFile].trim(), '1');
+
+      apps.setTileHidingEnabled(false, function (r2) {
+        assert.strictEqual(r2.ok, true);
+        assert.strictEqual(r2.tileHidingEnabled, false);
+        assert.strictEqual(mockEnv.files[flagFile].trim(), '0');
+        if (done) done();
+      });
+    });
+  });
+});
+
+test('restartSam preserves and relaunches active foreground app', function (done) {
+  var launchedApp = null;
+  var mockLuna = function (uri, params, cb) {
+    if (uri === 'com.webos.applicationManager/getForegroundAppInfo') {
+      return cb({ returnValue: true, appId: 'com.webos.app.hdmi2' });
+    }
+    if (uri === 'com.webos.applicationManager/launch') {
+      launchedApp = params.id;
+      return cb({ returnValue: true });
+    }
+    cb({ returnValue: true });
+  };
+
+  apps.init({
+    luna: mockLuna,
+    config: { allowControl: true }
+  });
+
+  apps.restartSam(function () {
+    assert.strictEqual(launchedApp, 'com.webos.app.hdmi2', 'Must relaunch saved HDMI foreground app');
+    if (done) done();
+  });
+});
+
 var failures = 0;
 var asyncRemaining = 0;
 

@@ -724,21 +724,36 @@ function appsRows(d) {
   var sys = d.systemTiles || [];
   if (sys.length > 0) {
     r.push(head('Home Screen System Tiles'));
-    for (var i = 0; i < sys.length; i++) {
-      var tile = sys[i];
-      var isVisible = !tile.hidden;
-      r.push({
-        label: tile.title || tile.id,
-        value: isVisible ? 'Visible' : 'Hidden',
-        cls: isVisible ? 'on' : 'off',
-        act: 'tile',
-        key: tile.id,
-        on: isVisible,
-        press: isVisible ? 'Press OK to hide tile' : 'Press OK to show tile',
-        hint: isVisible
-          ? 'Currently visible on the TV home ribbon. Press OK to hide this tile.'
-          : 'Currently hidden from the TV home ribbon. Press OK to make this tile visible again.'
-      });
+    var tileHidingEnabled = !!d.tileHidingEnabled;
+    r.push({
+      label: 'System Tile Hiding',
+      value: tileHidingEnabled ? 'Enabled' : 'Disabled',
+      cls: tileHidingEnabled ? 'on' : 'off',
+      act: 'tileHiding',
+      on: tileHidingEnabled,
+      press: tileHidingEnabled ? 'Press OK to disable tile hiding' : 'Press OK to enable tile hiding',
+      hint: tileHidingEnabled
+        ? 'Custom tile hiding active. Note: cold boot requires a fast 1s refresh before restoring HDMI source.'
+        : 'Stock behavior active (zero boot delay or screen flicker). Press OK to enable tile hiding.'
+    });
+    if (tileHidingEnabled) {
+      for (var i = 0; i < sys.length; i++) {
+        var tile = sys[i];
+        var isVisible = !tile.hidden;
+        r.push({
+          label: tile.title || tile.id,
+          value: isVisible ? 'Visible' : 'Hidden',
+          cls: isVisible ? 'on' : 'off',
+          act: 'tile',
+          key: tile.id,
+          title: tile.title || tile.id,
+          on: isVisible,
+          press: isVisible ? 'Press OK to hide tile' : 'Press OK to show tile',
+          hint: isVisible
+            ? 'Currently visible on the TV home ribbon. Press OK to hide this tile.'
+            : 'Currently hidden from the TV home ribbon. Press OK to make this tile visible again.'
+        });
+      }
     }
   }
 
@@ -1271,6 +1286,12 @@ function activate() {
       flash((r.on ? 'Hiding ' : 'Showing ') + (r.title || r.key) + '…');
       render();
       return sendPost(ep, { id: r.key }, r.on ? 'Tile hidden' : 'Tile visible');
+    case 'tileHiding':
+      var nextHiding = !r.on;
+      r.value = nextHiding ? 'Enabling…' : 'Disabling…';
+      flash((nextHiding ? 'Enabling' : 'Disabling') + ' tile hiding…');
+      render();
+      return sendPost('/api/apps/tile-hiding', { enabled: nextHiding }, nextHiding ? 'Tile hiding enabled' : 'Tile hiding disabled');
     case 'serviceToggle':
       var nextDisabled = r.on;
       r.value = nextDisabled ? 'Disabling…' : 'Enabling…';

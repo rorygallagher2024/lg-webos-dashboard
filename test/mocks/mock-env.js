@@ -10,6 +10,9 @@ var fs = require('fs');
 var origReadFileSync = fs.readFileSync;
 var origExistsSync = fs.existsSync;
 var origReaddirSync = fs.readdirSync;
+var origWriteFileSync = fs.writeFileSync;
+var origUnlinkSync = fs.unlinkSync;
+var origMkdirSync = fs.mkdirSync;
 
 function createMockEnv(overrides) {
   overrides = overrides || {};
@@ -134,14 +137,43 @@ function createMockEnv(overrides) {
     mockLuna(uri, payload, cb);
   }
 
+  function mockWriteFileSync(p, data, enc) {
+    if (typeof p === 'string' && (p.indexOf('/var/') === 0 || p.indexOf('/tmp/') === 0 || mockFiles.hasOwnProperty(p))) {
+      mockFiles[p] = data;
+      return;
+    }
+    return origWriteFileSync.apply(fs, arguments);
+  }
+
+  function mockUnlinkSync(p) {
+    if (typeof p === 'string' && (p.indexOf('/var/') === 0 || p.indexOf('/tmp/') === 0 || mockFiles.hasOwnProperty(p))) {
+      delete mockFiles[p];
+      return;
+    }
+    return origUnlinkSync.apply(fs, arguments);
+  }
+
+  function mockMkdirSync(p) {
+    if (typeof p === 'string' && (p.indexOf('/var/') === 0 || p.indexOf('/tmp/') === 0)) {
+      return;
+    }
+    return origMkdirSync.apply(fs, arguments);
+  }
+
   function install() {
     fs.readFileSync = mockReadFileSync;
     fs.existsSync = mockExistsSync;
+    fs.writeFileSync = mockWriteFileSync;
+    fs.unlinkSync = mockUnlinkSync;
+    fs.mkdirSync = mockMkdirSync;
   }
 
   function restore() {
     fs.readFileSync = origReadFileSync;
     fs.existsSync = origExistsSync;
+    fs.writeFileSync = origWriteFileSync;
+    fs.unlinkSync = origUnlinkSync;
+    fs.mkdirSync = origMkdirSync;
   }
 
   return {

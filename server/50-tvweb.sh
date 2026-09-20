@@ -43,9 +43,9 @@ if [ -f /var/lib/tvweb/screensaver/.tvweb-screensaver ]; then
   fi
 fi
 
-# Restore hidden built-in app overrides
-if [ -f /var/lib/tvweb/hidden_apps ]; then
-  restarted=0
+# Restore hidden built-in app overrides if tile hiding is enabled
+if [ -f /var/lib/tvweb/tile_hiding_enabled ] && [ "$(cat /var/lib/tvweb/tile_hiding_enabled 2>/dev/null)" = "1" ] && [ -f /var/lib/tvweb/hidden_apps ]; then
+  mounted=0
   while read -r app; do
     [ -z "$app" ] && continue
     ovr="/var/lib/tvweb/appinfo-overrides/$app.json"
@@ -53,12 +53,15 @@ if [ -f /var/lib/tvweb/hidden_apps ]; then
       for base in /media/system/apps/usr/palm/applications /usr/palm/applications /mnt/otncabi/usr/palm/applications /mnt/otycabi/usr/palm/applications; do
         tgt="$base/$app/appinfo.json"
         if [ -f "$tgt" ]; then
-          mount --bind "$ovr" "$tgt" 2>/dev/null && restarted=1
+          mount --bind "$ovr" "$tgt" 2>/dev/null && mounted=1
         fi
       done
     fi
   done < /var/lib/tvweb/hidden_apps
-  if [ "$restarted" -eq 1 ]; then
+  if [ "$mounted" -eq 1 ]; then
+    # Capture the active foreground app before restarting SAM so we can restore it
+    fg_app=$(luna-send -n 1 -f luna://com.webos.applicationManager/getForegroundAppInfo '{}' 2>/dev/null | sed -n 's/.*"appId": *"\([^"]*\)".*/\1/p')
+
     if command -v systemctl >/dev/null 2>&1; then
       killall -9 LunaExecutable >/dev/null 2>&1 || true
       systemctl kill -s 9 sam.service >/dev/null 2>&1 || systemctl restart --no-block sam >/dev/null 2>&1 || true
@@ -66,6 +69,20 @@ if [ -f /var/lib/tvweb/hidden_apps ]; then
       initctl restart sam >/dev/null 2>&1 || pkill -9 -x sam >/dev/null 2>&1 || true
     else
       pkill -9 -x sam >/dev/null 2>&1 || true
+    fi
+
+    # Wait for SAM to become responsive (support BusyBox usleep with fallback)
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+      usleep 200000 2>/dev/null || sleep 1
+      if luna-send -n 1 -f luna://com.webos.applicationManager/getForegroundAppInfo '{}' >/dev/null 2>&1; then
+        break
+      fi
+    done
+
+    # If the user was on an HDMI port or any non-home app, immediately restore it
+    # so they are never stranded on the Home screen
+    if [ -n "$fg_app" ] && [ "$fg_app" != "com.webos.app.home" ]; then
+      luna-send -n 1 -f luna://com.webos.applicationManager/launch "{\"id\":\"$fg_app\"}" >/dev/null 2>&1 || true
     fi
   fi
 fi

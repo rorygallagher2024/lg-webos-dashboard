@@ -16,6 +16,7 @@ var execFile = require('child_process').execFile;
 
 var OVERRIDE_DIR = '/var/lib/tvweb/appinfo-overrides';
 var HIDDEN_APPS_FILE = '/var/lib/tvweb/hidden_apps';
+var TILE_HIDING_FLAG_FILE = '/var/lib/tvweb/tile_hiding_enabled';
 
 var APP_BASES = [
   '/media/system/apps/usr/palm/applications',
@@ -119,26 +120,140 @@ function findAppDir(appId) {
   return null;
 }
 
+function isTileHidingEnabled() {
+  if (fs.existsSync(TILE_HIDING_FLAG_FILE)) {
+    try {
+      return fs.readFileSync(TILE_HIDING_FLAG_FILE, 'utf8').trim() === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+  // One-time legacy migration: if flag file has not been created yet,
+  // check if an existing hidden_apps file has entries.
+  if (fs.existsSync(HIDDEN_APPS_FILE)) {
+    try {
+      var lines = fs.readFileSync(HIDDEN_APPS_FILE, 'utf8').trim();
+      if (lines.length > 0) {
+        mkdirp(path.dirname(TILE_HIDING_FLAG_FILE));
+        fs.writeFileSync(TILE_HIDING_FLAG_FILE, '1\n', 'utf8');
+        return true;
+      }
+    } catch (e) {}
+  }
+  return false;
+}
+
+function setTileHidingEnabled(enabled, cb) {
+  if (!configObj || !configObj.allowControl) {
+    if (cb) cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return;
+  }
+  enabled = !!enabled;
+  try {
+    mkdirp(path.dirname(TILE_HIDING_FLAG_FILE));
+    fs.writeFileSync(TILE_HIDING_FLAG_FILE, enabled ? '1\n' : '0\n', 'utf8');
+  } catch (e) {}
+  if (!enabled) {
+    var hiddenMap = readHiddenAppsList();
+    var ids = Object.keys(hiddenMap);
+    var i = 0;
+    function unmountNext() {
+      if (i >= ids.length) {
+        return restartSam(function (restarted) {
+          if (cb) cb({ ok: true, tileHidingEnabled: false, samRestarted: restarted });
+        });
+      }
+      var appId = ids[i++];
+      unmountAllForApp(appId, unmountNext);
+    }
+    unmountNext();
+  } else {
+    try {
+      mkdirp(path.dirname(TILE_HIDING_FLAG_FILE));
+      fs.writeFileSync(TILE_HIDING_FLAG_FILE, '1\n', 'utf8');
+    } catch (e) {}
+    var hiddenMap = readHiddenAppsList();
+    var ids = Object.keys(hiddenMap);
+    var i = 0;
+    function remountNext() {
+      if (i >= ids.length) {
+        return restartSam(function (restarted) {
+          if (cb) cb({ ok: true, tileHidingEnabled: true, samRestarted: restarted });
+        });
+      }
+      var appId = ids[i++];
+      var ovr = path.join(OVERRIDE_DIR, appId + '.json');
+      if (fs.existsSync(ovr)) {
+        var tgts = findAllAppinfoPaths(appId);
+        var j = 0;
+        function mountTarget() {
+          if (j >= tgts.length) return remountNext();
+          var tgt = tgts[j++];
+          execFile('/bin/mount', ['--bind', ovr, tgt], { timeout: 4000 }, function () {
+            mountTarget();
+          });
+        }
+        mountTarget();
+      } else {
+        remountNext();
+      }
+    }
+    remountNext();
+  }
+}
+
 /**
- * Platform-aware fast SAM restart.
+ * Platform-aware fast SAM restart with active foreground app preservation.
  * On systemd sets (C2, webOS 9), LunaExecutable (AirPlay) ignores SIGTERM and hangs
  * systemctl restart for 90s. Killing LunaExecutable + systemctl kill -s 9 terminates
  * the cgroup immediately, triggering systemd on-failure restart in <1s.
  * On Upstart sets (B8, webOS 4), initctl or pkill -9 triggers upstart respawn in ~1s.
+ * If a non-home app (like an active HDMI port or Live TV) was in the foreground,
+ * it is automatically relaunched so the user is never stranded on the Home screen.
  */
 function restartSam(cb) {
-  var cmd = 'if command -v systemctl >/dev/null 2>&1; then ' +
-            'killall -9 LunaExecutable >/dev/null 2>&1 || true; ' +
-            'systemctl kill -s 9 sam.service >/dev/null 2>&1 || systemctl restart --no-block sam >/dev/null 2>&1 || true; ' +
-            'elif command -v initctl >/dev/null 2>&1; then ' +
-            'initctl restart sam >/dev/null 2>&1 || pkill -9 -x sam >/dev/null 2>&1 || true; ' +
-            'else ' +
-            'pkill -9 -x sam >/dev/null 2>&1 || true; ' +
-            'fi';
-  execFile('/bin/sh', ['-c', cmd], { timeout: 6000 }, function (err) {
-    if (err) console.error('apps: restartSam error: ' + err.message);
-    if (cb) cb(!err);
-  });
+  function executeRestart(savedAppId) {
+    var cmd = 'if command -v systemctl >/dev/null 2>&1; then ' +
+              'killall -9 LunaExecutable >/dev/null 2>&1 || true; ' +
+              'systemctl kill -s 9 sam.service >/dev/null 2>&1 || systemctl restart --no-block sam >/dev/null 2>&1 || true; ' +
+              'elif command -v initctl >/dev/null 2>&1; then ' +
+              'initctl restart sam >/dev/null 2>&1 || pkill -9 -x sam >/dev/null 2>&1 || true; ' +
+              'else ' +
+              'pkill -9 -x sam >/dev/null 2>&1 || true; ' +
+              'fi';
+    execFile('/bin/sh', ['-c', cmd], { timeout: 6000 }, function (err) {
+      if (err) console.error('apps: restartSam error: ' + err.message);
+      if (savedAppId && savedAppId !== 'com.webos.app.home' && lunaFn) {
+        var attempts = 0;
+        function tryRestore() {
+          attempts++;
+          lunaFn('com.webos.applicationManager/getForegroundAppInfo', {}, function (resp) {
+            if (resp && resp.returnValue) {
+              lunaFn('com.webos.applicationManager/launch', { id: savedAppId }, function () {
+                if (cb) cb(!err);
+              });
+            } else if (attempts < 10) {
+              setTimeout(tryRestore, 200);
+            } else {
+              if (cb) cb(!err);
+            }
+          });
+        }
+        setTimeout(tryRestore, 300);
+      } else {
+        if (cb) cb(!err);
+      }
+    });
+  }
+
+  if (lunaFn) {
+    lunaFn('com.webos.applicationManager/getForegroundAppInfo', {}, function (fg) {
+      var savedAppId = (fg && fg.returnValue && fg.appId) ? fg.appId : null;
+      executeRestart(savedAppId);
+    });
+  } else {
+    executeRestart(null);
+  }
 }
 
 function isMounted(filePath, cb) {
@@ -150,7 +265,7 @@ function isMounted(filePath, cb) {
 }
 
 function umountFile(filePath, cb) {
-  execFile('/bin/umount', [filePath], { timeout: 4000 }, function () {
+  execFile('/bin/umount', ['-l', filePath], { timeout: 4000 }, function () {
     if (cb) cb();
   });
 }
@@ -164,8 +279,13 @@ function unmountAllForApp(appId, cb) {
       return;
     }
     var tgt = tgts[i++];
+    var appDir = path.dirname(tgt);
     umountFile(tgt, function () {
-      next();
+      umountFile(appDir, function () {
+        umountFile(tgt, function () {
+          next();
+        });
+      });
     });
   };
   next();
@@ -361,6 +481,7 @@ function getApps(cb) {
         installed: installed,
         systemTiles: systemTiles,
         hiddenCount: Object.keys(hiddenMap).length,
+        tileHidingEnabled: isTileHidingEnabled(),
         writable: !!(configObj && configObj.allowControl)
       });
     });
@@ -400,11 +521,11 @@ function hideTile(appId, cb) {
     try {
       fs.writeFileSync(ovr, JSON.stringify(stock, null, 2));
     } catch (e) {
-      return cb({ ok: false, error: 'Failed to write override file: ' + e.message });
+      return cb({ ok: false, error: 'Failed to write override appinfo: ' + e.message });
     }
 
-    var mountErrors = [];
     var i = 0;
+    var mountErrors = [];
     var mountNext = function () {
       if (i >= tgts.length) {
         if (mountErrors.length === tgts.length) {
@@ -414,6 +535,10 @@ function hideTile(appId, cb) {
         var hiddenMap = readHiddenAppsList();
         hiddenMap[appId] = true;
         writeHiddenAppsList(hiddenMap);
+        try {
+          mkdirp(path.dirname(TILE_HIDING_FLAG_FILE));
+          fs.writeFileSync(TILE_HIDING_FLAG_FILE, '1\n', 'utf8');
+        } catch (e) {}
 
         return restartSam(function (restarted) {
           cb({
@@ -566,5 +691,7 @@ module.exports = {
   restartSam: restartSam,
   readHiddenAppsList: readHiddenAppsList,
   writeHiddenAppsList: writeHiddenAppsList,
+  isTileHidingEnabled: isTileHidingEnabled,
+  setTileHidingEnabled: setTileHidingEnabled,
   PROTECTED_APP_IDS: PROTECTED_APP_IDS
 };
