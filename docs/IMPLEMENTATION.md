@@ -311,6 +311,53 @@ is not a measurement, so it is reported as `null`, kept out of the history ring
 buffer, and shown as a dash. Publishing it would put a false 0&deg;C spike into
 Home Assistant's history on every reboot.
 
+## Remote control keys and the Home launcher across webOS versions
+
+The D-pad and navigation keys (`up: 103`, `down: 108`, `left: 105`, `right: 106`, `ok: 28`, `back: 412`) operate uniformly through `luna://com.webos.service.networkinput/test/sendKeyCode`, but the Home button has two fundamentally different architectures across webOS generations:
+
+* **Modern webOS (webOS 6+, 2021+)**: The home screen was redesigned as a standalone full-screen application (`com.webos.app.home`). It does not respond to standard remote evdev key codes, but launches reliably via `com.webos.applicationManager/launch` with `{ id: 'com.webos.app.home' }`.
+* **Legacy webOS (webOS 3–5, 2016–2020)**: `com.webos.app.home` does not exist as an installed application (returning `{ errorCode: -101, errorText: "not exist" }`). Instead, the Home launcher is an integrated system UI overlay ribbon (`superRibbon` inside Qt `surface-manager`).
+
+### Why sendSpecialKey fails silently on webOS 3–5
+
+Calling `com.webos.service.networkinput/sendSpecialKey` with `{"key": "HOME"}` returns `{ returnValue: true }`, but fails to bring up the Home launcher on screen.
+
+In Qt's `KeyFilters/systemUi.js`, `Qt.Key_Super_L` (Linux keycode 125, `KEY_LEFTMETA`) implements a long-press discriminator:
+
+```javascript
+if (key === Qt.Key_Super_L) {
+    if (pressed) {
+        if (autoRepeat) return KeyPolicy.Accepted;
+        global.prepareToGoHome();
+        if (!longPressTimer.isRunning(key))
+            longPressTimer.set(key, 1000, global.gotoRecents);
+    } else {
+        if (longPressTimer.isRunning(key)) {
+            global.goHome();
+            longPressTimer.cancel();
+        }
+    }
+}
+```
+
+On key release, `global.goHome()` is called **only if** `longPressTimer.isRunning(key)` is true. `network-input-service`'s internal `UInputWriter::sendKeyPress` sends key press and key release back-to-back with 0ms delay. When both evdev events arrive in the same event tick, Qt processes them before the timer is active, so `goHome()` is never triggered.
+
+### The dual-strategy solution
+
+The server attempts to launch `com.webos.app.home` first. If that succeeds (webOS 6+), it returns immediately. If the launch returns `returnValue: false`, it falls back to direct event injection using `injectKey(125, cb, 100)`.
+
+The 100ms hold duration between key-down and key-up gives Qt's event loop sufficient time to arm `longPressTimer`, ensuring `global.goHome()` fires on release (`LSM NL_HOME_SHOWN`) and toggles the native Home launcher ribbon on webOS 3–5.
+
+## Older hardware capabilities (webOS 3.x and LCD models)
+
+Testing against 2016 hardware (such as 43UH610V-ZB and 55UH6030-UC on webOS 3.4.3) highlights several differences between older LCD platforms and modern OLED sets:
+
+* **OLED Protections & Metrics**: 2016 UH-series models use IPS LCD panels. Features such as Pixel Refresher, Screen Shift, Logo Luminance Dimming, GSR stress counts, and panel hours do not exist on LCD hardware. The server inspects the model name at startup, sets `capabilities.oled: false`, and hides the OLED Care tab and associated MQTT discovery entities.
+* **SoC Temperature**: webOS 3.x kernels (Linux 3.10) do not expose `/proc/lg/pm/temperature`, `/sys/class/thermal`, or `hwmon`. The server detects the absence of the file, marks `capabilities.thermal: false`, withholds the Home Assistant entity, and displays `"NO THERMAL SENSOR"` rather than printing a fake 0&deg;C reading.
+* **eMMC Flash Wear**: Older eMMC 5.0 controllers and Linux 3.10 lack the `/sys/block/mmcblk0/device/life_time` and `pre_eol_info` sysfs nodes. The server flags `capabilities.emmcWear: false` and prunes the flash wear and health cells from the Storage section.
+* **Screen Off & Screen Saver**: Luna commands `com.webos.service.tvpower/power/turnOffScreen` and `turnOnScreenSaver` are designed for OLED panel protection without system standby. On LCD sets, the backlight and panel cannot be powered down independently of the main SoC, so these calls fail or are no-ops.
+* **Startup Duration**: Older dual/quad-core Cortex-A9 chipsets paired with slower flash memory require significant time to complete boot initialization. The server's boot startup delay was tuned to 5s in v0.37.4, which provides sufficient margin for network interfaces and Luna routing daemons to settle without causing service crashes.
+
 ---
 
 ## The blocker's second tier takes LG's own platform with it
