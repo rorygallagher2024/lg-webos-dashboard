@@ -952,37 +952,25 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
   <div class="lbl">Apps &amp; Home Screen Launcher</div>
 
-  <div class="pv-top" style="margin-bottom:28px">
-    <div>
-      <div class="pv-h">Installed Applications</div>
-      <div class="pv-sub">Store downloads and user-installed applications. Uninstalling permanently removes the application and frees flash storage space.</div>
-      <div class="sub" id="apps-installed-count" style="margin-top:8px">&mdash;</div>
-    </div>
-    <div>
-      <div class="pv-h">Hide Home Screen System Apps</div>
-      <div class="pv-sub">Non-removable LG system apps (Gallery, Music, Sports, Always Ready, Alexa, etc.).</div>
-      <div class="btns" style="margin-top:14px;max-width:520px">
-        <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)">Off (Stock)</button>
-        <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)">On (Custom)</button>
-      </div>
-      <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
-      <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b>When enabled:</b> On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</div>
-    </div>
-  </div>
-
   <details class="pv-d" id="disc-installed-apps" open>
     <summary>Installed applications <span class="cur" id="apps-installed-summary"></span></summary>
-    <div class="pv-sub">Removable store downloads and sideloaded packages. Click Uninstall to delete.</div>
+    <div class="pv-sub">Store downloads and user-installed applications. Click Uninstall to permanently remove the application and free up internal eMMC flash storage space.</div>
     <div class="prot-table" id="apps-installed-list">
       <div class="sub" style="padding:16px 0">Loading installed apps&hellip;</div>
     </div>
   </details>
 
-  <details class="pv-d" id="disc-system-tiles" open>
-    <summary>Built-in system apps <span class="cur" id="apps-tiles-summary"></span></summary>
-    <div class="pv-sub">Built-in LG apps. Toggle between <b>Visible</b> and <b>Hidden</b> to show or hide the app on the TV's home launcher ribbon.</div>
-    <div class="prot-table" id="apps-tiles-list">
-      <div class="sub" style="padding:16px 0">Loading system tiles&hellip;</div>
+  <details class="pv-d" id="disc-system-tiles">
+    <summary>Hide home screen system apps <span class="cur" id="apps-tiles-summary"></span></summary>
+    <div class="pv-sub">Non-removable LG system apps (Gallery, Music, Sports, Always Ready, Alexa, etc.). Toggle to customize visibility on the TV's home launcher ribbon.</div>
+    <div class="btns" style="margin-top:14px;max-width:520px">
+      <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)">Off (Stock)</button>
+      <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)">On (Custom)</button>
+    </div>
+    <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
+    <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b>When enabled:</b> On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</div>
+    <div class="prot-table" id="apps-tiles-list" style="margin-top:16px">
+      <div class="sub" style="padding:16px 0">Loading system apps&hellip;</div>
     </div>
   </details>
 
@@ -2584,6 +2572,10 @@ function renderApps() {
   const tiles = d.systemTiles || [];
   const numHidden = d.hiddenCount || 0;
 
+  if (tilesDisc) {
+    tilesDisc.open = tileHidingEnabled;
+  }
+
   if (btnOff && btnOn) {
     btnOff.classList.toggle('on', !tileHidingEnabled);
     btnOn.classList.toggle('on', tileHidingEnabled);
@@ -2598,7 +2590,7 @@ function renderApps() {
     if (!tileHidingEnabled) {
       hiddenCount.textContent = 'Disabled (stock TV behavior)';
     } else {
-      hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' tiles' : 'Enabled · all ' + tiles.length + ' tiles visible';
+      hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' apps' : 'Enabled · all ' + tiles.length + ' apps visible';
     }
   }
 
@@ -2606,15 +2598,15 @@ function renderApps() {
     if (!tileHidingEnabled) {
       tilesSummary.textContent = 'Disabled';
     } else {
-      tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' tiles';
+      tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' apps';
     }
   }
 
   if (tilesList) {
     if (!tileHidingEnabled) {
-      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">System tile hiding is currently disabled. Toggle on above to customize home screen tile visibility.</div>';
+      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">System app hiding is currently disabled. Toggle on above to customize home screen app visibility.</div>';
     } else if (tiles.length === 0) {
-      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">No eligible system tiles found.</div>';
+      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">No eligible system apps found.</div>';
     } else {
       tilesList.innerHTML = tiles.map(tile => {
         const title = esc(tile.title || tile.id);
