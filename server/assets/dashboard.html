@@ -25,7 +25,7 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #tabs{display:flex;display:-webkit-flex;align-items:baseline;-webkit-align-items:baseline;flex:0 0 auto;margin-bottom:4.4vh;white-space:nowrap}
 .tab{display:inline-block;font-family:'Outfit';font-weight:200;font-size:4.2vh;line-height:1;letter-spacing:.01em;
   color:rgba(255,255,255,.26);transition:color .22s ease;white-space:nowrap;
-  flex:0 0 auto;-webkit-flex:0 0 auto;padding-right:2.8vw}
+  flex:0 0 auto;-webkit-flex:0 0 auto;padding-right:2.8vw;cursor:pointer}
 .tab:last-child{padding-right:0}
 .tab.on{color:#fff;font-weight:300}
 
@@ -67,6 +67,7 @@ body{font-family:'Manrope',sans-serif;color:#fff;
   padding-right:3.4vw;
   opacity:.34;transition:opacity .22s ease,transform .22s ease;
   transform-origin:left center}
+.row:not(.head){cursor:pointer}
 .row.sel{opacity:1;transform:scale(1.03)}
 .lbl{font-family:'Manrope';font-weight:400;font-size:3.1vh;letter-spacing:.01em}
 .val{font-family:'Outfit';font-weight:200;font-size:3.1vh;color:rgba(255,255,255,.5);
@@ -615,10 +616,12 @@ function privacyRows(d) {
 
   if (d.acr) {
     r.push(head('Screen content recognition'));
+    var canAcr = d.consentWritable !== false;
     r.push({ label: d.acr.label || 'Screen content recognition',
              value: d.acr.active ? 'Active' : 'Off', cls: d.acr.active ? 'off' : 'on',
-             web: '/?tab=privacy',
-             hint: 'LG calls this ACR. It samples what is on screen - including from HDMI - to work out what is being watched and build a profile from it. Scan to turn it off from a phone, or use the TV’s own settings.' });
+             act: canAcr ? 'acr' : null, on: d.acr.active,
+             press: d.acr.active ? 'Press OK to switch off' : 'Press OK to switch on',
+             hint: 'LG calls this ACR. It samples what is on screen - including from HDMI - to work out what is being watched and build a profile from it.' });
     if (d.acr.captureState)
       r.push({ label: 'Capture', value: d.acr.capturing ? 'Capturing' : 'Stopped',
                cls: d.acr.capturing ? 'off' : 'on',
@@ -670,10 +673,10 @@ function svcRows(d) {
   if (d.app && d.writable) {
     r.push({ label: 'Open EZ Adjust', value: '→', cls: 'act', act: 'menu', key: 'ezAdjust',
              press: 'Press OK to open',
-             hint: 'LG’s engineering menu. It can change panel calibration and hardware settings the normal menus keep out of reach, and some are not easy to put back. The TV asks for its PIN.' });
+             hint: 'LG’s engineering menu. It can change panel calibration and hardware settings the normal menus keep out of reach, and some are not easy to put back. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.' });
     r.push({ label: 'Open In Start', value: '→', cls: 'act', act: 'menu', key: 'inStart',
              press: 'Press OK to open',
-             hint: 'The factory setup menu, with model and region settings. Changing these can leave the TV misconfigured. The TV asks for its PIN.' });
+             hint: 'The factory setup menu, with model and region settings. Changing these can leave the TV misconfigured. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.' });
   }
   if (r.length === 1) r.push({ label: 'Not available on this TV', value: '' });
   return r;
@@ -694,7 +697,7 @@ function render() {
   msg.style.display = 'none';
   box.innerHTML = rows.map(function (r, i) {
     if (r.head) return '<div class="row head"><span class="lbl">' + esc(r.label) + '</span></div>';
-    return '<div class="row' + (i === sel ? ' sel' : '') + (r.act ? ' doable' : '') + '">' +
+    return '<div class="row' + (i === sel ? ' sel' : '') + (r.act ? ' doable' : '') + '" onclick="pickRow(' + i + ')">' +
              '<span class="lbl">' + esc(r.label) + '</span>' +
              '<span class="val' + (r.cls ? ' ' + r.cls : '') + '">' + esc(r.value) + '</span>' +
            '</div>';
@@ -784,9 +787,15 @@ function move(d) {
   render();
 }
 
+function pickRow(i) {
+  if (i < 0 || i >= rows.length || rows[i].head) return;
+  if (sel === i && rows[i].act) activate();
+  else { sel = i; render(); }
+}
+
 function renderTabs() {
   document.getElementById('tabs').innerHTML = TABS.map(function (t, i) {
-    return '<div class="tab' + (i === tab ? ' on' : '') + '">' + esc(t.label) + '</div>';
+    return '<div class="tab' + (i === tab ? ' on' : '') + '" onclick="openTab(' + i + ')">' + esc(t.label) + '</div>';
   }).join('');
 }
 
@@ -876,6 +885,8 @@ function activate() {
       return send({ action: 'screensaverMode', value: r.key });
     case 'adblock':
       return send({ action: 'toggleAdBlock' });
+    case 'acr':
+      return send({ action: 'acr', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
     case 'resetAdId':
       return send({ action: 'resetAdId' }, 'Advertising ID reset');
     case 'lock':
@@ -900,7 +911,15 @@ document.addEventListener('keydown', function (e) {
 window.addEventListener('resize', function () { if (rows.length) position(); });
 
 renderTabs();
-openTab(0);
+var initTab = 0;
+var match = location.search.match(/[?&]tab=([^&]+)/);
+if (match) {
+  var wanted = decodeURIComponent(match[1]).toLowerCase();
+  for (var ti = 0; ti < TABS.length; ti++) {
+    if (TABS[ti].key === wanted) { initTab = ti; break; }
+  }
+}
+openTab(initTab);
 </script>
 </body>
 </html>

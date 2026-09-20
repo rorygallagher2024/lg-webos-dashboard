@@ -595,6 +595,17 @@ function doControl(action, value, cb) {
     case 'resetAdId':
       return privacy.resetAdId(cb);
 
+    case 'acr':
+      var acrOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
+      return luna('com.webos.service.settings/setSystemSettings', {
+        category: 'option',
+        settings: { livePlus: acrOn ? 'on' : 'off' }
+      }, function (r) {
+        privacy.setConsent('acrAllowed', acrOn, function () {
+          cb({ ok: !!(r && r.returnValue) });
+        });
+      });
+
     case 'consent':
       var ckey = (value && value.key) ? String(value.key) : '';
       var cOn = !!(value && (value.enabled === true || value.enabled === 'true'));
