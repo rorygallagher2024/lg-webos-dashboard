@@ -1106,8 +1106,17 @@ function restartSelf() {
   return false;
 }
 
-function authed(q) {
-  return !CONFIG.token || q.k === CONFIG.token;
+function authed(q, req) {
+  if (!CONFIG.token) return true;
+  if (q.k === CONFIG.token) return true;
+  // The on-TV dashboard app fetches from localhost and has no way to carry a
+  // token (there is no login prompt on a TV remote).  A process on the TV
+  // already has root, so the token adds nothing for local requests.
+  if (req) {
+    var ra = req.connection.remoteAddress || '';
+    if (ra === '127.0.0.1' || ra === '::1' || ra === '::ffff:127.0.0.1') return true;
+  }
+  return false;
 }
 
 function readJsonBody(req, res, cb) {
@@ -1188,7 +1197,7 @@ var server = http.createServer(function (req, res) {
     });
   }
 
-  if (pathname.indexOf('/api/') === 0 && !authed(u.query)) {
+  if (pathname.indexOf('/api/') === 0 && !authed(u.query, req)) {
     return send(res, 401, JSON.stringify({ ok: false, error: 'bad or missing token' }));
   }
 
@@ -1337,7 +1346,7 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
-    if (!authed(u.query)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
+    if (!authed(u.query, req)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
     var mc = CONFIG.mqtt || {};
     return send(res, 200, JSON.stringify({
       ok: true,
@@ -1384,7 +1393,7 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
-    if (!authed(u.query)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
+    if (!authed(u.query, req)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
     if (!CONFIG.allowControl) {
       return send(res, 403, JSON.stringify({ ok: false, error: 'controls disabled in config' }));
     }

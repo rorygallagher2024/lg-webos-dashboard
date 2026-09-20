@@ -99,6 +99,9 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 
 #msg{position:absolute;top:50%;left:0;transform:translateY(-50%);
   font-family:'Outfit';font-weight:200;font-size:4vh;color:rgba(255,255,255,.5)}
+#msg .msg-detail{font-family:'Manrope';font-weight:400;font-size:2vh;line-height:1.8;
+  color:rgba(255,255,255,.32);margin-top:2.2vh}
+#msg .msg-url{color:rgba(255,255,255,.45)}
 
 /* In the lane the rows leave clear on the right, so neither the labels nor the
    values ever run underneath one. */
@@ -743,7 +746,18 @@ function render() {
   if (!rows.length) {
     box.innerHTML = '';
     msg.style.display = 'block';
-    msg.textContent = data[T().key] ? 'Nothing to show here' : 'Loading…';
+    var d = data[T().key];
+    if (!d) {
+      msg.innerHTML = 'Loading\u2026';
+    } else if (d.error) {
+      var detail = '<div class="msg-detail">' + esc(d.error);
+      if (lanOrigin) detail += '<br>Use the web dashboard instead: <span class="msg-url">' + esc(lanOrigin) + '</span>';
+      detail += '<br>If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard' +
+                '<br>and include the error: <span class="msg-url">' + esc(d.error) + '</span></div>';
+      msg.innerHTML = 'Something went wrong' + detail;
+    } else {
+      msg.innerHTML = 'Nothing to show here';
+    }
     return;
   }
   msg.style.display = 'none';
@@ -882,7 +896,10 @@ function fetchTab(keepSel) {
       document.getElementById('rows').innerHTML = '';
       var msg = document.getElementById('msg');
       msg.style.display = 'block';
-      msg.textContent = 'Could not reach the TV server';
+      var detail = '<div class="msg-detail">The tvweb server did not respond.';
+      if (lanOrigin) detail += '<br>Use the web dashboard instead: <span class="msg-url">' + esc(lanOrigin) + '</span>';
+      detail += '<br>If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard</div>';
+      msg.innerHTML = 'Could not reach the TV server' + detail;
     });
 }
 
