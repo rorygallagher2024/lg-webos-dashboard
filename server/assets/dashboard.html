@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1920,initial-scale=1">
-<title>tvweb dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Dashboard Server</title>
 <style>
 /* The dashboard as it appears on the TV itself, driven by the remote.
    Left/Right flips between sections, Up/Down moves within one, Enter acts on
@@ -15,6 +15,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:#000;overflow:hidden}
 body{font-family:'Manrope',sans-serif;color:#fff;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;
   /* the remote drives it; there is no pointer */ cursor:none}
 
 #stage{height:100vh;display:flex;flex-direction:column;padding:5vh 0 5vh 8vw}
@@ -578,7 +579,7 @@ function sysRows(d) {
     r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
   if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
   if (d.tvwebVersion) {
-    r.push({ label: 'tvweb dashboard', value: 'v' + d.tvwebVersion, act: 'gotoUpdate',
+    r.push({ label: 'Dashboard Server', value: 'v' + d.tvwebVersion, act: 'gotoUpdate',
              press: 'Press OK to view updates',
              hint: 'The version of this dashboard server. Press OK to open the Updates tab.' });
   }
