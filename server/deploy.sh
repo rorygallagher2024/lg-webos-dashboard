@@ -20,23 +20,22 @@
 #   --telnet      use telnet even when SSH works
 #   --app         add the dashboard app to the TV's home screen
 #   --no-app      leave the home screen alone
-# Without --app or --no-app this asks, and assumes no where there is nobody to
-# ask - the dashboard is served to browsers either way, so the app is an extra.
+# By default a first install adds the app and an update leaves the home screen
+# as it is, so re-deploying never puts back an app removed from the Server tab.
 
 set -e
 
 TV=""
 PERSIST=1
 FORCE_TELNET=""
-APP=""
-APP_SET=""
+APP_MODE=auto     # auto: add on a first install, leave an update alone
 for a in "$@"; do
   case "$a" in
     --persist)    PERSIST=1 ;;          # the default; still accepted
     --no-persist) PERSIST="" ;;
     --telnet)     FORCE_TELNET=1 ;;
-    --app)        APP=1;  APP_SET=1 ;;
-    --no-app)     APP=""; APP_SET=1 ;;
+    --app)        APP_MODE=yes ;;
+    --no-app)     APP_MODE=no ;;
     -*)           echo "unknown option: $a" >&2; exit 2 ;;
     *)            TV="$a" ;;
   esac
@@ -45,19 +44,6 @@ if [ -z "$TV" ]; then
   echo "usage: $0 <tv-ip> [--no-persist] [--telnet] [--app|--no-app]" >&2
   echo "  <tv-ip> is the TV's address, from Settings > Network on the TV." >&2
   exit 2
-fi
-
-# The app is a tile on the TV's home screen that opens the same dashboard a
-# browser gets. Not everyone wants another tile, so it is asked for rather than
-# assumed; with no terminal to ask at, it is left out.
-if [ -z "$APP_SET" ]; then
-  if [ -t 0 ]; then
-    printf 'Add the dashboard to the TV'\''s home screen as an app? [y/N] '
-    read -r reply || reply=""
-    case "$reply" in [Yy]*) APP=1 ;; *) APP="" ;; esac
-  else
-    APP=""
-  fi
 fi
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -110,15 +96,6 @@ elif command -v md5 >/dev/null 2>&1; then
   SUM=$(md5 -q "$WORK/bundle.tar")
 fi
 
-# The last line of the install, added only when the app was asked for. It never
-# fails the install: the dashboard is served to browsers whether or not the TV
-# gets a tile for it. $D is the TV's own variable, so it stays unexpanded here.
-APP_STEP=""
-if [ -n "$APP" ]; then
-  # shellcheck disable=SC2016  # $D is the TV's variable, expanded there, not here
-  APP_STEP='sh "$D/assets/dashboard-app/install-app.sh" 2>&1 || true'
-fi
-
 # What runs on the TV once the bundle is there, whichever way it arrived. It
 # reports with TVWEB_ lines, which are how this script learns what happened.
 install_script() {
@@ -127,6 +104,9 @@ S=$STAGE
 D=/var/lib/tvweb
 fail() { echo "TVWEB_FAIL \$1"; cd /; rm -rf "\$S"; exit 1; }
 cd "\$S" || fail "the files did not arrive"
+# Before anything is unpacked, so it records whether tvweb was already here.
+FRESH=""
+[ -f "\$D/tvweb.js" ] || FRESH=1
 if [ -n "$SUM" ] && [ "\$(md5sum < bundle.tar | cut -d' ' -f1)" != "$SUM" ]; then
   fail "the files arrived damaged"
 fi
@@ -158,7 +138,15 @@ cd / && rm -rf "\$S"
 sleep 4
 "\$D/tvwebctl" status
 tail -6 "\$D/tvweb.log"
-$APP_STEP
+# Added on a first install, left alone on an update, so removing it from the
+# Server tab sticks. Never fails the install: the dashboard is served to
+# browsers whether or not the TV has a tile for it.
+case "$APP_MODE" in
+  yes) doapp=1 ;;
+  no)  doapp="" ;;
+  *)   doapp="\$FRESH" ;;
+esac
+[ -n "\$doapp" ] && { sh "\$D/assets/dashboard-app/install-app.sh" install 2>&1 || true; }
 EOF
 }
 

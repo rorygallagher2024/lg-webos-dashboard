@@ -215,12 +215,12 @@ Screen Saver, Privacy and Service Menu; up and down move within one; OK
 acts on the selected row. A panel beside the list explains whichever row is
 selected and says whether OK does anything to it.
 
-It is offered during installation rather than added by default; answering no
-changes nothing else, since the dashboard reaches any browser on the network
-regardless. It can be added or removed at any time from the **Server** tab,
-which is also where it turns up for anyone who updated in place rather than
-re-running the installer. Where a TV will not take it, the control is hidden
-and everything else works as before.
+A first install adds it; updating an existing one leaves the home screen alone.
+It can be added or removed at any time from the **Server** tab, which is also
+where it turns up for anyone who updated in place rather than re-running the
+installer. Removing it changes nothing else, since the dashboard reaches any
+browser on the network regardless. Where a TV will not take the app, the
+control is hidden and everything else works as before.
 
 ### Home Assistant bridge
 
@@ -311,11 +311,12 @@ by checking that the dashboard answers. When it says `done`, open
 **`http://<tv-ip>:8080/`** in a browser. If anything goes wrong, it stops and
 says why.
 
-Partway through it asks whether to add the dashboard to the TV's home screen as
-an app, so it can be opened on the TV itself with the remote — see
-[The dashboard on the TV](#the-dashboard-on-the-tv). Answering no changes
-nothing else. `--app` and `--no-app` answer in advance; unanswered, no app is
-installed.
+A first install also adds the dashboard to the TV's home screen as an app, so
+it can be opened on the TV itself with the remote — see
+[The dashboard on the TV](#the-dashboard-on-the-tv). It can be removed again
+from the dashboard at any time. Updating an existing install leaves the home
+screen exactly as it is, so a removed app never comes back on its own.
+`--no-app` skips it on a first install, and `--app` adds it to an existing one.
 
 The server starts again by itself whenever the TV restarts. To try it without
 that, add `--no-persist`, and it runs only until the TV next restarts. Setting
