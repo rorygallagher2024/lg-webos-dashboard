@@ -21,11 +21,11 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #stage{height:100vh;display:flex;flex-direction:column;padding:5vh 0 5vh 8vw}
 
 #clock{font-family:'Outfit';font-weight:200;font-size:4.4vh;letter-spacing:.01em;
-  line-height:1;opacity:.55;flex:0 0 auto;margin-bottom:3.4vh}
+  line-height:1;opacity:.65;flex:0 0 auto;margin-bottom:3.4vh}
 
 #tabs{display:flex;display:-webkit-flex;align-items:baseline;-webkit-align-items:baseline;flex:0 0 auto;margin-bottom:4.4vh;white-space:nowrap}
 .tab{display:inline-block;font-family:'Outfit';font-weight:200;font-size:4.2vh;line-height:1;letter-spacing:.01em;
-  color:rgba(255,255,255,.26);transition:color .22s ease;white-space:nowrap;
+  color:rgba(255,255,255,.50);transition:color .22s ease;white-space:nowrap;
   flex:0 0 auto;-webkit-flex:0 0 auto;padding-right:2.8vw;cursor:pointer}
 .tab:last-child{padding-right:0}
 .tab.on{color:#fff;font-weight:300}
@@ -37,18 +37,18 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #list{flex:1 1 62%;overflow:hidden;position:relative}
 #rows{position:absolute;left:0;right:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
 
-#hint{flex:0 0 31%;margin-left:2.6vw;align-self:center;border-left:1px solid rgba(255,255,255,.10);
+#hint{flex:0 0 31%;margin-left:2.6vw;align-self:center;border-left:1px solid rgba(255,255,255,.14);
   padding-left:2.4vw;opacity:0;transition:opacity .22s ease}
 #hint.on{opacity:1}
 .h-title{font-family:'Outfit';font-weight:200;font-size:3.4vh;line-height:1.15;
   letter-spacing:.005em;margin-bottom:1.6vh}
 .h-body{font-family:'Manrope';font-weight:400;font-size:2.1vh;line-height:1.65;
-  color:rgba(255,255,255,.52)}
+  color:rgba(255,255,255,.68)}
 /* What OK does here, or that it does nothing. Green only when there is
    something to press, so the colour itself carries the distinction. */
 .h-act{font-family:'Manrope';font-weight:600;font-size:1.7vh;letter-spacing:.14em;
   text-transform:uppercase;margin-top:2.4vh;color:#1ec15f}
-.h-act.ro{color:rgba(255,255,255,.30)}
+.h-act.ro{color:rgba(255,255,255,.50)}
 
 /* For the few rows that can only be changed in a browser: a code to scan and
    the address under it, so the dashboard can be opened without typing an
@@ -58,7 +58,7 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 .h-qr.on{display:block}
 .h-qr svg{width:15vh;height:15vh;display:block;background:#fff;padding:1vh;border-radius:.6vh}
 .h-url{font-family:'Manrope';font-weight:400;font-size:1.6vh;letter-spacing:.01em;
-  color:rgba(255,255,255,.42);margin-top:1.2vh;word-break:break-all}
+  color:rgba(255,255,255,.55);margin-top:1.2vh;word-break:break-all}
 
 /* A row is a label and its value. Only the selected one is full white and
    slightly enlarged; the rest recede, so the eye lands on the choice. */
@@ -66,19 +66,19 @@ body{font-family:'Manrope',sans-serif;color:#fff;
    underneath one. */
 .row{display:flex;align-items:baseline;justify-content:space-between;height:7.6vh;
   padding-right:3.4vw;
-  opacity:.34;transition:opacity .22s ease,transform .22s ease;
+  opacity:.55;transition:opacity .22s ease,transform .22s ease;
   transform-origin:left center}
 .row:not(.head){cursor:pointer}
 .row.sel{opacity:1;transform:scale(1.03)}
 .lbl{font-family:'Manrope';font-weight:400;font-size:3.1vh;letter-spacing:.01em}
-.val{font-family:'Outfit';font-weight:200;font-size:3.1vh;color:rgba(255,255,255,.5);
+.val{font-family:'Outfit';font-weight:200;font-size:3.1vh;color:rgba(255,255,255,.75);
   text-align:right;white-space:nowrap;padding-left:2vw}
-.row.sel .val{color:rgba(255,255,255,.75)}
+.row.sel .val{color:rgba(255,255,255,.90)}
 .val.on{color:#1ec15f}
-.val.off{color:rgba(255,255,255,.28)}
+.val.off{color:rgba(255,255,255,.45)}
 .val.bad{color:#e65050}
 .val.warn{color:#ff9800}
-.val.act{color:rgba(255,255,255,.34)}
+.val.act{color:rgba(255,255,255,.50)}
 .row.sel .val.act{color:#1ec15f}
 .row.sel .val.bad{color:#ff6b6b}
 .row.sel .val.warn{color:#ffb74d}
@@ -89,25 +89,25 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 .lbl::before{content:'';display:inline-block;width:.9vh;height:.9vh;
   border-radius:50%;margin-right:1.6vh;vertical-align:middle;
   background:transparent;transition:background .22s ease}
-.row.doable .lbl::before{background:rgba(255,255,255,.34)}
+.row.doable .lbl::before{background:rgba(255,255,255,.45)}
 .row.doable.sel .lbl::before{background:#1ec15f}
 
 /* A heading inside the list - groups rows without being selectable itself. */
 .row.head{height:5.4vh;opacity:1;transform:none}
 .row.head .lbl{font-family:'Manrope';font-weight:600;font-size:1.5vh;letter-spacing:.24em;
-  text-transform:uppercase;color:rgba(255,255,255,.34)}
+  text-transform:uppercase;color:rgba(255,255,255,.55)}
 .row.head .lbl::before{display:none}
 
 #msg{position:absolute;top:50%;left:0;transform:translateY(-50%);
-  font-family:'Outfit';font-weight:200;font-size:4vh;color:rgba(255,255,255,.5)}
+  font-family:'Outfit';font-weight:200;font-size:4vh;color:rgba(255,255,255,.8)}
 #msg .msg-detail{font-family:'Manrope';font-weight:400;font-size:2vh;line-height:1.8;
-  color:rgba(255,255,255,.32);margin-top:2.2vh}
-#msg .msg-url{color:rgba(255,255,255,.45)}
+  color:rgba(255,255,255,.6);margin-top:2.2vh}
+#msg .msg-url{color:rgba(255,255,255,.75)}
 
 /* In the lane the rows leave clear on the right, so neither the labels nor the
    values ever run underneath one. */
 .more{position:absolute;right:0;font-family:'Manrope';font-size:2.4vh;
-  color:rgba(255,255,255,.3);opacity:0;transition:opacity .2s;pointer-events:none}
+  color:rgba(255,255,255,.50);opacity:0;transition:opacity .2s;pointer-events:none}
 .more.on{opacity:1}
 #moreUp{top:0}
 #moreDown{bottom:0}
@@ -115,42 +115,42 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 /* Shown briefly after an action so a press that changes something off-screen
    (opening the service menu, scheduling a refresher) still acknowledges. */
 #flash{position:absolute;right:8vw;bottom:5vh;font-family:'Manrope';font-weight:400;
-  font-size:2.2vh;color:rgba(255,255,255,.6);opacity:0;transition:opacity .3s}
+  font-size:2.2vh;color:rgba(255,255,255,.85);opacity:0;transition:opacity .3s}
 #flash.on{opacity:1}
 
 /* ---- light theme ---- */
 body.light, html.light{background:#f5f5f5;color:#111}
-body.light #clock{color:#000;opacity:.6}
-body.light .tab{color:rgba(0,0,0,.32)}
-body.light .tab.on{color:#000;font-weight:400}
-body.light #hint{border-left-color:rgba(0,0,0,.12)}
+body.light #clock{color:#000;opacity:.7}
+body.light .tab{color:rgba(0,0,0,.52)}
+body.light .tab.on{color:#000;font-weight:500}
+body.light #hint{border-left-color:rgba(0,0,0,.15)}
 body.light .h-title{color:#000}
-body.light .h-body{color:rgba(0,0,0,.68)}
+body.light .h-body{color:rgba(0,0,0,.78)}
 body.light .h-act{color:#15803d}
-body.light .h-act.ro{color:rgba(0,0,0,.35)}
-body.light .h-qr svg{border:1px solid rgba(0,0,0,.12)}
-body.light .h-url{color:rgba(0,0,0,.55)}
-body.light .row{opacity:.45}
+body.light .h-act.ro{color:rgba(0,0,0,.50)}
+body.light .h-qr svg{border:1px solid rgba(0,0,0,.15)}
+body.light .h-url{color:rgba(0,0,0,.65)}
+body.light .row{opacity:.62}
 body.light .row.sel{opacity:1}
-body.light .row.sel .lbl{color:#000;font-weight:500}
-body.light .val{color:rgba(0,0,0,.55)}
-body.light .row.sel .val{color:rgba(0,0,0,.85)}
+body.light .row.sel .lbl{color:#000;font-weight:600}
+body.light .val{color:rgba(0,0,0,.70)}
+body.light .row.sel .val{color:rgba(0,0,0,.92)}
 body.light .val.on{color:#15803d}
-body.light .val.off{color:rgba(0,0,0,.35)}
+body.light .val.off{color:rgba(0,0,0,.48)}
 body.light .val.bad{color:#dc2626}
 body.light .val.warn{color:#b45309}
-body.light .val.act{color:rgba(0,0,0,.45)}
+body.light .val.act{color:rgba(0,0,0,.52)}
 body.light .row.sel .val.act{color:#15803d}
 body.light .row.sel .val.bad{color:#dc2626}
 body.light .row.sel .val.warn{color:#b45309}
-body.light .row.doable .lbl::before{background:rgba(0,0,0,.28)}
+body.light .row.doable .lbl::before{background:rgba(0,0,0,.38)}
 body.light .row.doable.sel .lbl::before{background:#15803d}
-body.light .row.head .lbl{color:rgba(0,0,0,.45)}
-body.light #msg{color:rgba(0,0,0,.6)}
-body.light #msg .msg-detail{color:rgba(0,0,0,.45)}
-body.light #msg .msg-url{color:rgba(0,0,0,.65)}
-body.light .more{color:rgba(0,0,0,.35)}
-body.light #flash{color:rgba(0,0,0,.75)}
+body.light .row.head .lbl{color:rgba(0,0,0,.62)}
+body.light #msg{color:rgba(0,0,0,.8)}
+body.light #msg .msg-detail{color:rgba(0,0,0,.65)}
+body.light #msg .msg-url{color:rgba(0,0,0,.85)}
+body.light .more{color:rgba(0,0,0,.50)}
+body.light #flash{color:rgba(0,0,0,.88)}
 </style>
 </head>
 <body>
