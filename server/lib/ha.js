@@ -522,7 +522,7 @@ function buildEntities(opts) {
       {
         type: 'switch', id: 'display_panel',
         payload: {
-          name: 'OLED Display Panel',
+          name: (opts.isOled === false) ? 'Display Panel' : 'OLED Display Panel',
           command_topic: cmdScreenTopic,
           state_topic: stateScreenTopic,
           payload_on: 'ON',

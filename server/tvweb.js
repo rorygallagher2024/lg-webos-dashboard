@@ -267,14 +267,19 @@ function clearLunaCache() { lunaCache = {}; }
  * on screen and the source kept reading as though something were displayed.
  */
 var POWER_STATES = {
-  'active':        ['On', true,  true],
-  'screenoff':     ['Screen off', true,  false],
-  'activestandby': ['Standby', false, false],
-  'suspend':       ['Standby', false, false],
-  'poweroff':      ['Off', false, false],
-  'prepared':      ['Starting up', true, false],
-  // tvpower reports a running screen saver as a power state of its own.
-  'screensaver':   ['Screen Saver', true,  true]
+  'active':          ['On',          true,  true],
+  'on':              ['On',          true,  true],
+  'screenoff':       ['Screen off',  true,  false],
+  'screensaver':     ['Screen Saver',true,  true],
+  'activestandby':   ['Standby',     false, false],
+  'standby':         ['Standby',     false, false],
+  'suspend':         ['Standby',     false, false],
+  'preparesuspend':  ['Standby',     false, false],
+  'requestpoweroff': ['Off',         false, false],
+  'poweroff':        ['Off',         false, false],
+  'off':             ['Off',         false, false],
+  'prepared':        ['Starting up', true,  false],
+  'processing':      ['Standby',     false, false]
 };
 
 /*
@@ -294,8 +299,8 @@ function mapPowerState(raw) {
   var key = String(raw || '').toLowerCase().replace(/[\s_-]/g, '');
   var m = POWER_STATES[key];
   if (m) return { raw: raw, label: m[0], systemOn: m[1], screenOn: m[2] };
-  // Unknown state: report it verbatim rather than guessing at a friendly name.
-  return { raw: raw || null, label: raw || 'Unknown', systemOn: true, screenOn: true };
+  // Unknown or absent state: default safely to screen and system off.
+  return { raw: raw || null, label: raw || 'Unknown', systemOn: false, screenOn: false };
 }
 
 /*
@@ -1427,7 +1432,8 @@ function setupHomeAssistant() {
       updateTopic: updateTopic,
       installedApps: telemetry.getInstalledApps(),
       pictureModes: telemetry.getPictureModes(),
-      allowPower: CONFIG.allowPower
+      allowPower: CONFIG.allowPower,
+      isOled: oled.getIsOled()
     });
 
     entities = ha.filterWithholds(entities, {

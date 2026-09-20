@@ -999,7 +999,8 @@ function collectStats(cb) {
   }
 
   lunaFn('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
-    out.powerState = mapPowerStateFn ? mapPowerStateFn(pw && pw.state) : null;
+    var rawPower = pw ? (pw.state || pw.processing) : null;
+    out.powerState = mapPowerStateFn ? mapPowerStateFn(rawPower) : null;
     out.screenSaver = isScreenSaverFn ? isScreenSaverFn(out.powerState) : false;
     out.screensaverMode = screensaversModule ? screensaversModule.screensaverMode() : 'stock';
     out.screensaverLevel = screensaversModule ? screensaversModule.screensaverLevel() : 'dim';
