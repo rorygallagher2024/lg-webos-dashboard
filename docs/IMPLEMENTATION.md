@@ -289,6 +289,22 @@ easy way to convince yourself a change worked when nothing ran.
 
 ## Shortcut button mapping is owned by LG's servers
 
+Researched and built, then dropped before shipping: it cannot be made to work
+from a cold boot. Kept here because the constraints are expensive to rediscover
+and none of them are visible from the outside.
+
+**Why it was dropped.** Every route needs the compositor to read a changed key
+filter, and the only hook available runs too late. `startup.sh` invokes
+`run-parts /var/lib/webosbrew/init.d` from the Homebrew Channel service, well
+after `surface-manager` has started and read the stock file - measured on a C2,
+the compositor was serving windows at 15s uptime and the hook ran at 35s. A
+bind-mount applied then does nothing until the compositor restarts, and
+restarting it mid-boot tears down the UI and fires a burst of system
+notifications. So the choice is a disruptive restart on every boot, or buttons
+that stay stock until something else restarts the compositor. Neither is worth
+having.
+
+
 The remote's streaming buttons (Netflix, Prime Video, Disney+ …) resolve through
 `mapping_info` in the settings service, `category: "other"`, which
 `/usr/lib/qml/KeyFilters/appLaunch.js` reads at compositor start. Writing it

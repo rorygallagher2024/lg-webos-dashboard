@@ -55,14 +55,9 @@ The dashboard runs standalone on the TV with zero external dependencies.
    remote is needed. Newer firmware shows a cut-down version of it until it is unlocked,
    which the dashboard can do as well.
 
-9. **[Choosing what the remote's shortcut buttons open](#remote-shortcut-buttons).** The
-   Netflix, Prime Video and Disney+ buttons — and whichever others the remote
-   has — can be pointed at any app on the TV, or given back. The choice survives
-   a restart.
-
-10. **[Reading all of it on the TV itself](#the-dashboard-on-the-tv).** An optional app on
-    the home screen puts the same readings and controls on the TV, driven by the
-    remote, for when there is no phone or laptop to hand.
+9. **[Reading all of it on the TV itself](#the-dashboard-on-the-tv).** An optional app on
+   the home screen puts the same readings and controls on the TV, driven by the
+   remote, for when there is no phone or laptop to hand.
 
 ---
 
@@ -95,8 +90,7 @@ A custom Home Assistant dashboard for an LG TV:
 ## Features
 
 Each has a tab of its own in the dashboard, and a deep link to it. OLED Care
-appears on OLED TVs only, and Remote only where the TV allows its shortcut
-buttons to be changed. The page works with no internet access, and has a dark/light mode toggle (via the UI or `/?theme=light`)
+appears on OLED TVs only. The page works with no internet access, and has a dark/light mode toggle (via the UI or `/?theme=light`)
 
 ### Remote control
 
@@ -217,7 +211,7 @@ A firmware update restores the LG default.
 
 An optional app on the TV's home screen, driven by the remote, for when there is
 no phone or laptop to hand. Left and right move between System, OLED Care,
-Screen Saver, Privacy, Remote and Service Menu; up and down move within one; OK
+Screen Saver, Privacy and Service Menu; up and down move within one; OK
 acts on the selected row. A panel beside the list explains whichever row is
 selected and says whether OK does anything to it.
 
@@ -226,21 +220,6 @@ changes nothing else, since the dashboard reaches any browser on the network
 regardless. To add it later, run `./deploy.sh <tv-ip>` again and say yes; to be
 rid of it, delete it from the TV's home screen as with any other app. Where a
 TV will not take it, the step is skipped and everything else works as before.
-
-### Remote shortcut buttons
-
-The **Remote** tab, `/?tab=remote`, and the same tab in the TV app. Points any
-of the remote's streaming buttons — Netflix, Prime Video, Disney+ and the rest —
-at any app on the TV, and gives any of them back again.
-
-Newer TVs report which buttons their remote has, so the list is exactly those.
-Older ones do not, and the list is then what the TV's software knows about,
-which can include a button the remote in the room does not have; assigning that
-one simply never fires.
-
-The choice is kept when the TV restarts. Changing one blanks the screen for a
-few seconds and closes whatever is open. If a button ever misbehaves, a reboot
-puts it back as it came.
 
 ### Home Assistant bridge
 

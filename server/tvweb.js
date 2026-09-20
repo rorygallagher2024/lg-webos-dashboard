@@ -629,27 +629,6 @@ function doControl(action, value, cb) {
       var prot = (value && typeof value === 'object') ? value : {};
       return oled.setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
 
-    /*
-     * Point a shortcut button at an app, or put it back. Both names end up in
-     * generated JavaScript inside the compositor's key handler, so they are
-     * held to the same character set the script enforces before it writes them.
-     */
-    case 'shortcutKey':
-      var sc = (value && typeof value === 'object') ? value : {};
-      var scButton = String(sc.button || '');
-      if (!/^[A-Za-z0-9._-]{1,64}$/.test(scButton)) {
-        return cb({ ok: false, error: 'bad button name' });
-      }
-      if (sc.clear) return shortcutKey(['clear', scButton], cb);
-      var scApp = String(sc.appId || '') || null;
-      if (scApp && !/^[A-Za-z0-9._-]{1,64}$/.test(scApp)) {
-        return cb({ ok: false, error: 'bad app id' });
-      }
-      return shortcutKey(scApp ? ['set', scButton, scApp] : ['set', scButton], cb);
-
-    case 'shortcutClearAll':
-      return shortcutKey(['clearall'], cb);
-
     case 'rcu':
       var rcuName = String(value || '').trim().toLowerCase();
       if (rcuName === 'home') {
@@ -797,49 +776,6 @@ function assetPath(rel) {
     catch (e) {}
   }
   return null;
-}
-
-/*
- * The apps installed on this TV, for choosing what a shortcut button opens.
- * Sorted with the everyday apps first: a list led by two dozen system entries
- * is no use to someone picking one with a remote.
- */
-function listApps(cb) {
-  luna('com.webos.applicationManager/listLaunchPoints', {}, function (lp) {
-    var pts = (lp && lp.launchPoints) || [];
-    var apps = [];
-    for (var i = 0; i < pts.length; i++) {
-      var p = pts[i];
-      if (!p || !p.id) continue;
-      apps.push({ id: p.id, title: p.title || p.id, systemApp: !!p.systemApp });
-    }
-    apps.sort(function (a, b) {
-      if (!!a.systemApp !== !!b.systemApp) return a.systemApp ? 1 : -1;
-      return String(a.title).toLowerCase() < String(b.title).toLowerCase() ? -1 : 1;
-    });
-    cb({ ok: true, apps: apps });
-  });
-}
-
-/*
- * Pointing a remote's streaming shortcut button at another app. The work - a
- * bind-mount over the compositor's key handler and a compositor reload - belongs
- * in shell, so it lives in a script beside the assets and its JSON result is
- * read back here. An absent script (an older deploy) reports unsupported rather
- * than erroring, so the dashboard simply hides the section.
- *
- * Slower than the other calls: the script reads the TV's button table off the
- * settings bus, retrying when that comes back empty, so the timeout is generous.
- */
-function shortcutKey(args, cb) {
-  var script = assetPath('shortcut-key.sh');
-  if (!script) return cb({ ok: true, supported: false, active: false, buttons: [], bindings: [] });
-  execFile('/bin/sh', [script].concat(args), { timeout: 45000 }, function (err, stdout) {
-    var out = String(stdout || '').trim();
-    var last = out.split('\n').pop();   // the script prints its JSON result last
-    try { return cb(JSON.parse(last)); }
-    catch (e) { return cb({ ok: !err, error: err ? err.message : 'unreadable result' }); }
-  });
 }
 
 /*
@@ -1139,17 +1075,6 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/servicemenu') {
     return oled.serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
-  }
-
-  if (pathname === '/api/shortcut') {
-    return shortcutKey(['status'], function (r) {
-      if (r && r.ok) r.writable = CONFIG.allowControl;
-      send(res, 200, JSON.stringify(r));
-    });
-  }
-
-  if (pathname === '/api/apps') {
-    return listApps(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/oledcare') {

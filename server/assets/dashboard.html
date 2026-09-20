@@ -128,32 +128,11 @@ var TABS = [
   { key: 'oled',    label: 'OLED Care',    url: '/api/oledcare',    build: oledRows },
   { key: 'saver',   label: 'Screen Saver', url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: 'Privacy',      url: '/api/privacy',     build: privacyRows },
-  { key: 'remote',  label: 'Remote',       url: '/api/shortcut',    build: shortcutRows },
   { key: 'service', label: 'Service Menu', url: '/api/servicemenu', build: svcRows }
 ];
 
-/*
- * The labels LG prints on the shortcut buttons, which the TV reports only by its
- * own internal name. Anything not listed falls back to that name capitalised, so
- * a button this build has not seen still appears rather than being dropped.
- */
-var SC_LABELS = {
-  netflix: 'Netflix', amazon: 'Prime Video', disneyplus: 'Disney+',
-  rakutentv: 'Rakuten TV', lgchannels: 'LG Channels', movies: 'Movies',
-  apps: 'Apps', 'new': 'LG Channels', ivi: 'ivi', globoplay: 'Globoplay',
-  okko: 'Okko', kinopoisk: 'Kinopoisk', watchaplay: 'Watcha', unext: 'U-NEXT',
-  hotstar: 'Hotstar', fptplay: 'FPT Play', shahid: 'Shahid', wavve: 'Wavve',
-  coupangplay: 'Coupang Play', stan: 'Stan', slingtv: 'Sling TV', tver: 'TVer',
-  hulu: 'Hulu', nhkplus: 'NHK Plus', tod: 'TOD', sonyliv: 'SonyLIV',
-  tv360: 'TV360', vtvgo: 'VTV Go', freeviewplay: 'Freeview Play',
-  wink: 'Wink', start: 'Start', shop: 'Shop'
-};
-function scLabel(b) { return SC_LABELS[b] || (b.charAt(0).toUpperCase() + b.slice(1)); }
-
 var tab = 0, sel = 0, busy = false, ROW_VH = 7.6, HEAD_VH = 5.4;
 var data = {}, rows = [], timer = null, flashTimer = null;
-// Non-null while the app list for one shortcut button is open over the tab.
-var picker = null;
 
 function T() { return TABS[tab]; }
 
@@ -372,109 +351,6 @@ function privacyRows(d) {
   return r;
 }
 
-/*
- * Each button and what it opens. Pressing one opens the app list, so any button
- * can be pointed at any installed app rather than only at this dashboard.
- * Applying a change reloads the compositor, which closes this app - so the row
- * says so before it happens rather than the screen going dark unannounced.
- */
-function shortcutRows(d) {
-  if (!d || !d.ok) return [];
-  if (!d.supported) {
-    return [{ label: 'Not available on this TV',
-              hint: 'This TV’s software does not allow its shortcut buttons to be changed. Everything else here still works.', value: '' }];
-  }
-  var buttons = d.buttons || [];
-  if (!buttons.length) return [{ label: 'This remote has no shortcut buttons', value: '' }];
-  var bound = {};
-  (d.bindings || []).forEach(function (b) { bound[b.button] = b.appId; });
-
-  var r = [head('Shortcut buttons on the remote')];
-  buttons.forEach(function (b) {
-    var to = bound[b.button];
-    /* Never fall back to the raw id the TV reports - "ui30" tells a reader
-       nothing. Where the app has no name to show, say what the button does
-       instead of naming it badly. */
-    var name = to ? appName(to) : null;
-    r.push({ label: scLabel(b.button),
-             value: to ? (name || 'Changed') : 'Unchanged',
-             cls: to ? 'on' : '',
-             act: d.writable ? 'pickApp' : null, key: b.button, on: !!to,
-             press: 'Press OK to choose what it opens',
-             hint: to
-               ? 'Now opens ' + (name || 'another app') + '. Press OK to choose something else, or to give the button back.'
-               : 'Still opens what it always has. Press OK to point it at any app on this TV instead.' });
-  });
-  r.push(head('Changing one blanks the screen for a few seconds'));
-  /* Older TVs do not report which buttons their remote has, so the list is what
-     the software knows about. Said only where that applies. */
-  if (buttons.some(function (b) { return b.assumed; })) {
-    r.push(head('A button this remote does not have simply never fires'));
-  }
-  return r;
-}
-
-/*
- * The app list for the picker, fetched once and kept: it costs a Luna call and
- * the installed apps do not change while this is open.
- */
-var appList = null;
-
-function appName(id) {
-  if (!appList) return null;
-  for (var i = 0; i < appList.length; i++) if (appList[i].id === id) return appList[i].title;
-  return null;
-}
-
-function openPicker(button) {
-  picker = { button: button };
-  sel = 0; rows = [];
-  renderTabs();
-  render();
-  if (appList) return showPicker();
-  fetch('/api/apps', { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      appList = (d && d.apps) || [];
-      if (picker) showPicker();
-    })
-    .catch(function () { if (picker) showPicker(); });
-}
-
-function showPicker() {
-  var b = picker.button;
-  var current = null;
-  var st = data.remote;
-  if (st && st.bindings) {
-    st.bindings.forEach(function (x) { if (x.button === b) current = x.appId; });
-  }
-  rows = [head('What the ' + scLabel(b) + ' button should open')];
-  // Putting it back comes first: it is the way out of a choice someone regrets.
-  rows.push({ label: 'Leave it as it came', value: current ? '' : 'In use',
-              cls: current ? '' : 'on', act: 'assign', key: b, appId: null,
-              press: current ? 'Press OK to give the button back' : 'Already as it came',
-              hint: 'The button goes back to doing what it did out of the box.' });
-  (appList || []).forEach(function (a) {
-    rows.push({ label: a.title, value: current === a.id ? 'In use' : '',
-                cls: current === a.id ? 'on' : '',
-                act: 'assign', key: b, appId: a.id,
-                press: current === a.id ? 'Already in use' : 'Press OK to use this app',
-                hint: 'The ' + scLabel(b) + ' button will open ' + a.title + ' instead.' });
-  });
-  sel = firstSel();
-  render();
-}
-
-function closePicker() {
-  picker = null;
-  sel = 0; rows = [];
-  renderTabs();
-  var cached = data[T().key];
-  if (cached) { rows = T().build(cached) || []; sel = firstSel(); }
-  render();
-  fetchTab(!!cached);
-}
-
 function svcRows(d) {
   if (!d || !d.ok) return [];
   var r = [head('Service menu')];
@@ -577,12 +453,7 @@ function move(d) {
 }
 
 function renderTabs() {
-  var el = document.getElementById('tabs');
-  if (picker) {
-    el.innerHTML = '<div class="tab on">◀ ' + esc(scLabel(picker.button)) + '</div>';
-    return;
-  }
-  el.innerHTML = TABS.map(function (t, i) {
+  document.getElementById('tabs').innerHTML = TABS.map(function (t, i) {
     return '<div class="tab' + (i === tab ? ' on' : '') + '">' + esc(t.label) + '</div>';
   }).join('');
 }
@@ -604,7 +475,6 @@ function fetchTab(keepSel) {
     .then(function (d) {
       if (T().key !== key) return;        // the user moved on while this was in flight
       data[key] = d;
-      if (picker) return;                 // the app list is over this tab; leave its rows alone
       rows = t.build(d) || [];
       if (!keepSel || sel >= rows.length || (rows[sel] && rows[sel].head)) sel = firstSel();
       render();
@@ -620,23 +490,8 @@ function fetchTab(keepSel) {
 
 function openTab(i) {
   if (timer) { clearInterval(timer); timer = null; }
-  picker = null;
   tab = i; sel = 0; rows = [];
   renderTabs();
-  /* The buttons name the app they open, and the TV reports only its id, so the
-     names have to be in hand before that tab can render properly. */
-  if (TABS[i].key === 'remote' && !appList) {
-    fetch('/api/apps', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        appList = (d && d.apps) || [];
-        if (!picker && T().key === 'remote' && data.remote) {
-          rows = T().build(data.remote) || [];
-          render();
-        }
-      })
-      .catch(function () {});
-  }
   var cached = data[T().key];
   if (cached) { rows = T().build(cached) || []; sel = firstSel(); }
   render();
@@ -662,9 +517,6 @@ function send(body, note) {
       busy = false;
       if (res && res.ok === false) { flash(res.error || 'That did not work'); return fetchTab(true); }
       if (note) flash(note);
-      // A choice made in the app list is done with once it lands, so step back
-      // to the buttons and let the fresh state come from there.
-      if (picker) return closePicker();
       fetchTab(true);
     })
     .catch(function () { busy = false; flash('That did not work'); });
@@ -675,13 +527,6 @@ function activate() {
   var r = rows[sel];
   if (!r || !r.act) return;
   switch (r.act) {
-    case 'pickApp':
-      return openPicker(r.key);
-    case 'assign':
-      return send({ action: 'shortcutKey',
-                    value: r.appId ? { button: r.key, appId: r.appId }
-                                   : { button: r.key, clear: true } },
-                  r.appId ? 'Assigning…' : 'Putting it back…');
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },
                   r.on ? 'Switched off' : 'Switched on');
@@ -705,10 +550,6 @@ function activate() {
       return send({ action: 'serviceMenuLock', value: { locked: !r.on } });
     case 'menu':
       return send({ action: 'serviceMenuOpen', value: { menu: r.key } }, 'Opening…');
-    case 'shortcut':
-      return send({ action: 'shortcutKey',
-                    value: r.on ? { button: r.key, clear: true } : { button: r.key } },
-                  r.on ? 'Giving the button back…' : 'Assigning…');
   }
 }
 
@@ -716,18 +557,6 @@ function activate() {
 
 document.addEventListener('keydown', function (e) {
   var k = e.key, c = e.keyCode;
-
-  /* In the app list, Left and Back step back to the buttons rather than
-     changing tab or closing the app. */
-  if (picker) {
-    if (c === 37 || k === 'ArrowLeft' || c === 461 ||
-        k === 'GoBack' || k === 'BrowserBack' || k === 'Backspace') {
-      closePicker(); e.preventDefault();
-    } else if (c === 38 || k === 'ArrowUp')   { move(-1);   e.preventDefault(); }
-      else if (c === 40 || k === 'ArrowDown') { move(1);    e.preventDefault(); }
-      else if (c === 13 || k === 'Enter')     { activate(); e.preventDefault(); }
-    return;
-  }
 
   if      (c === 37 || k === 'ArrowLeft')  { switchTab(-1); e.preventDefault(); }
   else if (c === 39 || k === 'ArrowRight') { switchTab(1);  e.preventDefault(); }
