@@ -136,19 +136,75 @@ console.log('Running test-telemetry.js ...');
   console.log('  ✓ getCapabilities produces filter flags');
 })();
 
-// 9. Full collectStats test (async)
-telemetry.clearCache();
-telemetry.collectStats(function (stats) {
-  assert.ok(stats, 'Expected stats payload');
-  assert.strictEqual(stats.ok, true);
-  assert.strictEqual(stats.tvwebVersion, '0.36.0');
-  assert.strictEqual(stats.temp, 48);
-  assert.ok(stats.mem && stats.mem.total > 0, 'Expected mem stats');
-  assert.ok(stats.swap && stats.swap.total > 0, 'Expected swap stats');
-  assert.strictEqual(stats.wifi.level, -63);
-  assert.ok(stats.oled && stats.oled.panel_hours === 3500);
+// 9. Installed apps tests
+telemetry.refreshInstalledApps(function (apps) {
+  assert.ok(Array.isArray(apps), 'Expected array of apps');
+  assert.strictEqual(apps.length, 2);
+  assert.strictEqual(apps[0].id, 'netflix');
+  assert.strictEqual(apps[1].id, 'youtube.leanback.v4');
+  console.log('  ✓ refreshInstalledApps parses apps from listApps');
 
-  console.log('  ✓ collectStats aggregates full telemetry payload');
-  console.log('ALL test-telemetry.js assertions passed!\n');
-  mockEnv.restore();
+  // Test webOS 6+ shape where listApps returns launchPoints (issue #145)
+  telemetry.clearCache();
+  var origListApps = mockEnv.luna['com.webos.applicationManager/listApps'];
+  mockEnv.luna['com.webos.applicationManager/listApps'] = {
+    returnValue: true,
+    launchPoints: [
+      { id: 'netflix', title: 'Netflix' },
+      { id: 'com.webos.app.discovery', title: 'Apps' },
+      { id: 'com.webos.app.container', title: 'Container' },
+      { id: 'hidden.app', title: 'Hidden', visible: false }
+    ]
+  };
+
+  telemetry.refreshInstalledApps(function (lpApps) {
+    assert.strictEqual(lpApps.length, 2);
+    assert.strictEqual(lpApps[0].id, 'com.webos.app.discovery');
+    assert.strictEqual(lpApps[1].id, 'netflix');
+    console.log('  ✓ refreshInstalledApps parses launchPoints array (webOS 6+ / issue #145)');
+
+    // Test fallback to listLaunchPoints when listApps returns empty/fails
+    telemetry.clearCache();
+    mockEnv.luna['com.webos.applicationManager/listApps'] = { returnValue: false };
+    mockEnv.luna['com.webos.applicationManager/listLaunchPoints'] = {
+      returnValue: true,
+      launchPoints: [
+        { id: 'amazon', title: 'Prime Video' }
+      ]
+    };
+
+    telemetry.refreshInstalledApps(function (fallbackApps) {
+      assert.strictEqual(fallbackApps.length, 1);
+      assert.strictEqual(fallbackApps[0].id, 'amazon');
+      console.log('  ✓ refreshInstalledApps falls back to listLaunchPoints');
+
+      // Restore original handlers
+      mockEnv.luna['com.webos.applicationManager/listApps'] = origListApps;
+      mockEnv.luna['com.webos.applicationManager/listLaunchPoints'] = {
+        returnValue: true,
+        launchPoints: [
+          { id: 'netflix', title: 'Netflix' },
+          { id: 'youtube.leanback.v4', title: 'YouTube' }
+        ]
+      };
+
+      // 10. Full collectStats test (async)
+      telemetry.clearCache();
+      telemetry.collectStats(function (stats) {
+        assert.ok(stats, 'Expected stats payload');
+        assert.strictEqual(stats.ok, true);
+        assert.strictEqual(stats.tvwebVersion, '0.36.0');
+        assert.strictEqual(stats.temp, 48);
+        assert.ok(stats.mem && stats.mem.total > 0, 'Expected mem stats');
+        assert.ok(stats.swap && stats.swap.total > 0, 'Expected swap stats');
+        assert.strictEqual(stats.wifi.level, -63);
+        assert.ok(stats.oled && stats.oled.panel_hours === 3500);
+        assert.ok(Array.isArray(stats.apps) && stats.apps.length === 2);
+
+        console.log('  ✓ collectStats aggregates full telemetry payload including apps');
+        console.log('ALL test-telemetry.js assertions passed!\n');
+        mockEnv.restore();
+      });
+    });
+  });
 });

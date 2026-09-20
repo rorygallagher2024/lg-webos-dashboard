@@ -480,6 +480,25 @@ function refreshInputNames(cb) {
   });
 }
 
+function parseAppList(raw) {
+  var list = [];
+  var seen = {};
+  for (var i = 0; i < raw.length; i++) {
+    var a = raw[i];
+    if (a && a.id && a.visible !== false && a.id.indexOf('com.webos.app.container') !== 0) {
+      if (!seen[a.id]) {
+        seen[a.id] = true;
+        list.push({
+          id: a.id,
+          title: a.title || a.id
+        });
+      }
+    }
+  }
+  list.sort(function (x, y) { return String(x.title || '').localeCompare(String(y.title || '')); });
+  return list;
+}
+
 function refreshInstalledApps(cb) {
   var now = Date.now();
   if (installedApps.length > 0 && (now - lastAppsScan < 300000)) {
@@ -491,22 +510,21 @@ function refreshInstalledApps(cb) {
     return;
   }
   lunaFn('com.webos.applicationManager/listApps', {}, function (res) {
-    if (res && Array.isArray(res.apps)) {
-      var list = [];
-      for (var i = 0; i < res.apps.length; i++) {
-        var a = res.apps[i];
-        if (a && a.id && a.visible !== false && a.id.indexOf('com.webos.app.container') !== 0) {
-          list.push({
-            id: a.id,
-            title: a.title || a.id
-          });
-        }
-      }
-      list.sort(function (x, y) { return String(x.title || '').localeCompare(String(y.title || '')); });
-      installedApps = list;
+    var raw = (res && (res.launchPoints || res.apps)) || null;
+    if (Array.isArray(raw) && raw.length > 0) {
+      installedApps = parseAppList(raw);
       lastAppsScan = Date.now();
+      if (cb) cb(installedApps);
+      return;
     }
-    if (cb) cb(installedApps);
+    lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (lp) {
+      var rawLp = (lp && (lp.launchPoints || lp.apps)) || null;
+      if (Array.isArray(rawLp)) {
+        installedApps = parseAppList(rawLp);
+        lastAppsScan = Date.now();
+      }
+      if (cb) cb(installedApps);
+    });
   });
 }
 
@@ -840,6 +858,7 @@ function bootTime(uptimeSec) {
 
 function clearCache() {
   lastStats = null;
+  lastAppsScan = 0;
 }
 
 function collectStats(cb) {
@@ -980,7 +999,8 @@ function collectStats(cb) {
   }
 
   lunaFn('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
-    out.powerState = mapPowerStateFn ? mapPowerStateFn(pw && pw.state) : null;
+    var rawPower = pw ? (pw.state || pw.processing) : null;
+    out.powerState = mapPowerStateFn ? mapPowerStateFn(rawPower) : null;
     out.screenSaver = isScreenSaverFn ? isScreenSaverFn(out.powerState) : false;
     out.screensaverMode = screensaversModule ? screensaversModule.screensaverMode() : 'stock';
     out.screensaverLevel = screensaversModule ? screensaversModule.screensaverLevel() : 'dim';

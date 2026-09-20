@@ -139,9 +139,12 @@ function init(opts) {
   groups.power = new StateGroup('power', new luna.Subscription(
     'com.webos.service.tvpower/power/getPowerState', { subscribe: true }, null
   ), function (response) {
-    var mapped = opts.mapPowerState ? opts.mapPowerState(response.state) : null;
+    var rawState = response.state;
+    if (!rawState && response.processing) rawState = response.processing;
+    var mapped = opts.mapPowerState ? opts.mapPowerState(rawState) : null;
     if (!mapped) return null;
-    return { state: mapped.raw, screenOn: mapped.screenOn, systemOn: mapped.systemOn };
+    var screenOn = !!(mapped.systemOn && mapped.screenOn);
+    return { state: mapped.raw, screenOn: screenOn, systemOn: mapped.systemOn };
   });
   groups.application = new StateGroup('application', new luna.Subscription(
     'com.webos.applicationManager/getForegroundAppInfo', { subscribe: true }, null

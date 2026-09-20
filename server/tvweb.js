@@ -38,7 +38,7 @@ var zeroBuffer = MiniMQTT.zeroBuffer;
  * a link to /releases/tag/v<version>, so a value with no tag behind it gives a
  * 404 rather than a wrong page.
  */
-var TVWEB_VERSION = '0.37.4';
+var TVWEB_VERSION = '0.37.7';
 
 // ---------------------------------------------------------------- config
 /** @type {any} */
@@ -267,14 +267,19 @@ function clearLunaCache() { lunaCache = {}; }
  * on screen and the source kept reading as though something were displayed.
  */
 var POWER_STATES = {
-  'active':        ['On', true,  true],
-  'screenoff':     ['Screen off', true,  false],
-  'activestandby': ['Standby', false, false],
-  'suspend':       ['Standby', false, false],
-  'poweroff':      ['Off', false, false],
-  'prepared':      ['Starting up', true, false],
-  // tvpower reports a running screen saver as a power state of its own.
-  'screensaver':   ['Screen Saver', true,  true]
+  'active':          ['On',          true,  true],
+  'on':              ['On',          true,  true],
+  'screenoff':       ['Screen off',  true,  false],
+  'screensaver':     ['Screen Saver',true,  true],
+  'activestandby':   ['Standby',     false, false],
+  'standby':         ['Standby',     false, false],
+  'suspend':         ['Standby',     false, false],
+  'preparesuspend':  ['Standby',     false, false],
+  'requestpoweroff': ['Off',         false, false],
+  'poweroff':        ['Off',         false, false],
+  'off':             ['Off',         false, false],
+  'prepared':        ['Starting up', true,  false],
+  'processing':      ['Standby',     false, false]
 };
 
 /*
@@ -294,8 +299,8 @@ function mapPowerState(raw) {
   var key = String(raw || '').toLowerCase().replace(/[\s_-]/g, '');
   var m = POWER_STATES[key];
   if (m) return { raw: raw, label: m[0], systemOn: m[1], screenOn: m[2] };
-  // Unknown state: report it verbatim rather than guessing at a friendly name.
-  return { raw: raw || null, label: raw || 'Unknown', systemOn: true, screenOn: true };
+  // Unknown or absent state: default safely to screen and system off.
+  return { raw: raw || null, label: raw || 'Unknown', systemOn: false, screenOn: false };
 }
 
 /*
@@ -343,14 +348,37 @@ function sendMediaKey(cmd, cb) {
 // gets, so nothing behind it sees this.
 var KEY_BACK = 158;
 
-function injectKey(code, cb) {
-  var fd = null;
+var rcuDevicePath = null;
+function getRcuDevicePath() {
+  if (rcuDevicePath) return rcuDevicePath;
   try {
-    fd = fs.openSync('/dev/input/event1', 'w');
+    var devices = fs.readFileSync('/proc/bus/input/devices', 'utf8');
+    var m = /Name="LGE RCU"[\s\S]*?Handlers=[^\n]*?(event\d+)/.exec(devices);
+    if (!m) m = /Name="Smart Remote RCU Input"[\s\S]*?Handlers=[^\n]*?(event\d+)/.exec(devices);
+    if (m && m[1]) {
+      rcuDevicePath = '/dev/input/' + m[1];
+      return rcuDevicePath;
+    }
+  } catch (e) {}
+  rcuDevicePath = '/dev/input/event1';
+  return rcuDevicePath;
+}
+
+function injectKey(code, cb, delayMs) {
+  var fd = null;
+  var dev = getRcuDevicePath();
+  try {
+    fd = fs.openSync(dev, 'w');
   } catch (e) {
-    if (cb) cb(false);
-    return;
+    if (dev !== '/dev/input/event1') {
+      try { fd = fs.openSync('/dev/input/event1', 'w'); } catch (e2) {}
+    }
+    if (!fd) {
+      if (cb) cb(false);
+      return;
+    }
   }
+  var delay = (typeof delayMs === 'number') ? delayMs : 50;
   function makeEv(type, c, val) {
     var b = zeroBuffer(16);
     b.writeUInt16LE(type, 8);
@@ -370,7 +398,7 @@ function injectKey(code, cb) {
       } catch (e2) {
         if (cb) cb(false);
       }
-    }, 50);
+    }, delay);
   } catch (e) {
     try { fs.closeSync(fd); } catch (e3) {}
     if (cb) cb(false);
@@ -424,8 +452,8 @@ var INPUTS = ha.INPUTS;
  * IR_KEY_BACK in /usr/share/X11/xkb/keycodes/lg less the 8 that xkb adds - and
  * measured on a C2 it is the one that acts; evdev's 158 is taken as a dismissal
  * rather than a step back. The service refuses anything above about 512, which
- * rules out the rest of LG's table, and no code was found for Home at all, so
- * that launches the home app instead.
+ * rules out the rest of LG's table. Home is launched as com.webos.app.home on
+ * webOS 6+ and falls back to injectKey(125) for the webOS 3-5 ribbon.
  */
 var RCU_KEYS = {
   up: 103,
@@ -632,10 +660,21 @@ function doControl(action, value, cb) {
     case 'rcu':
       var rcuName = String(value || '').trim().toLowerCase();
       if (rcuName === 'home') {
-        // No keycode reaches the home screen - the service rejects LG's own -
-        // so ask the application manager for it directly.
+        // webOS 6+ (2021+) uses com.webos.app.home as a standalone app.
+        // webOS 3-5 (2016-2020) does not have com.webos.app.home (the launcher
+        // is a system UI component); KEY_LEFTMETA (125) with a 100ms press/release
+        // delay triggers the native home ribbon across webOS versions.
         return luna('com.webos.applicationManager/launch', { id: 'com.webos.app.home' },
-                    function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
+                    function (r) {
+                      if (r && r.returnValue) {
+                        telemetry.clearCache();
+                        return cb({ ok: true });
+                      }
+                      injectKey(125, function (ok) {
+                        telemetry.clearCache();
+                        cb({ ok: ok });
+                      }, 100);
+                    });
       }
       if (!RCU_KEYS.hasOwnProperty(rcuName)) {
         return cb({ ok: false, error: 'unknown key: ' + rcuName });
@@ -1395,7 +1434,8 @@ function setupHomeAssistant() {
       updateTopic: updateTopic,
       installedApps: telemetry.getInstalledApps(),
       pictureModes: telemetry.getPictureModes(),
-      allowPower: CONFIG.allowPower
+      allowPower: CONFIG.allowPower,
+      isOled: oled.getIsOled()
     });
 
     entities = ha.filterWithholds(entities, {

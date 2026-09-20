@@ -21,7 +21,13 @@ function init(opts) {
     if (value === null || typeof value === 'undefined') return;
     client.publish(prefix + '/state/' + group + '/' + key, scalar(value), true);
     if (group === 'power' && key === 'screenOn') {
-      client.publish(legacyScreenTopic, value ? 'ON' : 'OFF', true);
+      var screenOn = !!value;
+      if (manager) {
+        var snap = manager.snapshot();
+        var pwr = snap && snap.power;
+        if (pwr && pwr.systemOn === false) screenOn = false;
+      }
+      client.publish(legacyScreenTopic, screenOn ? 'ON' : 'OFF', true);
     }
   }
 

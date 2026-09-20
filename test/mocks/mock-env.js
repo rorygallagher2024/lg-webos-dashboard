@@ -17,7 +17,7 @@ function createMockEnv(overrides) {
   var lunaHandlers = overrides.luna || {};
 
   var mockFiles = {
-    '/proc/meminfo': 'MemTotal:        1536000 kB\nMemFree:          120000 kB\nMemAvailable:     850000 kB\nBuffers:           45000 kB\nCached:           650000 kB\n',
+    '/proc/meminfo': 'MemTotal:        1536000 kB\nMemFree:          120000 kB\nMemAvailable:     850000 kB\nBuffers:           45000 kB\nCached:           650000 kB\nSwapTotal:        524284 kB\nSwapFree:         404284 kB\n',
     '/proc/uptime': '12345.67 45678.90\n',
     '/proc/loadavg': '1.25 0.95 0.80 2/250 12345\n',
     '/proc/swaps': 'Filename\t\t\t\tType\t\tSize\tUsed\tPriority\n/dev/block/zram0                        partition\t524284\t120000\t-1\n',
@@ -89,6 +89,13 @@ function createMockEnv(overrides) {
     'com.webos.applicationManager/listApps': {
       returnValue: true,
       apps: [
+        { id: 'netflix', title: 'Netflix' },
+        { id: 'youtube.leanback.v4', title: 'YouTube' }
+      ]
+    },
+    'com.webos.applicationManager/listLaunchPoints': {
+      returnValue: true,
+      launchPoints: [
         { id: 'netflix', title: 'Netflix' },
         { id: 'youtube.leanback.v4', title: 'YouTube' }
       ]
