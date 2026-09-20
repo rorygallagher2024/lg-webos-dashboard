@@ -50,11 +50,10 @@ if [ -f /var/lib/tvweb/hidden_apps ]; then
     [ -z "$app" ] && continue
     ovr="/var/lib/tvweb/appinfo-overrides/$app.json"
     if [ -f "$ovr" ]; then
-      for base in /usr/palm/applications /mnt/otncabi/usr/palm/applications /mnt/otycabi/usr/palm/applications; do
+      for base in /media/system/apps/usr/palm/applications /usr/palm/applications /mnt/otncabi/usr/palm/applications /mnt/otycabi/usr/palm/applications; do
         tgt="$base/$app/appinfo.json"
         if [ -f "$tgt" ]; then
           mount --bind "$ovr" "$tgt" 2>/dev/null && restarted=1
-          break
         fi
       done
     fi

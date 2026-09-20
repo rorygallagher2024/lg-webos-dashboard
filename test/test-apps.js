@@ -100,6 +100,38 @@ test('uninstallApp strictly rejects protected applications', function () {
   });
 });
 
+test('uninstallApp invokes appInstallService and waits for removal from listApps', function (done) {
+  var appsInList = [{ id: 'test.app.dummy' }];
+  var removeCalled = false;
+
+  var mockLuna = function (uri, params, cb) {
+    if (uri === 'com.webos.appInstallService/remove') {
+      removeCalled = true;
+      setTimeout(function () {
+        appsInList = [];
+      }, 50);
+      return cb({ returnValue: true });
+    }
+    if (uri === 'com.webos.applicationManager/listApps') {
+      return cb({ apps: appsInList });
+    }
+    cb({ returnValue: false });
+  };
+
+  apps.init({
+    luna: mockLuna,
+    config: { allowControl: true }
+  });
+
+  apps.uninstallApp('test.app.dummy', function (res) {
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.id, 'test.app.dummy');
+    assert.strictEqual(removeCalled, true);
+    assert.strictEqual(appsInList.length, 0);
+    if (done) done();
+  });
+});
+
 test('readHiddenAppsList filters out protected IDs', function () {
   var hiddenFile = '/var/lib/tvweb/hidden_apps';
   mockEnv.files[hiddenFile] = 'com.webos.app.igallery\ncom.webos.app.livetv\ncom.webos.app.music\n';
@@ -185,12 +217,84 @@ test('getApps segregates removable apps and built-in system tiles', function (do
   });
 });
 
+test('APP_BASES prioritizes /media/system/apps', function () {
+  assert.strictEqual(apps.APP_BASES[0], '/media/system/apps/usr/palm/applications');
+});
+
+test('findAllAppinfoPaths discovers apps across multiple bases', function () {
+  var p1 = '/media/system/apps/usr/palm/applications/com.webos.app.browser/appinfo.json';
+  var p2 = '/mnt/otncabi/usr/palm/applications/com.webos.app.browser/appinfo.json';
+  mockEnv.files[p1] = JSON.stringify({ id: 'com.webos.app.browser', version: '4.1.15' });
+  mockEnv.files[p2] = JSON.stringify({ id: 'com.webos.app.browser', version: '2.0.0' });
+
+  try {
+    var all = apps.findAllAppinfoPaths('com.webos.app.browser');
+    assert.strictEqual(all.length, 2);
+    assert.strictEqual(all[0], p1);
+    assert.strictEqual(all[1], p2);
+    assert.strictEqual(apps.findAppinfoPath('com.webos.app.browser'), p1);
+  } finally {
+    delete mockEnv.files[p1];
+    delete mockEnv.files[p2];
+  }
+});
+
+test('getApps categorizes /media/system apps as built-in system tiles', function (done) {
+  var mockAppsList = [
+    {
+      id: 'com.webos.app.browser',
+      title: 'Web Browser',
+      removable: false,
+      systemApp: true,
+      folderPath: '/media/system/apps/usr/palm/applications/com.webos.app.browser'
+    },
+    {
+      id: 'com.webos.app.lgchannels',
+      title: 'LG Channels',
+      removable: false,
+      systemApp: true,
+      folderPath: '/media/system/apps/usr/palm/applications/com.webos.app.lgchannels'
+    }
+  ];
+
+  var mockLuna = function (uri, params, cb) {
+    if (uri === 'com.webos.applicationManager/listApps') {
+      return cb({ apps: mockAppsList });
+    }
+    if (uri === 'com.webos.applicationManager/listLaunchPoints') {
+      return cb({ launchPoints: mockAppsList });
+    }
+    cb({ returnValue: false });
+  };
+
+  apps.init({
+    luna: mockLuna,
+    config: { allowControl: true }
+  });
+
+  apps.getApps(function (res) {
+    assert.strictEqual(res.ok, true);
+    var browser = res.systemTiles.filter(function (x) { return x.id === 'com.webos.app.browser'; })[0];
+    assert.ok(browser, 'Web Browser should be in systemTiles');
+    assert.strictEqual(browser.systemApp, true);
+
+    var lgch = res.systemTiles.filter(function (x) { return x.id === 'com.webos.app.lgchannels'; })[0];
+    assert.ok(lgch, 'LG Channels should be in systemTiles');
+    assert.strictEqual(lgch.systemApp, true);
+
+    if (done) done();
+  });
+});
+
 var failures = 0;
 var asyncRemaining = 0;
 
 tests.forEach(function (t) {
+  if (t[1].length > 0) asyncRemaining++;
+});
+
+tests.forEach(function (t) {
   if (t[1].length > 0) {
-    asyncRemaining++;
     try {
       t[1](function () {
         console.log('  ✓ ' + t[0]);

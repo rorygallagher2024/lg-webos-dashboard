@@ -968,9 +968,16 @@ function activate() {
         return;
       }
       r.confirming = false;
+      r.value = 'Uninstalling…';
+      r.cls = 'warn';
+      flash('Uninstalling ' + (r.title || r.key) + '…');
+      render();
       return sendPost('/api/apps/uninstall', { id: r.key }, 'App uninstalled');
     case 'tile':
       var ep = r.on ? '/api/apps/hide' : '/api/apps/unhide';
+      r.value = r.on ? 'Hiding…' : 'Showing…';
+      flash((r.on ? 'Hiding ' : 'Showing ') + (r.title || r.key) + '…');
+      render();
       return sendPost(ep, { id: r.key }, r.on ? 'Tile hidden' : 'Tile visible');
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },

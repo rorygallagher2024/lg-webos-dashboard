@@ -18,6 +18,7 @@ var OVERRIDE_DIR = '/var/lib/tvweb/appinfo-overrides';
 var HIDDEN_APPS_FILE = '/var/lib/tvweb/hidden_apps';
 
 var APP_BASES = [
+  '/media/system/apps/usr/palm/applications',
   '/usr/palm/applications',
   '/mnt/otncabi/usr/palm/applications',
   '/mnt/otycabi/usr/palm/applications'
@@ -94,13 +95,19 @@ function writeHiddenAppsList(map) {
   }
 }
 
-function findAppinfoPath(appId) {
-  if (!appId || typeof appId !== 'string') return null;
+function findAllAppinfoPaths(appId) {
+  if (!appId || typeof appId !== 'string') return [];
+  var paths = [];
   for (var i = 0; i < APP_BASES.length; i++) {
     var p = path.join(APP_BASES[i], appId, 'appinfo.json');
-    if (fs.existsSync(p)) return p;
+    if (fs.existsSync(p)) paths.push(p);
   }
-  return null;
+  return paths;
+}
+
+function findAppinfoPath(appId) {
+  var paths = findAllAppinfoPaths(appId);
+  return paths.length > 0 ? paths[0] : null;
 }
 
 function findAppDir(appId) {
@@ -148,6 +155,22 @@ function umountFile(filePath, cb) {
   });
 }
 
+function unmountAllForApp(appId, cb) {
+  var tgts = findAllAppinfoPaths(appId);
+  var i = 0;
+  var next = function () {
+    if (i >= tgts.length) {
+      if (cb) cb();
+      return;
+    }
+    var tgt = tgts[i++];
+    umountFile(tgt, function () {
+      next();
+    });
+  };
+  next();
+}
+
 /**
  * Resolves an icon file path on disk for an app.
  */
@@ -174,13 +197,18 @@ function getIconPath(appId, cb) {
       // Strip leading $ if present (Enact convention)
       if (iconRel.charAt(0) === '$') iconRel = iconRel.slice(1);
       var basePath = info.sysAssetsBasePath ? path.join(appDir, info.sysAssetsBasePath) : appDir;
-      var fullPath = path.join(basePath, iconRel);
-      if (fs.existsSync(fullPath)) return cb(fullPath);
-      // Fallback directly under appDir
-      fullPath = path.join(appDir, iconRel);
-      if (fs.existsSync(fullPath)) return cb(fullPath);
-      fullPath = path.join(appDir, 'icon.png');
-      if (fs.existsSync(fullPath)) return cb(fullPath);
+      var candidates = [
+        path.join(basePath, iconRel),
+        path.join(basePath, 'hd1080', iconRel),
+        path.join(basePath, 'hd720', iconRel),
+        path.join(appDir, iconRel),
+        path.join(appDir, 'hd1080', iconRel),
+        path.join(appDir, 'icon.png'),
+        path.join(appDir, 'assets', 'icon.png')
+      ];
+      for (var c = 0; c < candidates.length; c++) {
+        if (fs.existsSync(candidates[c])) return cb(candidates[c]);
+      }
     } catch (e) {}
     cb(null);
   });
@@ -270,9 +298,10 @@ function getApps(cb) {
         var isBuiltIn = item.folderPath.indexOf('/usr/palm') === 0 ||
                         item.folderPath.indexOf('/mnt/otncabi') === 0 ||
                         item.folderPath.indexOf('/mnt/otycabi') === 0 ||
+                        item.folderPath.indexOf('/media/system') === 0 ||
                         (!isDev && !isCrypto && findAppinfoPath(id) !== null);
 
-        if (item.removable || isDev || isCrypto) {
+        if (!isBuiltIn && (item.removable || isDev || isCrypto)) {
           // Removable user or store app
           installed.push({
             id: item.id,
@@ -352,44 +381,58 @@ function hideTile(appId, cb) {
     return cb({ ok: false, error: 'Protected core system app cannot be hidden' });
   }
 
-  var tgt = findAppinfoPath(appId);
-  if (!tgt) {
+  var tgts = findAllAppinfoPaths(appId);
+  if (tgts.length === 0) {
     return cb({ ok: false, error: 'appinfo.json not found for ' + appId });
   }
 
-  var stock;
-  try {
-    stock = JSON.parse(fs.readFileSync(tgt, 'utf8'));
-  } catch (e) {
-    return cb({ ok: false, error: 'Failed to read stock appinfo: ' + e.message });
-  }
-
-  stock.visible = false;
-  mkdirp(OVERRIDE_DIR);
-  var ovr = path.join(OVERRIDE_DIR, appId + '.json');
-  try {
-    fs.writeFileSync(ovr, JSON.stringify(stock, null, 2));
-  } catch (e) {
-    return cb({ ok: false, error: 'Failed to write override file: ' + e.message });
-  }
-
-  execFile('/bin/mount', ['--bind', ovr, tgt], { timeout: 4000 }, function (mountErr) {
-    if (mountErr) {
-      return cb({ ok: false, error: 'Bind mount failed: ' + mountErr.message });
+  unmountAllForApp(appId, function () {
+    var stock;
+    try {
+      stock = JSON.parse(fs.readFileSync(tgts[0], 'utf8'));
+    } catch (e) {
+      return cb({ ok: false, error: 'Failed to read stock appinfo: ' + e.message });
     }
 
-    var hiddenMap = readHiddenAppsList();
-    hiddenMap[appId] = true;
-    writeHiddenAppsList(hiddenMap);
+    stock.visible = false;
+    mkdirp(OVERRIDE_DIR);
+    var ovr = path.join(OVERRIDE_DIR, appId + '.json');
+    try {
+      fs.writeFileSync(ovr, JSON.stringify(stock, null, 2));
+    } catch (e) {
+      return cb({ ok: false, error: 'Failed to write override file: ' + e.message });
+    }
 
-    restartSam(function (restarted) {
-      cb({
-        ok: true,
-        id: appId,
-        hidden: true,
-        samRestarted: restarted
+    var mountErrors = [];
+    var i = 0;
+    var mountNext = function () {
+      if (i >= tgts.length) {
+        if (mountErrors.length === tgts.length) {
+          return cb({ ok: false, error: 'Bind mount failed: ' + mountErrors.join('; ') });
+        }
+
+        var hiddenMap = readHiddenAppsList();
+        hiddenMap[appId] = true;
+        writeHiddenAppsList(hiddenMap);
+
+        return restartSam(function (restarted) {
+          cb({
+            ok: true,
+            id: appId,
+            hidden: true,
+            samRestarted: restarted
+          });
+        });
+      }
+
+      var tgt = tgts[i++];
+      execFile('/bin/mount', ['--bind', ovr, tgt], { timeout: 4000 }, function (mountErr) {
+        if (mountErr) mountErrors.push(mountErr.message);
+        mountNext();
       });
-    });
+    };
+
+    mountNext();
   });
 }
 
@@ -404,36 +447,22 @@ function unhideTile(appId, cb) {
     return cb({ ok: false, error: 'Invalid app ID format' });
   }
 
-  var tgt = findAppinfoPath(appId);
   var ovr = path.join(OVERRIDE_DIR, appId + '.json');
+  unmountAllForApp(appId, function () {
+    try { if (fs.existsSync(ovr)) fs.unlinkSync(ovr); } catch (e) {}
+    var hiddenMap = readHiddenAppsList();
+    delete hiddenMap[appId];
+    writeHiddenAppsList(hiddenMap);
 
-  var unmountNext = function () {
-    if (tgt) {
-      umountFile(tgt, function () {
-        try { if (fs.existsSync(ovr)) fs.unlinkSync(ovr); } catch (e) {}
-        var hiddenMap = readHiddenAppsList();
-        delete hiddenMap[appId];
-        writeHiddenAppsList(hiddenMap);
-
-        restartSam(function (restarted) {
-          cb({
-            ok: true,
-            id: appId,
-            hidden: false,
-            samRestarted: restarted
-          });
-        });
+    restartSam(function (restarted) {
+      cb({
+        ok: true,
+        id: appId,
+        hidden: false,
+        samRestarted: restarted
       });
-    } else {
-      try { if (fs.existsSync(ovr)) fs.unlinkSync(ovr); } catch (e) {}
-      var hiddenMap = readHiddenAppsList();
-      delete hiddenMap[appId];
-      writeHiddenAppsList(hiddenMap);
-      cb({ ok: true, id: appId, hidden: false });
-    }
-  };
-
-  unmountNext();
+    });
+  });
 }
 
 /**
@@ -447,28 +476,23 @@ function unhideAllTiles(cb) {
   var hiddenMap = readHiddenAppsList();
   var ids = Object.keys(hiddenMap);
 
-  var unmountRemaining = function () {
+  var unmountAllRemaining = function () {
     if (ids.length === 0) {
       writeHiddenAppsList({});
       return restartSam(function (restarted) {
         cb({ ok: true, restoredCount: Object.keys(hiddenMap).length, samRestarted: restarted });
       });
     }
+
     var curId = ids.shift();
-    var tgt = findAppinfoPath(curId);
     var ovr = path.join(OVERRIDE_DIR, curId + '.json');
-    if (tgt) {
-      umountFile(tgt, function () {
-        try { if (fs.existsSync(ovr)) fs.unlinkSync(ovr); } catch (e) {}
-        unmountRemaining();
-      });
-    } else {
+    unmountAllForApp(curId, function () {
       try { if (fs.existsSync(ovr)) fs.unlinkSync(ovr); } catch (e) {}
-      unmountRemaining();
-    }
+      unmountAllRemaining();
+    });
   };
 
-  unmountRemaining();
+  unmountAllRemaining();
 }
 
 /**
@@ -488,16 +512,38 @@ function uninstallApp(appId, cb) {
     return cb({ ok: false, error: 'Luna service not available' });
   }
 
+  var handleSuccess = function () {
+    // Wait for the app removal to complete asynchronously in SAM / appInstallService
+    var start = Date.now();
+    var poll = function () {
+      lunaFn('com.webos.applicationManager/listApps', {}, function (res) {
+        var apps = (res && res.apps) || [];
+        var stillThere = false;
+        for (var i = 0; i < apps.length; i++) {
+          if (apps[i] && apps[i].id === appId) {
+            stillThere = true;
+            break;
+          }
+        }
+        if (!stillThere || (Date.now() - start) >= 3000) {
+          return cb({ ok: true, id: appId });
+        }
+        setTimeout(poll, 300);
+      });
+    };
+    setTimeout(poll, 300);
+  };
+
   // Attempt standard removal first
   lunaFn('com.webos.appInstallService/remove', { id: appId }, function (res) {
     if (res && res.returnValue) {
-      return cb({ ok: true, id: appId });
+      return handleSuccess();
     }
 
     // Fall back to dev/remove if standard removal failed (e.g. sideloaded developer app)
     lunaFn('com.webos.appInstallService/dev/remove', { id: appId }, function (devRes) {
       if (devRes && devRes.returnValue) {
-        return cb({ ok: true, id: appId });
+        return handleSuccess();
       }
       var errMsg = (devRes && devRes.errorText) || (res && res.errorText) || 'Failed to uninstall app';
       cb({ ok: false, error: errMsg, id: appId });
@@ -510,6 +556,9 @@ module.exports = {
   isProtected: isProtected,
   getApps: getApps,
   getIconPath: getIconPath,
+  findAllAppinfoPaths: findAllAppinfoPaths,
+  findAppinfoPath: findAppinfoPath,
+  APP_BASES: APP_BASES,
   hideTile: hideTile,
   unhideTile: unhideTile,
   unhideAllTiles: unhideAllTiles,

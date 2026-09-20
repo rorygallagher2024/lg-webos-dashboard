@@ -2534,7 +2534,7 @@ function renderApps() {
             <div class="prot-desc">${esc(meta || 'Installed app')}</div>
           </div>
           <div class="prot-status">
-            <button type="button" class="pill bad" onclick="confirmUninstall('${id}', '${title}')" ${!d.writable ? 'disabled' : ''}>Uninstall</button>
+            <button type="button" class="pill bad" id="btn-uninstall-${id}" onclick="confirmUninstall('${id}', '${title}')" ${!d.writable ? 'disabled' : ''}>Uninstall</button>
           </div>
         </div>`;
       }).join('');
@@ -2567,7 +2567,7 @@ function renderApps() {
             <div class="prot-desc">${isHidden ? 'Hidden from home launcher ribbon' : 'Visible on home launcher ribbon'}</div>
           </div>
           <div class="prot-status">
-            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${isHidden ? 'Hidden' : 'Visible'}</button>
+            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" id="btn-tile-${id}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${isHidden ? 'Hidden' : 'Visible'}</button>
           </div>
         </div>`;
       }).join('');
@@ -2579,6 +2579,11 @@ async function confirmUninstall(appId, appTitle) {
   if (!confirm('Uninstall "' + appTitle + '" from the TV?\n\nThis will permanently delete the application and its stored data.')) {
     return;
   }
+  const btn = document.getElementById('btn-uninstall-' + appId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Uninstalling…';
+  }
   try {
     const res = await fetch(api('/api/apps/uninstall'), {
       method: 'POST',
@@ -2587,17 +2592,35 @@ async function confirmUninstall(appId, appTitle) {
     });
     const d = await res.json();
     if (d && d.ok) {
+      // Optimistically remove from local state immediately for responsive feedback
+      if (appsData && appsData.installed) {
+        appsData.installed = appsData.installed.filter(a => a.id !== appId);
+        renderApps();
+      }
       await loadApps();
     } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Uninstall';
+      }
       alert('Could not uninstall ' + appTitle + ': ' + ((d && d.error) || 'unknown error'));
     }
   } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Uninstall';
+    }
     alert('Error uninstalling ' + appTitle + ': ' + e.message);
   }
 }
 
 async function toggleTileVisibility(appId, makeHidden) {
   const ep = makeHidden ? '/api/apps/hide' : '/api/apps/unhide';
+  const btn = document.getElementById('btn-tile-' + appId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = makeHidden ? 'Hiding…' : 'Restoring…';
+  }
   try {
     const res = await fetch(api(ep), {
       method: 'POST',
@@ -2606,11 +2629,30 @@ async function toggleTileVisibility(appId, makeHidden) {
     });
     const d = await res.json();
     if (d && d.ok) {
+      // Optimistically update local tile state
+      if (appsData && appsData.systemTiles) {
+        for (let i = 0; i < appsData.systemTiles.length; i++) {
+          if (appsData.systemTiles[i].id === appId) {
+            appsData.systemTiles[i].hidden = makeHidden;
+            break;
+          }
+        }
+        appsData.hiddenCount = appsData.systemTiles.filter(t => t.hidden).length;
+        renderApps();
+      }
       await loadApps();
     } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = makeHidden ? 'Visible' : 'Hidden';
+      }
       alert('Could not update tile: ' + ((d && d.error) || 'unknown error'));
     }
   } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = makeHidden ? 'Visible' : 'Hidden';
+    }
     alert('Error updating tile: ' + e.message);
   }
 }
@@ -2618,6 +2660,11 @@ async function toggleTileVisibility(appId, makeHidden) {
 async function unhideAllTiles() {
   if (!confirm('Restore all system tiles to default (visible) on the home screen?')) {
     return;
+  }
+  const btn = q('apps-restore-all');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Restoring…';
   }
   try {
     const res = await fetch(api('/api/apps/unhide-all'), {
@@ -2627,12 +2674,24 @@ async function unhideAllTiles() {
     });
     const d = await res.json();
     if (d && d.ok) {
+      if (appsData && appsData.systemTiles) {
+        for (let i = 0; i < appsData.systemTiles.length; i++) {
+          appsData.systemTiles[i].hidden = false;
+        }
+        appsData.hiddenCount = 0;
+        renderApps();
+      }
       await loadApps();
     } else {
       alert('Could not restore tiles: ' + ((d && d.error) || 'unknown error'));
     }
   } catch (e) {
     alert('Error: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Restore all system tiles';
+    }
   }
 }
 
