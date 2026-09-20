@@ -116,6 +116,40 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #flash{position:absolute;right:8vw;bottom:5vh;font-family:'Manrope';font-weight:400;
   font-size:2.2vh;color:rgba(255,255,255,.6);opacity:0;transition:opacity .3s}
 #flash.on{opacity:1}
+
+/* ---- light theme ---- */
+body.light, html.light{background:#f5f5f5;color:#111}
+body.light #clock{color:#000;opacity:.6}
+body.light .tab{color:rgba(0,0,0,.32)}
+body.light .tab.on{color:#000;font-weight:400}
+body.light #hint{border-left-color:rgba(0,0,0,.12)}
+body.light .h-title{color:#000}
+body.light .h-body{color:rgba(0,0,0,.68)}
+body.light .h-act{color:#15803d}
+body.light .h-act.ro{color:rgba(0,0,0,.35)}
+body.light .h-qr svg{border:1px solid rgba(0,0,0,.12)}
+body.light .h-url{color:rgba(0,0,0,.55)}
+body.light .row{opacity:.45}
+body.light .row.sel{opacity:1}
+body.light .row.sel .lbl{color:#000;font-weight:500}
+body.light .val{color:rgba(0,0,0,.55)}
+body.light .row.sel .val{color:rgba(0,0,0,.85)}
+body.light .val.on{color:#15803d}
+body.light .val.off{color:rgba(0,0,0,.35)}
+body.light .val.bad{color:#dc2626}
+body.light .val.warn{color:#b45309}
+body.light .val.act{color:rgba(0,0,0,.45)}
+body.light .row.sel .val.act{color:#15803d}
+body.light .row.sel .val.bad{color:#dc2626}
+body.light .row.sel .val.warn{color:#b45309}
+body.light .row.doable .lbl::before{background:rgba(0,0,0,.28)}
+body.light .row.doable.sel .lbl::before{background:#15803d}
+body.light .row.head .lbl{color:rgba(0,0,0,.45)}
+body.light #msg{color:rgba(0,0,0,.6)}
+body.light #msg .msg-detail{color:rgba(0,0,0,.45)}
+body.light #msg .msg-url{color:rgba(0,0,0,.65)}
+body.light .more{color:rgba(0,0,0,.35)}
+body.light #flash{color:rgba(0,0,0,.75)}
 </style>
 </head>
 <body>
@@ -449,6 +483,22 @@ fetch('/api/caps', { cache: 'no-store' })
   .then(function (d) { lanOrigin = (d && d.origin) || null; renderHint(); })
   .catch(function () {});
 var data = {}, rows = [], timer = null, flashTimer = null;
+var currentTheme = 'dark';
+try {
+  var urlTheme = (location.search.match(/[?&]theme=([^&]+)/) || [])[1];
+  currentTheme = urlTheme || localStorage.getItem('theme') || 'dark';
+} catch (e) { currentTheme = 'dark'; }
+
+function applyTheme(t) {
+  currentTheme = t === 'light' ? 'light' : 'dark';
+  if (document.documentElement) {
+    document.documentElement.className = currentTheme === 'light' ? 'light' : '';
+  }
+  if (document.body) {
+    document.body.className = currentTheme === 'light' ? 'light' : '';
+  }
+}
+applyTheme(currentTheme);
 
 function T() { return TABS[tab]; }
 
@@ -532,6 +582,16 @@ function sysRows(d) {
              press: 'Press OK to view updates',
              hint: 'The version of this dashboard server. Press OK to open the Updates tab.' });
   }
+
+  r.push(head('Appearance'));
+  r.push({
+    label: 'Theme',
+    value: currentTheme === 'light' ? 'Light' : 'Dark',
+    cls: 'act',
+    act: 'toggleTheme',
+    press: 'Press OK to switch to ' + (currentTheme === 'light' ? 'Dark' : 'Light') + ' theme',
+    hint: 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.'
+  });
   return r;
 }
 
@@ -1190,6 +1250,16 @@ function activate() {
     case 'gotoUpdate':
       for (var ti = 0; ti < TABS.length; ti++) {
         if (TABS[ti].key === 'update') { openTab(ti); break; }
+      }
+      return;
+    case 'toggleTheme':
+      var nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+      applyTheme(nextTheme);
+      try { localStorage.setItem('theme', nextTheme); } catch (e) {}
+      flash('Theme: ' + (nextTheme === 'light' ? 'Light' : 'Dark'));
+      if (T().key === 'system') {
+        rows = sysRows(data.system || {});
+        render();
       }
       return;
     case 'updateCheck':
