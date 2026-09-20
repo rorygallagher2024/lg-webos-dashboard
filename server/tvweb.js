@@ -16,6 +16,7 @@ var url = require('url');
 var net = require('net');
 var tls = require('tls');
 var child_process = require('child_process');
+var os = require('os');
 var path = require('path');
 var execFile = child_process.execFile;
 var zlib = require('zlib');
@@ -824,6 +825,31 @@ function assetPath(rel) {
 }
 
 /*
+ * The address a phone on the same network can reach this server at. The TV app
+ * only ever sees localhost, so it cannot work this out for itself, and a QR
+ * code of "localhost" would be useless to the person holding the phone.
+ */
+function lanOrigin() {
+  var ifaces = {};
+  try { ifaces = os.networkInterfaces() || {}; } catch (e) { return null; }
+  var best = null;
+  for (var name in ifaces) {
+    if (!ifaces.hasOwnProperty(name)) continue;
+    var list = ifaces[name] || [];
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i];
+      var fam = String(a.family);
+      if (fam !== 'IPv4' && fam !== '4') continue;
+      if (a.internal) continue;
+      // Wired first where a TV has both, otherwise the first that answers.
+      if (!best || /^eth/.test(name)) best = a.address;
+    }
+  }
+  if (!best) return null;
+  return 'http://' + best + ':' + CONFIG.port;
+}
+
+/*
  * The app that puts this dashboard on the TV's own screen. Installing it is a
  * packaging job for shell, so it lives in a script beside the app's files and
  * its result is read back here. An absent script - an older deploy, or a TV
@@ -1128,7 +1154,8 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/caps') {
     return send(res, 200, JSON.stringify({
-      ok: true, allowControl: CONFIG.allowControl, allowPower: CONFIG.allowPower
+      ok: true, allowControl: CONFIG.allowControl, allowPower: CONFIG.allowPower,
+      origin: lanOrigin()
     }));
   }
 
