@@ -43,6 +43,34 @@ if [ -f /var/lib/tvweb/screensaver/.tvweb-screensaver ]; then
   fi
 fi
 
+# Restore hidden built-in app overrides
+if [ -f /var/lib/tvweb/hidden_apps ]; then
+  restarted=0
+  while read -r app; do
+    [ -z "$app" ] && continue
+    ovr="/var/lib/tvweb/appinfo-overrides/$app.json"
+    if [ -f "$ovr" ]; then
+      for base in /usr/palm/applications /mnt/otncabi/usr/palm/applications /mnt/otycabi/usr/palm/applications; do
+        tgt="$base/$app/appinfo.json"
+        if [ -f "$tgt" ]; then
+          mount --bind "$ovr" "$tgt" 2>/dev/null && restarted=1
+          break
+        fi
+      done
+    fi
+  done < /var/lib/tvweb/hidden_apps
+  if [ "$restarted" -eq 1 ]; then
+    if command -v systemctl >/dev/null 2>&1; then
+      killall -9 LunaExecutable >/dev/null 2>&1 || true
+      systemctl kill -s 9 sam.service >/dev/null 2>&1 || systemctl restart --no-block sam >/dev/null 2>&1 || true
+    elif command -v initctl >/dev/null 2>&1; then
+      initctl restart sam >/dev/null 2>&1 || pkill -9 -x sam >/dev/null 2>&1 || true
+    else
+      pkill -9 -x sam >/dev/null 2>&1 || true
+    fi
+  fi
+fi
+
 # Detach fully so upstart/webosbrew startup is never held up by this.
 # Prefer tvwebctl: it starts the watchdog alongside the server. The direct
 # line stays as a fallback for installs that predate that script.

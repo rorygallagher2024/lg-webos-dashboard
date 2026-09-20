@@ -1,7 +1,7 @@
 # LG webOS TV Dashboard & Home Assistant Bridge
 
 A server that runs directly **on** a rooted LG webOS TV. It serves a live browser
-dashboard for remote control, OLED panel care, privacy toggles, service menu access, and hardware
+dashboard for remote control, app management & bloat removal, OLED panel care, privacy toggles, service menu access, and hardware
 telemetry. An optional MQTT bridge will also expose the TV as
 a unified [Home Assistant](https://www.home-assistant.io/) device for smart home control.
 
@@ -29,35 +29,41 @@ The dashboard runs standalone on the TV with zero external dependencies.
    dashboard. Includes an on-TV blocker for LG's ad and telemetry
    endpoints, and a switch for the two diagnostics services that upload to LG.
 
-3. **[Replacing the screen saver](#screen-savers).** A clock, a starfield, fireworks, or the
+3. **[Bloat removal and app uninstalls](#apps-and-home-screen-launcher).** Permanently
+   uninstall store downloads and sideloaded apps to reclaim internal flash storage,
+   and hide non-removable built-in LG bloatware tiles (Gallery, Music, Sports, Always
+   Ready, Camera, User Guide, etc.) from the home launcher ribbon. Fully reversible at
+   any time without touching rootfs partitions.
+
+4. **[Replacing the screen saver](#screen-savers).** A clock, a starfield, fireworks, or the
    TV's own readings, each dim or bright, in place of LG's.
 
-4. **[Integrating the TV into Home Assistant](#home-assistant-bridge).** Using MQTT: the TV
+5. **[Integrating the TV into Home Assistant](#home-assistant-bridge).** Using MQTT: the TV
    arrives as a single auto-discovered device (no YAML, no LG
    account) so the TV can be automated and its telemetry recorded
    alongside everything else in the house.
    [Home Assistant & MQTT](#home-assistant--mqtt-optional) explains what MQTT is.
 
-5. **[Seeing what the TV is actually doing](#telemetry-and-diagnostics).** SoC temperature, per-core CPU
+6. **[Seeing what the TV is actually doing](#telemetry-and-diagnostics).** SoC temperature, per-core CPU
    load, memory, swap, current draw, Wi-Fi signal and throughput.
 
-6. **[Observing OLED panel wear](#oled-wear-and-burn-in-protection).** Cumulative panel hours, compensation cycle
+7. **[Observing OLED panel wear](#oled-wear-and-burn-in-protection).** Cumulative panel hours, compensation cycle
    progress, Pixel Refresher countdown with scheduling, completed cycle counters
    and refresher failure alerts.
 
-7. **[Controlling the OLED burn-in protections](#oled-wear-and-burn-in-protection).** What each one does and a switch
+8. **[Controlling the OLED burn-in protections](#oled-wear-and-burn-in-protection).** What each one does and a switch
    for it: screen shift and logo dimming on any OLED, and on TVs that expose
    them, ASBL and Global Stress Reduction (normally reachable only
    from the TV's service menu, with a service remote and a PIN)
 
-8. **[Opening the service menu, and unlocking it where it is locked](#service-menu-access).** LG's own
+9. **[Opening the service menu, and unlocking it where it is locked](#service-menu-access).** LG's own
    engineering menu, put on the TV screen from a browser which means no service
    remote is needed. Newer firmware shows a cut-down version of it until it is unlocked,
    which the dashboard can do as well.
 
-9. **[Reading all of it on the TV itself](#the-dashboard-on-the-tv).** An optional app on
-   the home screen puts the same readings and controls on the TV, driven by the
-   remote, for when there is no phone or laptop to hand.
+10. **[Reading all of it on the TV itself](#the-dashboard-on-the-tv).** An optional app on
+    the home screen puts the same readings and controls on the TV, driven by the
+    remote, for when there is no phone or laptop to hand.
 
 ---
 
@@ -129,6 +135,20 @@ of, most of which is absent from its own settings menu.
 
 <p align="center">
   <img width="432" alt="System tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
+</p>
+
+### Apps and home screen launcher
+
+The **Apps** tab, `/?tab=apps`. Manage installed applications and tidy the TV's home screen ribbon.
+
+* **Installed applications:** Store downloads and sideloaded packages with version and vendor details, and a one-click uninstall action to permanently delete apps and free up internal eMMC flash storage.
+* **Home screen system tiles:** Hide non-removable LG bloatware tiles (Gallery, Music, Sports, Always Ready, Camera, User Guide, Device Connector, Alexa, Google Assistant, etc.) from the home launcher ribbon. Operates non-destructively via reversible `appinfo.json` bind-mounts, surviving reboots without modifying rootfs partitions.
+* **Restore all:** A single action restores all system tiles to their default visible state instantly.
+* **Strict system safeguards:** Core TV services (`Live TV`, `Settings`, `Launcher`, input switchers, and the dashboard itself) are strictly protected and can never be hidden or uninstalled.
+* **Available on TV and Web:** Manage apps from any browser or directly on the TV using the remote control in the on-TV dashboard app.
+
+<p align="center">
+  <a href="docs/screenshots/apps.png"><img src="docs/screenshots/apps.png" alt="Apps tab: installed applications with uninstall actions, and built-in system tiles with visibility toggles" width="700"></a>
 </p>
 
 ### Privacy and data collection

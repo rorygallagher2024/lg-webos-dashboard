@@ -26,6 +26,7 @@ var updater = require('./lib/updater');
 var privacy = require('./lib/privacy');
 var oled = require('./lib/oled');
 var screensavers = require('./lib/screensavers');
+var appsModule = require('./lib/apps');
 var telemetry = require('./lib/telemetry');
 var stateModule = require('./lib/state');
 var mqttStateModule = require('./lib/mqtt-state');
@@ -408,6 +409,7 @@ function injectKey(code, cb, delayMs) {
 
 privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
 oled.init({ luna: luna, config: CONFIG });
+appsModule.init({ luna: luna, config: CONFIG });
 screensavers.init({
   luna: luna,
   assetPath: assetPath,
@@ -1108,6 +1110,33 @@ function authed(q) {
   return !CONFIG.token || q.k === CONFIG.token;
 }
 
+function readJsonBody(req, res, cb) {
+  var ctype = String(req.headers['content-type'] || '').toLowerCase();
+  if (ctype.indexOf('application/json') !== 0) {
+    return send(res, 415, JSON.stringify({ ok: false, error: 'Content-Type must be application/json' }));
+  }
+  var origin = req.headers.origin;
+  if (origin) {
+    var hostHdr = String(req.headers.host || '');
+    var oHost = String(origin).replace(/^https?:\/\//, '');
+    if (oHost !== hostHdr) {
+      return send(res, 403, JSON.stringify({ ok: false, error: 'cross-origin request refused' }));
+    }
+  }
+  var body = '';
+  req.on('data', function (d) {
+    body += d;
+    if (body.length > 8192) req.destroy();
+  });
+  req.on('end', function () {
+    var j = {};
+    try { j = JSON.parse(body); } catch (e) {
+      return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+    }
+    cb(j);
+  });
+}
+
 var server = http.createServer(function (req, res) {
   var u = url.parse(req.url, true);
   var pathname = u.pathname;
@@ -1235,6 +1264,66 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/privacy') {
     return privacy.collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
+  }
+
+  if (pathname === '/api/apps' && req.method === 'GET') {
+    return appsModule.getApps(function (d) { send(res, 200, JSON.stringify(d)); });
+  }
+
+  if (pathname === '/api/apps/icon' && (req.method === 'GET' || req.method === 'HEAD')) {
+    var iconAppId = u.query && u.query.id;
+    return appsModule.getIconPath(iconAppId, function (iconPath) {
+      if (!iconPath) return send(res, 404, JSON.stringify({ ok: false, error: 'icon not found' }));
+      fs.stat(iconPath, function (err, st) {
+        if (err || !st) return send(res, 404, JSON.stringify({ ok: false, error: 'icon read failed' }));
+        var headers = {
+          'Content-Type': 'image/png',
+          'Content-Length': st.size,
+          'Cache-Control': 'public, max-age=86400'
+        };
+        if (req.method === 'HEAD') {
+          res.writeHead(200, headers);
+          return res.end();
+        }
+        fs.readFile(iconPath, function (readErr, buf) {
+          if (readErr || !buf) return send(res, 500, JSON.stringify({ ok: false, error: 'icon read failed' }));
+          res.writeHead(200, headers);
+          res.end(buf);
+        });
+      });
+    });
+  }
+
+  if (pathname === '/api/apps/uninstall' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.uninstallApp(body.id, function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
+  if (pathname === '/api/apps/hide' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.hideTile(body.id, function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
+  if (pathname === '/api/apps/unhide' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.unhideTile(body.id, function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
+  if (pathname === '/api/apps/unhide-all' && req.method === 'POST') {
+    return readJsonBody(req, res, function () {
+      appsModule.unhideAllTiles(function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
   }
 
   if (pathname === '/api/stats') {

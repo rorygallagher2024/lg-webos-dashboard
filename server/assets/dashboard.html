@@ -75,8 +75,12 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 .row.sel .val{color:rgba(255,255,255,.75)}
 .val.on{color:#1ec15f}
 .val.off{color:rgba(255,255,255,.28)}
+.val.bad{color:#e65050}
+.val.warn{color:#ff9800}
 .val.act{color:rgba(255,255,255,.34)}
 .row.sel .val.act{color:#1ec15f}
+.row.sel .val.bad{color:#ff6b6b}
+.row.sel .val.warn{color:#ffb74d}
 
 /* The mark that separates a row you can press from one you can only read. It
    sits in a gutter every row reserves, so nothing shifts as the eye moves down
@@ -424,6 +428,7 @@ function qrMatrix(text) {
    are built from that payload by its own builder below. */
 var TABS = [
   { key: 'system',  label: 'System',       url: '/api/stats',       build: sysRows,  poll: 5000 },
+  { key: 'apps',    label: 'Apps',         url: '/api/apps',        build: appsRows },
   { key: 'oled',    label: 'OLED Care',    url: '/api/oledcare',    build: oledRows },
   { key: 'saver',   label: 'Screen Saver', url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: 'Privacy',      url: '/api/privacy',     build: privacyRows },
@@ -431,6 +436,7 @@ var TABS = [
 ];
 
 var tab = 0, sel = 0, busy = false, ROW_VH = 7.6, HEAD_VH = 5.4;
+var initialSel = null;
 /* Where a phone can reach this server. Only the server knows it - the app is
    served from localhost - so it is asked for once and kept. */
 var lanOrigin = null;
@@ -592,6 +598,52 @@ function saverRows(d) {
                : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
   });
   r.push(head('A firmware update puts LG’s own back'));
+  return r;
+}
+
+function appsRows(d) {
+  if (!d || !d.ok) return [];
+  var r = [];
+
+  var inst = d.installed || [];
+  if (inst.length > 0) {
+    r.push(head('Installed Applications'));
+    for (var j = 0; j < inst.length; j++) {
+      var app = inst[j];
+      r.push({
+        label: app.title || app.id,
+        value: 'Uninstall',
+        cls: 'bad',
+        act: 'uninstall',
+        key: app.id,
+        title: app.title || app.id,
+        press: 'Press OK to uninstall app',
+        hint: 'Store or user-installed application (' + (app.version ? 'v' + app.version + ', ' : '') + app.id + '). Press OK to uninstall from the TV.'
+      });
+    }
+  }
+
+  var sys = d.systemTiles || [];
+  if (sys.length > 0) {
+    r.push(head('Home Screen System Tiles'));
+    for (var i = 0; i < sys.length; i++) {
+      var tile = sys[i];
+      var isVisible = !tile.hidden;
+      r.push({
+        label: tile.title || tile.id,
+        value: isVisible ? 'Visible' : 'Hidden',
+        cls: isVisible ? 'on' : 'off',
+        act: 'tile',
+        key: tile.id,
+        on: isVisible,
+        press: isVisible ? 'Press OK to hide tile' : 'Press OK to show tile',
+        hint: isVisible
+          ? 'Currently visible on the TV home ribbon. Press OK to hide this tile.'
+          : 'Currently hidden from the TV home ribbon. Press OK to make this tile visible again.'
+      });
+    }
+  }
+
   return r;
 }
 
@@ -817,7 +869,12 @@ function fetchTab(keepSel) {
       if (T().key !== key) return;        // the user moved on while this was in flight
       data[key] = d;
       rows = t.build(d) || [];
-      if (!keepSel || sel >= rows.length || (rows[sel] && rows[sel].head)) sel = firstSel();
+      if (initialSel !== null && initialSel < rows.length && (!rows[initialSel] || !rows[initialSel].head)) {
+        sel = initialSel;
+        initialSel = null;
+      } else if (!keepSel || sel >= rows.length || (rows[sel] && rows[sel].head)) {
+        sel = firstSel();
+      }
       render();
     })
     .catch(function () {
@@ -829,14 +886,19 @@ function fetchTab(keepSel) {
     });
 }
 
-function openTab(i) {
+function openTab(i, keepSel) {
   if (timer) { clearInterval(timer); timer = null; }
-  tab = i; sel = 0; rows = [];
+  tab = i;
+  if (!keepSel) sel = 0;
+  rows = [];
   renderTabs();
   var cached = data[T().key];
-  if (cached) { rows = T().build(cached) || []; sel = firstSel(); }
+  if (cached) {
+    rows = T().build(cached) || [];
+    if (!keepSel) sel = firstSel();
+  }
   render();
-  fetchTab(!!cached);
+  fetchTab(keepSel || !!cached);
   if (T().poll) timer = setInterval(function () { fetchTab(true); }, T().poll);
 }
 
@@ -863,11 +925,53 @@ function send(body, note) {
     .catch(function () { busy = false; flash('That did not work'); });
 }
 
+function sendPost(url, body, note) {
+  busy = true;
+  fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (res) {
+      busy = false;
+      if (res && res.ok === false) { flash(res.error || 'That did not work'); return fetchTab(true); }
+      if (note) flash(note);
+      fetchTab(true);
+    })
+    .catch(function () { busy = false; flash('That did not work'); });
+}
+
 function activate() {
   if (busy || !rows.length) return;
   var r = rows[sel];
   if (!r || !r.act) return;
   switch (r.act) {
+    case 'uninstall':
+      if (!r.confirming) {
+        r.confirming = true;
+        r.origValue = r.value;
+        r.origPress = r.press;
+        r.origCls = r.cls;
+        r.value = 'Confirm?';
+        r.cls = 'warn';
+        r.press = 'Press OK again to confirm uninstall';
+        flash('Press OK again to uninstall ' + (r.title || r.key));
+        render();
+        setTimeout(function () {
+          if (r.confirming) {
+            r.confirming = false;
+            r.value = r.origValue;
+            r.press = r.origPress;
+            r.cls = r.origCls;
+            render();
+          }
+        }, 4000);
+        return;
+      }
+      r.confirming = false;
+      return sendPost('/api/apps/uninstall', { id: r.key }, 'App uninstalled');
+    case 'tile':
+      var ep = r.on ? '/api/apps/hide' : '/api/apps/unhide';
+      return sendPost(ep, { id: r.key }, r.on ? 'Tile hidden' : 'Tile visible');
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },
                   r.on ? 'Switched off' : 'Switched on');
@@ -919,7 +1023,15 @@ if (match) {
     if (TABS[ti].key === wanted) { initTab = ti; break; }
   }
 }
-openTab(initTab);
+var selMatch = location.search.match(/[?&]sel=([^&]+)/);
+if (selMatch) {
+  var pSel = parseInt(selMatch[1], 10);
+  if (!isNaN(pSel)) {
+    sel = pSel;
+    initialSel = pSel;
+  }
+}
+openTab(initTab, initialSel !== null);
 </script>
 </body>
 </html>

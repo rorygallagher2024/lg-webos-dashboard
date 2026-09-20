@@ -618,6 +618,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <nav class="tabs" id="tabs" role="tablist">
   <button type="button" role="tab" data-tab="control">Control</button>
   <button type="button" role="tab" data-tab="system">System</button>
+  <button type="button" role="tab" data-tab="apps">Apps</button>
   <button type="button" role="tab" data-tab="privacy">Privacy</button>
   <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden>OLED Care</button>
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
@@ -937,6 +938,42 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
 
   <div class="pv-note" id="ss-note">Note: if a firmware update is applied, the screen saver will be restored to the LG default.</div>
+</section>
+
+<section class="priv panel" id="appspane" role="tabpanel" hidden>
+  <div class="lbl">Apps &amp; Home Screen Launcher</div>
+
+  <div class="pv-top" style="margin-bottom:28px">
+    <div>
+      <div class="pv-h">Installed Applications</div>
+      <div class="pv-sub">Store downloads and user-installed applications. Uninstalling permanently removes the application and frees flash storage space.</div>
+      <div class="sub" id="apps-installed-count" style="margin-top:8px">&mdash;</div>
+    </div>
+    <div>
+      <div class="pv-h">Home Screen System Tiles</div>
+      <div class="pv-sub">Non-removable LG system apps (Gallery, Music, Sports, Always Ready, Alexa, etc.). Hiding strips the tile from the home launcher ribbon without touching rootfs partitions. Completely reversible at any time.</div>
+      <div class="btns" style="margin-top:14px;max-width:520px">
+        <button type="button" id="apps-restore-all" onclick="unhideAllTiles()">Restore all system tiles</button>
+      </div>
+      <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
+    </div>
+  </div>
+
+  <details class="pv-d" id="disc-installed-apps" open>
+    <summary>Installed applications <span class="cur" id="apps-installed-summary"></span></summary>
+    <div class="pv-sub">Removable store downloads and sideloaded packages. Click Uninstall to delete.</div>
+    <div class="prot-table" id="apps-installed-list">
+      <div class="sub" style="padding:16px 0">Loading installed apps&hellip;</div>
+    </div>
+  </details>
+
+  <details class="pv-d" id="disc-system-tiles" open>
+    <summary>Built-in system tiles <span class="cur" id="apps-tiles-summary"></span></summary>
+    <div class="pv-sub">Built-in LG tiles. Toggle between <b>Visible</b> and <b>Hidden</b> to show or hide the tile on the TV's home launcher ribbon.</div>
+    <div class="prot-table" id="apps-tiles-list">
+      <div class="sub" style="padding:16px 0">Loading system tiles&hellip;</div>
+    </div>
+  </details>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
@@ -2447,6 +2484,158 @@ function onProcToggle(el) {
   if (el) el.addEventListener('toggle', function () { onProcToggle(el); });
 })();
 
+let appsData = null;
+let appsLoading = false;
+
+async function loadApps() {
+  if (appsLoading) return;
+  appsLoading = true;
+  try {
+    const r = await fetch(api('/api/apps'), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d && d.ok) {
+      appsData = d;
+      renderApps();
+    }
+  } catch (e) {
+    console.error('loadApps failed:', e);
+  } finally {
+    appsLoading = false;
+  }
+}
+
+function renderApps() {
+  if (!appsData) return;
+  const d = appsData;
+
+  // Render Installed Apps
+  const instList = q('apps-installed-list');
+  const instCount = q('apps-installed-count');
+  const instSummary = q('apps-installed-summary');
+  const installed = d.installed || [];
+
+  if (instCount) instCount.textContent = installed.length + ' removable ' + (installed.length === 1 ? 'app' : 'apps');
+  if (instSummary) instSummary.textContent = installed.length + ' apps';
+
+  if (instList) {
+    if (installed.length === 0) {
+      instList.innerHTML = '<div class="sub" style="padding:16px 0">No removable apps found on the TV.</div>';
+    } else {
+      instList.innerHTML = installed.map(app => {
+        const title = esc(app.title || app.id);
+        const id = esc(app.id);
+        const iconUrl = api('/api/apps/icon?id=' + encodeURIComponent(app.id));
+        const meta = [app.version ? 'v' + app.version : '', app.vendor || ''].filter(Boolean).join(' · ');
+        return `<div class="prot-row">
+          <img src="${iconUrl}" width="38" height="38" style="border-radius:8px;object-fit:contain;background:var(--w06);flex-shrink:0" onerror="this.style.display='none'">
+          <div class="prot-main">
+            <div class="prot-title">${title} <span class="prot-sub">&middot; ${id}</span></div>
+            <div class="prot-desc">${esc(meta || 'Installed app')}</div>
+          </div>
+          <div class="prot-status">
+            <button type="button" class="pill bad" onclick="confirmUninstall('${id}', '${title}')" ${!d.writable ? 'disabled' : ''}>Uninstall</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Render System Tiles
+  const tilesList = q('apps-tiles-list');
+  const hiddenCount = q('apps-hidden-count');
+  const tilesSummary = q('apps-tiles-summary');
+  const tiles = d.systemTiles || [];
+  const numHidden = d.hiddenCount || 0;
+
+  if (hiddenCount) hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' tiles' : 'All ' + tiles.length + ' tiles visible';
+  if (tilesSummary) tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' tiles';
+
+  if (tilesList) {
+    if (tiles.length === 0) {
+      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">No eligible system tiles found.</div>';
+    } else {
+      tilesList.innerHTML = tiles.map(tile => {
+        const title = esc(tile.title || tile.id);
+        const id = esc(tile.id);
+        const iconUrl = api('/api/apps/icon?id=' + encodeURIComponent(tile.id));
+        const isHidden = !!tile.hidden;
+        return `<div class="prot-row">
+          <img src="${iconUrl}" width="38" height="38" style="border-radius:8px;object-fit:contain;background:var(--w06);flex-shrink:0" onerror="this.style.display='none'">
+          <div class="prot-main">
+            <div class="prot-title">${title} <span class="prot-sub">&middot; ${id}</span></div>
+            <div class="prot-desc">${isHidden ? 'Hidden from home launcher ribbon' : 'Visible on home launcher ribbon'}</div>
+          </div>
+          <div class="prot-status">
+            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${isHidden ? 'Hidden' : 'Visible'}</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+async function confirmUninstall(appId, appTitle) {
+  if (!confirm('Uninstall "' + appTitle + '" from the TV?\n\nThis will permanently delete the application and its stored data.')) {
+    return;
+  }
+  try {
+    const res = await fetch(api('/api/apps/uninstall'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: appId })
+    });
+    const d = await res.json();
+    if (d && d.ok) {
+      await loadApps();
+    } else {
+      alert('Could not uninstall ' + appTitle + ': ' + ((d && d.error) || 'unknown error'));
+    }
+  } catch (e) {
+    alert('Error uninstalling ' + appTitle + ': ' + e.message);
+  }
+}
+
+async function toggleTileVisibility(appId, makeHidden) {
+  const ep = makeHidden ? '/api/apps/hide' : '/api/apps/unhide';
+  try {
+    const res = await fetch(api(ep), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: appId })
+    });
+    const d = await res.json();
+    if (d && d.ok) {
+      await loadApps();
+    } else {
+      alert('Could not update tile: ' + ((d && d.error) || 'unknown error'));
+    }
+  } catch (e) {
+    alert('Error updating tile: ' + e.message);
+  }
+}
+
+async function unhideAllTiles() {
+  if (!confirm('Restore all system tiles to default (visible) on the home screen?')) {
+    return;
+  }
+  try {
+    const res = await fetch(api('/api/apps/unhide-all'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const d = await res.json();
+    if (d && d.ok) {
+      await loadApps();
+    } else {
+      alert('Could not restore tiles: ' + ((d && d.error) || 'unknown error'));
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
 /*
  * Tabs. The privacy and MQTT panels load on demand - privacy costs several Luna
  * calls, and two of those start the service they ask - so neither is fetched
@@ -2455,6 +2644,7 @@ function onProcToggle(el) {
 const TABS = {
   control:     'tab-control',
   system:      'tab-metrics',
+  apps:        'appspane',
   oledcare:    'oledpane',
   servicemenu: 'svcpane',
   screensaver: 'sspane',
@@ -2493,6 +2683,7 @@ function showTab(name) {
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
   if (name === 'system') loadHdmiOnce();
+  if (name === 'apps') loadApps();
   if (name === 'server') checkOnOpen();
   if (name === 'server') loadTvApp();
   if (name === 'oledcare') loadOledCare();
@@ -3097,6 +3288,7 @@ async function waitForServer() {
   const p = new URLSearchParams(location.search);
   let want = p.get('tab');
   if (!want && p.get('privacy') === '1') want = 'privacy';
+  if (!want && p.get('apps') === '1') want = 'apps';
   if (!want && p.get('controls') === '1') want = 'control';
   // ?open= names a disclosure inside Metrics, so it has to pick that tab too -
   // otherwise the link opens something on a panel that is not showing.
