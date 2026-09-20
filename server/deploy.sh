@@ -55,6 +55,8 @@ assets/dashboard-app/appinfo.json assets/dashboard-app/index.html \
 assets/dashboard-app/packageinfo.json assets/dashboard-app/install-app.sh \
 assets/dashboard-app/assets/icon80.png assets/dashboard-app/assets/icon130.png \
 assets/fonts/Outfit.ttf assets/fonts/Manrope.ttf \
+assets/fonts/Outfit-Light.ttf assets/fonts/Outfit-Regular.ttf \
+assets/fonts/Manrope-Regular.ttf assets/fonts/Manrope-SemiBold.ttf \
 assets/fonts/OFL-Outfit.txt assets/fonts/OFL-Manrope.txt \
 assets/screensavers/clock.qml assets/screensavers/fireworks.qml \
 assets/screensavers/starfield.qml assets/screensavers/vitals.qml assets/screensavers/star.png \
