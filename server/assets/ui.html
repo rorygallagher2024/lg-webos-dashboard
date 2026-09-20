@@ -964,7 +964,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="btns" style="margin-top:14px;max-width:520px">
         <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)">Off (Stock)</button>
         <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)">On (Custom)</button>
-        <button type="button" id="apps-restore-all" onclick="unhideAllTiles()" style="margin-left:auto">Restore all</button>
       </div>
       <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
       <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b>Note:</b> On a cold boot (or with Quick Start+ disabled), applying tile overrides requires a fast app manager reload ~5 seconds into startup, which may cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</div>
@@ -2582,7 +2581,6 @@ function renderApps() {
   const warningBox = q('tile-hiding-warning');
   const btnOff = q('tile-hiding-off');
   const btnOn = q('tile-hiding-on');
-  const restoreBtn = q('apps-restore-all');
   const tiles = d.systemTiles || [];
   const numHidden = d.hiddenCount || 0;
 
@@ -2591,10 +2589,6 @@ function renderApps() {
     btnOn.classList.toggle('on', tileHidingEnabled);
     btnOff.disabled = !d.writable;
     btnOn.disabled = !d.writable;
-  }
-  if (restoreBtn) {
-    restoreBtn.style.display = tileHidingEnabled ? '' : 'none';
-    restoreBtn.disabled = !d.writable || numHidden === 0;
   }
   if (warningBox) {
     warningBox.hidden = !tileHidingEnabled;
@@ -2794,44 +2788,6 @@ async function toggleTileVisibility(appId, makeHidden) {
       btn.textContent = makeHidden ? 'Visible' : 'Hidden';
     }
     alert('Error updating tile: ' + e.message);
-  }
-}
-
-async function unhideAllTiles() {
-  if (!confirm('Restore all system tiles to default (visible) on the home screen?')) {
-    return;
-  }
-  const btn = q('apps-restore-all');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Restoring…';
-  }
-  try {
-    const res = await fetch(api('/api/apps/unhide-all'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const d = await res.json();
-    if (d && d.ok) {
-      if (appsData && appsData.systemTiles) {
-        for (let i = 0; i < appsData.systemTiles.length; i++) {
-          appsData.systemTiles[i].hidden = false;
-        }
-        appsData.hiddenCount = 0;
-        renderApps();
-      }
-      await loadApps();
-    } else {
-      alert('Could not restore tiles: ' + ((d && d.error) || 'unknown error'));
-    }
-  } catch (e) {
-    alert('Error: ' + e.message);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Restore all';
-    }
   }
 }
 
