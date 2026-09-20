@@ -2530,11 +2530,9 @@ function renderApps() {
 
   // Render Installed Apps
   const instList = q('apps-installed-list');
-  const instCount = q('apps-installed-count');
   const instSummary = q('apps-installed-summary');
   const installed = d.installed || [];
 
-  if (instCount) instCount.textContent = installed.length + ' removable ' + (installed.length === 1 ? 'app' : 'apps');
   if (instSummary) instSummary.textContent = installed.length + ' apps';
 
   if (instList) {
