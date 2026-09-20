@@ -27,6 +27,7 @@ var privacy = require('./lib/privacy');
 var oled = require('./lib/oled');
 var screensavers = require('./lib/screensavers');
 var appsModule = require('./lib/apps');
+var servicesModule = require('./lib/services');
 var telemetry = require('./lib/telemetry');
 var stateModule = require('./lib/state');
 var mqttStateModule = require('./lib/mqtt-state');
@@ -410,6 +411,7 @@ function injectKey(code, cb, delayMs) {
 privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
 oled.init({ luna: luna, config: CONFIG });
 appsModule.init({ luna: luna, config: CONFIG });
+servicesModule.init({ stateDir: __dirname });
 screensavers.init({
   luna: luna,
   assetPath: assetPath,
@@ -1282,7 +1284,12 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/apps' && req.method === 'GET') {
-    return appsModule.getApps(function (d) { send(res, 200, JSON.stringify(d)); });
+    return appsModule.getApps(function (d) {
+      servicesModule.getServices(function (sRes) {
+        if (sRes && sRes.services) d.services = sRes.services;
+        send(res, 200, JSON.stringify(d));
+      });
+    });
   }
 
   if (pathname === '/api/apps/icon' && (req.method === 'GET' || req.method === 'HEAD')) {
@@ -1336,6 +1343,18 @@ var server = http.createServer(function (req, res) {
   if (pathname === '/api/apps/unhide-all' && req.method === 'POST') {
     return readJsonBody(req, res, function () {
       appsModule.unhideAllTiles(function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
+  if (pathname === '/api/services' && req.method === 'GET') {
+    return servicesModule.getServices(function (d) { send(res, 200, JSON.stringify(d)); });
+  }
+
+  if (pathname === '/api/services/toggle' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      servicesModule.toggleService(body && body.id, !!(body && body.disabled), function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
     });

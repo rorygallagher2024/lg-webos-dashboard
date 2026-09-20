@@ -983,6 +983,14 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="sub" style="padding:16px 0">Loading system tiles&hellip;</div>
     </div>
   </details>
+
+  <details class="pv-d" id="disc-system-services" open hidden>
+    <summary>Background services <span class="cur" id="apps-services-summary"></span></summary>
+    <div class="pv-sub">Non-essential background services discovered on this TV. Disable unnecessary services to reduce memory usage, eliminate background telemetry, and speed up boot times.</div>
+    <div class="prot-table" id="apps-services-list">
+      <div class="sub" style="padding:16px 0">Loading background services&hellip;</div>
+    </div>
+  </details>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
@@ -2593,6 +2601,79 @@ function renderApps() {
         </div>`;
       }).join('');
     }
+  }
+
+  // Render Background Services
+  const svcsList = q('apps-services-list');
+  const svcsDisc = q('disc-system-services');
+  const svcsSummary = q('apps-services-summary');
+  const svcs = d.services || [];
+
+  if (svcsDisc) {
+    if (!svcs.length) {
+      svcsDisc.hidden = true;
+    } else {
+      svcsDisc.hidden = false;
+      const numDisabled = svcs.filter(s => s.disabled).length;
+      if (svcsSummary) {
+        svcsSummary.textContent = numDisabled > 0 ? numDisabled + ' disabled of ' + svcs.length : svcs.length + ' services';
+      }
+      if (svcsList) {
+        svcsList.innerHTML = svcs.map(svc => {
+          const id = esc(svc.id);
+          const title = esc(svc.title);
+          const badge = esc(svc.badge || '');
+          const desc = esc(svc.desc || '');
+          const unit = esc(svc.unit || '');
+          const isDisabled = !!svc.disabled;
+          return `<div class="prot-row">
+            <div class="prot-main">
+              <div class="prot-title">${title} <span class="prot-sub">&middot; ${unit}</span></div>
+              <div class="prot-desc">${desc}</div>
+            </div>
+            <div class="prot-status" style="display:flex;align-items:center;gap:10px">
+              ${badge ? `<span class="pv-badge" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--w06);color:var(--t2)">${badge}</span>` : ''}
+              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}>${isDisabled ? 'Disabled' : 'Active'}</button>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+  }
+}
+
+async function toggleService(serviceId, makeDisabled) {
+  const btn = document.getElementById('btn-svc-' + serviceId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+  }
+  try {
+    const res = await fetch(api('/api/services/toggle'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: serviceId, disabled: makeDisabled })
+    });
+    const d = await res.json();
+    if (d && d.ok) {
+      if (appsData && appsData.services) {
+        const item = appsData.services.find(s => s.id === serviceId);
+        if (item) item.disabled = makeDisabled;
+        renderApps();
+      }
+    } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = makeDisabled ? 'Active' : 'Disabled';
+      }
+      alert('Could not update service: ' + ((d && d.error) || 'unknown error'));
+    }
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = makeDisabled ? 'Active' : 'Disabled';
+    }
+    alert('Error updating service: ' + e.message);
   }
 }
 

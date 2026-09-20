@@ -742,6 +742,26 @@ function appsRows(d) {
     }
   }
 
+  var svcs = d.services || [];
+  if (svcs.length > 0) {
+    r.push(head('Background Services'));
+    for (var k = 0; k < svcs.length; k++) {
+      var s = svcs[k];
+      var isActive = !s.disabled;
+      r.push({
+        label: s.title || s.id,
+        value: isActive ? 'Active' : 'Disabled',
+        cls: isActive ? 'good' : 'warn',
+        act: 'serviceToggle',
+        key: s.id,
+        title: s.title || s.id,
+        on: isActive,
+        press: isActive ? 'Press OK to disable service' : 'Press OK to enable service',
+        hint: (s.badge ? '[' + s.badge + '] ' : '') + (s.desc || '')
+      });
+    }
+  }
+
   return r;
 }
 
@@ -1251,6 +1271,12 @@ function activate() {
       flash((r.on ? 'Hiding ' : 'Showing ') + (r.title || r.key) + '…');
       render();
       return sendPost(ep, { id: r.key }, r.on ? 'Tile hidden' : 'Tile visible');
+    case 'serviceToggle':
+      var nextDisabled = r.on;
+      r.value = nextDisabled ? 'Disabling…' : 'Enabling…';
+      flash((nextDisabled ? 'Disabling ' : 'Enabling ') + (r.title || r.key) + '…');
+      render();
+      return sendPost('/api/services/toggle', { id: r.key, disabled: nextDisabled }, nextDisabled ? 'Service disabled' : 'Service enabled');
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },
                   r.on ? 'Switched off' : 'Switched on');
