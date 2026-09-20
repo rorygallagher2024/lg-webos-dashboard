@@ -705,7 +705,7 @@ function appsRows(d) {
 
   var inst = d.installed || [];
   if (inst.length > 0) {
-    r.push(head('Installed Applications'));
+    r.push(head('Uninstall Applications'));
     for (var j = 0; j < inst.length; j++) {
       var app = inst[j];
       r.push({
@@ -759,7 +759,7 @@ function appsRows(d) {
 
   var svcs = d.services || [];
   if (svcs.length > 0) {
-    r.push(head('Background Services'));
+    r.push(head('Turn Off Background Services'));
     for (var k = 0; k < svcs.length; k++) {
       var s = svcs[k];
       var isActive = !s.disabled;
