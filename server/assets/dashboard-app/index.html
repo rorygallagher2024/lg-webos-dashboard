@@ -59,7 +59,7 @@ body{display:flex;display:-webkit-flex;align-items:center;-webkit-align-items:ce
 
     if (probeCount === 12 && statusEl) {
       statusEl.innerHTML = 'Waiting for background service to initialize<span class="dots"></span>';
-    } else if (probeCount >= 30 && statusEl) {
+    } else if (probeCount >= 80 && statusEl) {
       statusEl.textContent = 'Service is taking longer than usual to start.';
       if (retryBtn) retryBtn.className = 'on';
     }
