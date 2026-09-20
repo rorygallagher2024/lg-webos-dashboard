@@ -72,7 +72,7 @@ if [ -f /var/lib/tvweb/tile_hiding_enabled ] && [ "$(cat /var/lib/tvweb/tile_hid
     fi
 
     # Wait for SAM to become responsive (support BusyBox usleep with fallback)
-    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
       usleep 200000 2>/dev/null || sleep 1
       if luna-send -n 1 -f luna://com.webos.applicationManager/getForegroundAppInfo '{}' >/dev/null 2>&1; then
         break
