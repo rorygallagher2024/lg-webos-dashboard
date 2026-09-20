@@ -435,7 +435,8 @@ var TABS = [
   { key: 'oled',    label: 'OLED Care',    url: '/api/oledcare',    build: oledRows },
   { key: 'saver',   label: 'Screen Saver', url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: 'Privacy',      url: '/api/privacy',     build: privacyRows },
-  { key: 'service', label: 'Service Menu', url: '/api/servicemenu', build: svcRows }
+  { key: 'service', label: 'Service Menu', url: '/api/servicemenu', build: svcRows },
+  { key: 'update',  label: 'Updates',      url: '/api/update',      build: updateRows }
 ];
 
 var tab = 0, sel = 0, busy = false, ROW_VH = 7.6, HEAD_VH = 5.4;
@@ -526,6 +527,11 @@ function sysRows(d) {
   if (d.remote && d.remote.battery !== null && d.remote.battery !== undefined)
     r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
   if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
+  if (d.tvwebVersion) {
+    r.push({ label: 'tvweb dashboard', value: 'v' + d.tvwebVersion, act: 'gotoUpdate',
+             press: 'Press OK to view updates',
+             hint: 'The version of this dashboard server. Press OK to open the Updates tab.' });
+  }
   return r;
 }
 
@@ -737,6 +743,114 @@ function svcRows(d) {
   return r;
 }
 
+function updateRows(d) {
+  if (!d || !d.ok) return [];
+  var r = [];
+  r.push(head('Software Updates'));
+
+  var inst = d.installed ? ('v' + d.installed) : '—';
+  r.push({
+    label: 'Installed version',
+    value: inst,
+    hint: 'The version of tvweb currently running on this TV.'
+  });
+
+  if (d.state === 'checking') {
+    r.push({
+      label: 'Latest release',
+      value: 'Checking…',
+      cls: 'warn',
+      hint: 'Checking GitHub for new releases.'
+    });
+  } else if (d.available && d.latest) {
+    r.push({
+      label: 'Latest release',
+      value: 'v' + d.latest,
+      cls: 'on',
+      hint: 'A newer release is available on GitHub (v' + d.latest + ').'
+    });
+    if (d.writable) {
+      r.push({
+        label: 'Install update',
+        value: 'Install v' + d.latest,
+        cls: 'act',
+        act: 'update',
+        targetVer: d.latest,
+        press: 'Press OK to install v' + d.latest,
+        hint: 'Downloads and installs v' + d.latest + ' directly on the TV. Settings, ad blocker, and screen saver are preserved. The TV server restarts automatically.'
+      });
+    }
+  } else if (d.latest) {
+    r.push({
+      label: 'Latest release',
+      value: 'v' + d.latest + ' (Up to date)',
+      cls: 'off',
+      hint: 'You are running the latest release.'
+    });
+  } else if (d.error) {
+    r.push({
+      label: 'Latest release',
+      value: 'Check failed',
+      cls: 'bad',
+      hint: 'Could not check GitHub: ' + d.error
+    });
+  }
+
+  if (d.writable && d.state !== 'checking' && !d.available) {
+    r.push({
+      label: 'Check for updates',
+      value: 'Check now',
+      cls: 'act',
+      act: 'updateCheck',
+      press: 'Press OK to check for updates',
+      hint: 'Queries GitHub releases to check if a new version is available.'
+    });
+  }
+
+  if (d.rollbackTo && d.writable) {
+    r.push(head('Rollback'));
+    r.push({
+      label: 'Roll back version',
+      value: 'Roll back to v' + d.rollbackTo,
+      cls: 'warn',
+      act: 'updateRollback',
+      targetVer: d.rollbackTo,
+      press: 'Press OK to roll back to v' + d.rollbackTo,
+      hint: 'Restores the previous backup version (v' + d.rollbackTo + ') and restarts the server.'
+    });
+  }
+
+  r.push(head('Information'));
+  if (d.checkedMs !== null && d.checkedMs !== undefined) {
+    var mins = Math.floor(d.checkedMs / 60000);
+    var checkedStr = mins < 1 ? 'Just now' : (mins === 1 ? '1 min ago' : mins + ' mins ago');
+    r.push({
+      label: 'Last checked',
+      value: checkedStr,
+      hint: 'When the TV last reached GitHub to check for updates.'
+    });
+  }
+
+  if (d.client) {
+    r.push({
+      label: 'Download client',
+      value: d.client,
+      hint: 'HTTP client used to download updates (' + d.client + ').'
+    });
+  }
+
+  if (!d.writable) {
+    r.push({
+      label: 'Controls disabled',
+      value: 'Read-only',
+      cls: 'off',
+      hint: 'allowControl is false in config.json. Updates cannot be triggered from the TV.'
+    });
+  }
+
+  return r;
+}
+
 // ---- rendering ----
 
 function rowHeight(r) { return (r && r.head ? HEAD_VH : ROW_VH) * window.innerHeight / 100; }
@@ -917,6 +1031,24 @@ function openTab(i, keepSel) {
   render();
   fetchTab(keepSel || !!cached);
   if (T().poll) timer = setInterval(function () { fetchTab(true); }, T().poll);
+  if (T().key === 'update') checkUpdateOnOpen();
+}
+
+function checkUpdateOnOpen() {
+  var d = data.update;
+  if (busy || (d && d.writable === false) || (d && d.attemptedMs !== null && d.attemptedMs < 120000)) return;
+  fetch('/api/control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'updateCheck', value: 'open' })
+  }).then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (res) {
+      if (T().key === 'update' && res && res.ok) {
+        data.update = res;
+        rows = updateRows(res) || [];
+        render();
+      }
+    }).catch(function () {});
 }
 
 function switchTab(d) {
@@ -926,6 +1058,40 @@ function switchTab(d) {
 }
 
 // ---- actions ----
+
+function awaitRestart(targetVer, doneLabel) {
+  busy = true;
+  var box = document.getElementById('rows'), msg = document.getElementById('msg');
+  box.innerHTML = '';
+  msg.style.display = 'block';
+  msg.innerHTML = 'Installing update\u2026<div class="msg-detail">The TV server is restarting. Please wait\u2026</div>';
+
+  var attempts = 0;
+  var poll = setInterval(function () {
+    attempts++;
+    fetch('/api/update', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) {
+          if (!targetVer || d.installed === targetVer) {
+            clearInterval(poll);
+            busy = false;
+            flash(doneLabel || 'Update complete');
+            setTimeout(function () {
+              location.replace(location.pathname + '?tab=update&t=' + Date.now());
+            }, 1000);
+          }
+        }
+      })
+      .catch(function () {});
+    if (attempts > 80) {
+      clearInterval(poll);
+      busy = false;
+      flash('Restart is taking longer than expected');
+      fetchTab(true);
+    }
+  }, 1500);
+}
 
 function send(body, note) {
   busy = true;
@@ -1021,6 +1187,107 @@ function activate() {
       return send({ action: 'serviceMenuLock', value: { locked: !r.on } });
     case 'menu':
       return send({ action: 'serviceMenuOpen', value: { menu: r.key } }, 'Opening…');
+    case 'gotoUpdate':
+      for (var ti = 0; ti < TABS.length; ti++) {
+        if (TABS[ti].key === 'update') { openTab(ti); break; }
+      }
+      return;
+    case 'updateCheck':
+      r.value = 'Checking…';
+      r.cls = 'warn';
+      render();
+      flash('Checking for updates…');
+      return sendPost('/api/control', { action: 'updateCheck' }, 'Check complete');
+    case 'update':
+      if (!r.confirming) {
+        r.confirming = true;
+        r.origValue = r.value;
+        r.origPress = r.press;
+        r.origCls = r.cls;
+        r.value = 'Confirm?';
+        r.cls = 'warn';
+        r.press = 'Press OK again to install v' + r.targetVer;
+        flash('Press OK again to install v' + r.targetVer);
+        render();
+        setTimeout(function () {
+          if (r.confirming) {
+            r.confirming = false;
+            r.value = r.origValue;
+            r.press = r.origPress;
+            r.cls = r.origCls;
+            render();
+          }
+        }, 4000);
+        return;
+      }
+      r.confirming = false;
+      r.value = 'Installing…';
+      r.cls = 'warn';
+      render();
+      flash('Installing v' + r.targetVer + '…');
+      busy = true;
+      fetch('/api/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update' })
+      }).then(function (res) { return res.json().catch(function () { return {}; }); })
+        .then(function (res) {
+          if (res && res.ok === false) {
+            busy = false;
+            flash(res.error || 'Update failed');
+            return fetchTab(true);
+          }
+          awaitRestart(r.targetVer, 'Updated to v' + r.targetVer);
+        })
+        .catch(function () {
+          awaitRestart(r.targetVer, 'Updated to v' + r.targetVer);
+        });
+      return;
+    case 'updateRollback':
+      if (!r.confirming) {
+        r.confirming = true;
+        r.origValue = r.value;
+        r.origPress = r.press;
+        r.origCls = r.cls;
+        r.value = 'Confirm?';
+        r.cls = 'warn';
+        r.press = 'Press OK again to roll back to v' + r.targetVer;
+        flash('Press OK again to roll back to v' + r.targetVer);
+        render();
+        setTimeout(function () {
+          if (r.confirming) {
+            r.confirming = false;
+            r.value = r.origValue;
+            r.press = r.origPress;
+            r.cls = r.origCls;
+            render();
+          }
+        }, 4000);
+        return;
+      }
+      r.confirming = false;
+      r.value = 'Rolling back…';
+      r.cls = 'warn';
+      render();
+      flash('Rolling back to v' + r.targetVer + '…');
+      busy = true;
+      fetch('/api/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'updateRollback' })
+      }).then(function (res) { return res.json().catch(function () { return {}; }); })
+        .then(function (res) {
+          if (res && res.ok === false) {
+            busy = false;
+            flash(res.error || 'Rollback failed');
+            return fetchTab(true);
+          }
+          awaitRestart(r.targetVer, 'Rolled back to v' + r.targetVer);
+        })
+        .catch(function () {
+          awaitRestart(r.targetVer, 'Rolled back to v' + r.targetVer);
+        });
+      return;
   }
 }
 
