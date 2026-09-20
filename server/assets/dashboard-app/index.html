@@ -6,6 +6,6 @@
 /* Thin wrapper: the dashboard UI, its fonts and its data all come from the
    tvweb server on this TV, so loading it there keeps everything same-origin.
    The app exists only to give that page a tile on the home screen. */
-location.replace('http://localhost:8080/assets/dashboard.html');
+location.replace('http://localhost:8080/assets/dashboard.html?t=' + Date.now());
 </script>
 </body></html>

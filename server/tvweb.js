@@ -1096,12 +1096,14 @@ var server = http.createServer(function (req, res) {
   if (pathname.indexOf('/assets/') === 0) {
     var file = assetPath(pathname.slice('/assets/'.length));
     if (!file) return send(res, 404, JSON.stringify({ ok: false, error: 'not found' }));
-    var mime = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    var ext = path.extname(file).toLowerCase();
+    var mime = MIME[ext] || 'application/octet-stream';
+    var cacheHdr = ext === '.html' ? 'no-cache' : 'public, max-age=86400';
     if (ASSET_CACHE[file]) {
       res.writeHead(200, {
         'Content-Type': mime,
         'Content-Length': ASSET_CACHE[file].length,
-        'Cache-Control': 'public, max-age=86400'
+        'Cache-Control': cacheHdr
       });
       return res.end(ASSET_CACHE[file]);
     }
@@ -1111,7 +1113,7 @@ var server = http.createServer(function (req, res) {
       res.writeHead(200, {
         'Content-Type': mime,
         'Content-Length': buf.length,
-        'Cache-Control': 'public, max-age=86400'
+        'Cache-Control': cacheHdr
       });
       res.end(buf);
     });

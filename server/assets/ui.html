@@ -958,7 +958,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <div class="lbl">Remote shortcut buttons</div>
   <div id="sc-list" class="ss-list"></div>
   <div class="sub" id="sc-msg"></div>
-  <div class="pv-note" id="sc-note">Changing a button blanks the screen for a few seconds and closes whatever is open. The choice is kept when the TV restarts, and a button can be given back at any time.</div>
+  <div class="pv-note" id="sc-note"></div>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
@@ -2021,6 +2021,15 @@ function renderShortcuts(d) {
       </div>`;
   }).join('');
   q('sc-msg').textContent = d.writable ? '' : 'Controls are switched off in config.json.';
+  /* Older TVs do not report which buttons their remote has, so the list is what
+     the software knows about and may name one that is not on the remote. Said
+     only where that applies, rather than hedging on TVs that do report. */
+  const assumed = buttons.some(b => b.assumed);
+  q('sc-note').textContent =
+    'Changing a button blanks the screen for a few seconds and closes whatever is open. '
+    + 'The choice is kept when the TV restarts, and a button can be given back at any time.'
+    + (assumed ? ' This TV does not report which buttons its remote has, so the list may '
+               + 'include one it does not; assigning that one simply never fires.' : '');
 }
 
 async function loadShortcuts() {

@@ -22,19 +22,21 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #clock{font-family:'Outfit';font-weight:200;font-size:4.4vh;letter-spacing:.01em;
   line-height:1;opacity:.55;flex:0 0 auto;margin-bottom:3.4vh}
 
-#tabs{display:flex;align-items:baseline;gap:2.8vw;flex:0 0 auto;margin-bottom:4.4vh}
-.tab{font-family:'Outfit';font-weight:200;font-size:4.2vh;line-height:1;letter-spacing:.01em;
-  color:rgba(255,255,255,.26);transition:color .22s ease;white-space:nowrap}
+#tabs{display:flex;display:-webkit-flex;align-items:baseline;-webkit-align-items:baseline;flex:0 0 auto;margin-bottom:4.4vh;white-space:nowrap}
+.tab{display:inline-block;font-family:'Outfit';font-weight:200;font-size:4.2vh;line-height:1;letter-spacing:.01em;
+  color:rgba(255,255,255,.26);transition:color .22s ease;white-space:nowrap;
+  flex:0 0 auto;-webkit-flex:0 0 auto;padding-right:2.8vw}
+.tab:last-child{padding-right:0}
 .tab.on{color:#fff;font-weight:300}
 
 /* Two columns: the rows on the left, an explainer for whichever row is selected
    on the right. A row's label and value never needed the full width, and the
    space buys somewhere to say what a setting means without a second screen. */
-#main{flex:1 1 auto;display:flex;gap:2.6vw;overflow:hidden;padding-right:4vw;min-height:0}
+#main{flex:1 1 auto;display:flex;overflow:hidden;padding-right:4vw;min-height:0}
 #list{flex:1 1 62%;overflow:hidden;position:relative}
 #rows{position:absolute;left:0;right:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
 
-#hint{flex:0 0 31%;align-self:center;border-left:1px solid rgba(255,255,255,.10);
+#hint{flex:0 0 31%;margin-left:2.6vw;align-self:center;border-left:1px solid rgba(255,255,255,.10);
   padding-left:2.4vw;opacity:0;transition:opacity .22s ease}
 #hint.on{opacity:1}
 .h-title{font-family:'Outfit';font-weight:200;font-size:3.4vh;line-height:1.15;
@@ -404,6 +406,11 @@ function shortcutRows(d) {
                : 'Still opens what it always has. Press OK to point it at any app on this TV instead.' });
   });
   r.push(head('Changing one blanks the screen for a few seconds'));
+  /* Older TVs do not report which buttons their remote has, so the list is what
+     the software knows about. Said only where that applies. */
+  if (buttons.some(function (b) { return b.assumed; })) {
+    r.push(head('A button this remote does not have simply never fires'));
+  }
   return r;
 }
 

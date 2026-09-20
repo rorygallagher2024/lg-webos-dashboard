@@ -324,6 +324,36 @@ Two traps when working on it: validate the staged copy under a name ending
 check then fails every time; and `/var/log/messages` timestamps are UTC while
 `date` is local, which makes a fresh button press look an hour stale.
 
+### webOS 4 differs in five ways, all of them load-bearing
+
+Verified on an OLED65B8SLC. The feature works there, but nothing about it can be
+assumed from the webOS 9 shape:
+
+| | webOS 9 (C2) | webOS 4 (B8) |
+| :--- | :--- | :--- |
+| Key filters | `/usr/lib/qml/KeyFilters` | `/usr/lib/qt5/qml/KeyFilters` |
+| Button named by | `powerOnReason = "netflix"` | `appId = "netflix"` |
+| Button list | `mapping_info`, filtered on `isActive` | absent — settings returns "no matched result from DB" |
+| Init | systemd, `systemctl restart --no-block` | upstart, `initctl restart` |
+| `node --check` | present | absent (node 0.12) |
+
+The missing `mapping_info` means there is no way to know which buttons the
+remote physically has, so the list falls back to every button the firmware can
+launch — three on the B8, one of them `ivi`, which a UK remote does not carry.
+Assigning a button that is not there simply never fires, so the fallback is
+offered with that said plainly rather than withheld.
+
+Without `--check`, the staged file is validated by compiling it instead:
+`new Function(src)` raises on a syntax error and never runs the body, which
+matters because the body expects QML globals that do not exist in node.
+
+The insertion point is the top of the `switch (key)` in `handleSystemKeys`,
+not above a named case. On webOS 4 several stock cases are a fall-through group
+— `Qt.Key_Super_L` and `Qt.Key_Menu` fall into `WebOS.Key_webOS_Recent` — and a
+case placed inside one would capture the Home and Menu keys with it. The top of
+the switch belongs to no group, and a case ending in `return` cannot be fallen
+into.
+
 ## tvpower reboot does not reboot
 
 `luna://com.webos.service.tvpower/power/reboot` accepts the request, validates

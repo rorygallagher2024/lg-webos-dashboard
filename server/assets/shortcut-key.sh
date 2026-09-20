@@ -20,8 +20,14 @@
 
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-KF=/usr/lib/qml/KeyFilters/systemUi.js
-APPLAUNCH=/usr/lib/qml/KeyFilters/appLaunch.js
+# The key filters moved between releases: webOS 9 keeps them under /usr/lib/qml,
+# webOS 4 under /usr/lib/qt5/qml. Both are checked so one script covers both.
+KFDIR=""
+for d in /usr/lib/qml/KeyFilters /usr/lib/qt5/qml/KeyFilters; do
+  [ -f "$d/systemUi.js" ] && { KFDIR="$d"; break; }
+done
+KF="$KFDIR/systemUi.js"
+APPLAUNCH="$KFDIR/appLaunch.js"
 DIR=/var/lib/tvweb/shortcut
 HERE=$(dirname "$0")                        # the helper ships beside this script
 BUTTONS_JS="$HERE/shortcut-buttons.js"
@@ -34,9 +40,14 @@ CHECK="$DIR/systemUi.check.js"
 BINDINGS="$DIR/bindings"
 DEFAULT_APP=com.tvweb.dashboard
 
-# Inserted above this line, which appears exactly once in the stock file and
-# sits inside the switch that handles system keys.
-ANCHOR='    case WebOS.Key_webOS_Recent:'
+# The cases go at the very top of the switch in handleSystemKeys, immediately
+# after the switch statement itself.
+#
+# Not above a particular stock case: on webOS 4 several of them are a
+# fall-through group - Qt.Key_Super_L and Qt.Key_Menu fall into
+# WebOS.Key_webOS_Recent - and slipping a case into the middle of one would
+# quietly capture the Home and Menu keys as well. The top of the switch belongs
+# to no group, and a case there ends in a return, so nothing falls into ours.
 MARKER='// tvweb-shortcut'
 
 json_err() { printf '{"ok":false,"error":"%s"}\n' "$1"; exit 0; }
@@ -44,10 +55,11 @@ json_err() { printf '{"ok":false,"error":"%s"}\n' "$1"; exit 0; }
 mounted() { grep -q "$MARKER" "$KF" 2>/dev/null; }
 
 supported() {
-  [ -f "$KF" ] && [ -f "$APPLAUNCH" ] && [ -f "$BUTTONS_JS" ] &&
+  [ -n "$KFDIR" ] && [ -f "$KF" ] && [ -f "$APPLAUNCH" ] && [ -f "$BUTTONS_JS" ] &&
     command -v node >/dev/null 2>&1 &&
     command -v luna-send >/dev/null 2>&1 &&
-    grep -q "^$ANCHOR$" "$KF" 2>/dev/null
+    grep -q 'function handleSystemKeys' "$KF" 2>/dev/null &&
+    grep -q 'switch (key)' "$KF" 2>/dev/null
 }
 
 # A pristine copy to patch from. Only ever taken from an unmounted $KF, so a
@@ -64,16 +76,26 @@ unmount_kf() {
   ! mounted
 }
 
-# "reason<TAB>KeyConstant" for every shortcut button this firmware knows, read
-# out of appLaunch.js itself rather than hardcoded, so it follows the TV.
+# "name<TAB>KeyConstant" for every shortcut button this firmware knows, read out
+# of appLaunch.js itself rather than hardcoded, so it follows the TV.
+#
+# The line naming the button differs by release - webOS 9 assigns it to
+# powerOnReason, webOS 4 straight to appId - and both are matched.
 key_table() {
   awk '
-    /case WebOS\.Key_webOS_[A-Za-z0-9_]+:/ {
+    # Only inside the function that resolves a shortcut key to its app. The
+    # file assigns appId in plenty of other handlers - settings, factory keys -
+    # and reading those would offer buttons that are not shortcut buttons.
+    /function (getPowerOnReason|handleCPHotkeys)/ { infn = 1; next }
+    infn && /^}/ { infn = 0 }
+    infn && /case WebOS\.Key_webOS_[A-Za-z0-9_]+:/ {
       k = $0; sub(/.*Key_webOS_/, "", k); sub(/:.*/, "", k); pending = k; next
     }
-    pending != "" && /powerOnReason = "/ {
-      r = $0; sub(/.*powerOnReason = "/, "", r); sub(/".*/, "", r)
-      print r "\t" pending; pending = ""
+    infn && pending != "" && /(powerOnReason|appId) = "/ {
+      r = $0; sub(/.*(powerOnReason|appId) = "/, "", r); sub(/".*/, "", r)
+      # A real button name is a bare word; an app id with dots is something else.
+      if (r != "" && r !~ /\./) { print r "\t" pending }
+      pending = ""
     }
   ' "$APPLAUNCH"
 }
@@ -95,12 +117,13 @@ buttons_json() {
     n=$((n + 1))
     sleep 1
   done
-  if [ -s "$DIR/map.json" ]; then
+  # A real answer is cached and reused; where the TV has no such table at all -
+  # webOS 4 returns "no matched result from DB" - the helper falls back to every
+  # button the firmware knows, which is the best list available there.
+  if [ -s "$DIR/map.json" ] && grep -q mapping_info "$DIR/map.json" 2>/dev/null; then
     cp -f "$DIR/map.json" "$DIR/map.good.json"
   elif [ -s "$DIR/map.good.json" ]; then
     cp -f "$DIR/map.good.json" "$DIR/map.json"
-  else
-    echo '[]'; return
   fi
   key_table > "$DIR/keys.tsv"
   node "$BUTTONS_JS" "$DIR/map.json" "$DIR/keys.tsv" 2>/dev/null || echo '[]'
@@ -139,24 +162,55 @@ build() {
 
   [ -s "$cases" ] || { mv -f "$WORK" "$STAGED"; return 0; }
 
-  awk -v anchor="$ANCHOR" -v casefile="$cases" '
-    $0 == anchor && !done {
+  awk -v casefile="$cases" '
+    /function handleSystemKeys/ { infn = 1 }
+    infn && !done && /switch \(key\)/ {
+      print                                   # the switch itself, then ours
       while ((getline line < casefile) > 0) print line
       close(casefile)
       done = 1
+      next
     }
     { print }
   ' "$WORK" > "$CHECK" || return 1
   rm -f "$WORK"
 
-  # Never mount something that would not parse: a broken key filter takes the
-  # compositor down with it.
-  node --check "$CHECK" 2>/dev/null || { rm -f "$CHECK"; return 1; }
+  syntax_ok "$CHECK" || { rm -f "$CHECK"; return 1; }
   grep -q "$MARKER" "$CHECK" || { rm -f "$CHECK"; return 1; }
   mv -f "$CHECK" "$STAGED"
 }
 
-reload() { systemctl restart --no-block surface-manager 2>/dev/null; }
+# Would this file parse? A key filter that does not takes the compositor down
+# with it, so nothing is ever mounted without passing here.
+#
+# webOS 4 ships node 0.12, which has no --check, so the fallback compiles the
+# source instead: building a Function from it raises on a syntax error and never
+# runs the body, which matters because the body expects QML globals.
+syntax_ok() {
+  node --check "$1" 2>/dev/null && return 0
+  node -e 'var fs=require("fs");try{new Function(fs.readFileSync(process.argv[1],"utf8"));}catch(e){process.exit(1);}' \
+       "$1" 2>/dev/null
+}
+
+# Reload the compositor so it reads the key handler again. webOS 9 is systemd,
+# webOS 4 is upstart; --no-block matters only on the former, where stopping it
+# otherwise waits on the whole cgroup.
+reload() {
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl restart --no-block surface-manager 2>/dev/null
+  else
+    initctl restart surface-manager >/dev/null 2>&1
+  fi
+  return 0
+}
+
+compositor_running() {
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl is-active --quiet surface-manager 2>/dev/null
+  else
+    initctl status surface-manager 2>/dev/null | grep -q 'start/running'
+  fi
+}
 
 # Unmount first so $KF is the stock file for both the copy and the rebuild, and
 # so the staged file being replaced is not the one currently mounted.
@@ -241,11 +295,7 @@ case "$1" in
     buttons_json > /dev/null      # refresh keys.tsv before the lookup
     # Racing the compositor on purpose: mounting before it starts saves a
     # restart, and losing the race only costs the restart we would have done.
-    if systemctl is-active --quiet surface-manager 2>/dev/null; then
-      apply
-    else
-      apply noreload
-    fi
+    if compositor_running; then apply; else apply noreload; fi
     ;;
 
   *)

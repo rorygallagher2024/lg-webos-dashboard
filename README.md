@@ -55,6 +55,15 @@ The dashboard runs standalone on the TV with zero external dependencies.
    remote is needed. Newer firmware shows a cut-down version of it until it is unlocked,
    which the dashboard can do as well.
 
+9. **[Choosing what the remote's shortcut buttons open](#remote-shortcut-buttons).** The
+   Netflix, Prime Video and Disney+ buttons — and whichever others the remote
+   has — can be pointed at any app on the TV, or given back. The choice survives
+   a restart.
+
+10. **[Reading all of it on the TV itself](#the-dashboard-on-the-tv).** An optional app on
+    the home screen puts the same readings and controls on the TV, driven by the
+    remote, for when there is no phone or laptop to hand.
+
 ---
 
 ## Screenshots
@@ -215,19 +224,23 @@ selected and says whether OK does anything to it.
 It is offered during installation rather than added by default; answering no
 changes nothing else, since the dashboard reaches any browser on the network
 regardless. To add it later, run `./deploy.sh <tv-ip>` again and say yes; to be
-rid of it, delete it from the TV's home screen as with any other app. webOS 9
-and later; elsewhere the step is skipped and everything else works as before.
+rid of it, delete it from the TV's home screen as with any other app. Where a
+TV will not take it, the step is skipped and everything else works as before.
 
 ### Remote shortcut buttons
 
 The **Remote** tab, `/?tab=remote`, and the same tab in the TV app. Points any
 of the remote's streaming buttons — Netflix, Prime Video, Disney+ and the rest —
-at any app on the TV. Only the buttons the remote actually has are offered, and
-any of them can be given back at any time.
+at any app on the TV, and gives any of them back again.
+
+Newer TVs report which buttons their remote has, so the list is exactly those.
+Older ones do not, and the list is then what the TV's software knows about,
+which can include a button the remote in the room does not have; assigning that
+one simply never fires.
 
 The choice is kept when the TV restarts. Changing one blanks the screen for a
 few seconds and closes whatever is open. If a button ever misbehaves, a reboot
-puts it back as it came. webOS 9 and later.
+puts it back as it came.
 
 ### Home Assistant bridge
 
