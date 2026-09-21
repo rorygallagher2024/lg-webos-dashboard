@@ -28,7 +28,6 @@ console.log('Running test-services.js ...');
     assert.strictEqual(hasTarget, true, 'service ' + item.id + ' must declare unit or upstart');
   }
 
-  assert.strictEqual('tvdataexchanger' in ids, true);
   assert.strictEqual('mycar' in ids, true);
   assert.strictEqual('camera' in ids, true);
   assert.strictEqual('rdxd' in ids, true);

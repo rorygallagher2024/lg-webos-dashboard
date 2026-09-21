@@ -6,14 +6,6 @@ var execFile = require('child_process').execFile;
 
 var CATALOG = [
   {
-    id: 'tvdataexchanger',
-    title: 'Hotel / USB Channel Cloning',
-    unit: 'tvdataexchanger.service',
-    upstart: null,
-    badge: '12s boot delay',
-    desc: 'Synchronously polls for hotel cloning files and channel databases at boot. Safe to disable on consumer TVs.'
-  },
-  {
     id: 'mycar',
     title: 'Car-to-Home Telematics',
     unit: 'com.webos.service.mycar.service',
@@ -201,14 +193,32 @@ function init(options) {
   }
 
   var disabled = readDisabledList();
+  if (disabled.indexOf('tvdataexchanger') !== -1) {
+    disabled = disabled.filter(function (id) { return id !== 'tvdataexchanger'; });
+    writeDisabledList(disabled);
+  }
+
   var systemctl = getSystemctl();
 
-  if (systemctl && disabled.length) {
+  if (systemctl) {
     try {
       if (!fs.existsSync(transientDir)) {
         fs.mkdirSync(transientDir, 493);
       }
       var reloaded = false;
+
+      // Unmask any deprecated units that should never be masked
+      var deprecatedUnits = ['tvdataexchanger.service'];
+      for (var d = 0; d < deprecatedUnits.length; d++) {
+        var depMask = path.join(transientDir, deprecatedUnits[d]);
+        if (fs.existsSync(depMask)) {
+          try {
+            fs.unlinkSync(depMask);
+            reloaded = true;
+          } catch (e) {}
+        }
+      }
+
       for (var i = 0; i < CATALOG.length; i++) {
         var item = CATALOG[i];
         if (item.unit && disabled.indexOf(item.id) !== -1) {
@@ -336,14 +346,9 @@ function toggleService(id, disabled, cb) {
         if (fs.existsSync(maskFile)) fs.unlinkSync(maskFile);
       } catch (e) {}
       execFile(systemctl, ['daemon-reload'], function () {
-        // Only start non-oneshot units; oneshot units like tvdataexchanger run on boot
-        if (catItem.id !== 'tvdataexchanger') {
-          execFile(systemctl, ['start', catItem.unit], function () {
-            cb({ ok: true, id: id, disabled: false, running: true });
-          });
-        } else {
-          cb({ ok: true, id: id, disabled: false, running: false });
-        }
+        execFile(systemctl, ['start', catItem.unit], function () {
+          cb({ ok: true, id: id, disabled: false, running: true });
+        });
       });
     }
   } else if (initctl && catItem.upstart) {
