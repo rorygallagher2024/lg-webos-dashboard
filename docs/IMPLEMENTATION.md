@@ -567,3 +567,23 @@ Home screen bloatware tile hiding allows built-in or preloaded system apps (whic
 - **Cold Boot (Full Reboot / Power Loss)**: On a true cold boot, webOS boots from an early checkpoint/snapshot (CRIU), displaying the Home screen (`com.webos.app.home`) before late userland root hooks run. The Home screen briefly shows the stock tiles for a few seconds until `devmode.service` invokes `/var/lib/webosbrew/startup.sh` &rarr; `run-parts /var/lib/webosbrew/init.d/50-tvweb`.
 - `50-tvweb` reapplies the bind-mounts from `/var/lib/tvweb/hidden_apps` in ~50ms and respawns SAM, at which point the Home screen drops the tiles from view. This brief appearance on cold boot is architectural to webOS's read-only root partition: root hooks run safely in user space without modifying rootfs systemd units.
 
+---
+
+## Background Services & Debloating Safety
+
+The debloating engine (`server/lib/services.js`) manages background system daemons using transient systemd unit masks (`/run/systemd/transient/<unit>`) and Upstart controls. Any background unit considered for inclusion in `CATALOG` must be verified against webOS boot-time dependency graphs and ActivityManager definitions.
+
+### Forbidden Service: `tvdataexchanger` (Hotel / USB Channel Cloning)
+
+`tvdataexchanger` (`tvdataexchanger.service`) must **never** be added to the debloat catalog or disabled on webOS.
+
+* **Symptom When Disabled**: The TV powers on, UI and audio function normally, but the display video plane remains completely black and muted (`sink: MAIN, muted: true, connected: false`) when launching media apps (YouTube, Netflix, HDMI).
+* **Root Cause**:
+  1. `/etc/palm/activities/com.webos.service.tvdataexchanger/activity-com.webos.service.tvdataexchanger.json` statically registers an activity with `"foreground": true` and `"continuous": true` that triggers on `luna://com.webos.service.tvpower/power/getPowerState` during `"Prepare Power On"` and `"Prepare Resume"`.
+  2. Because the activity is marked `foreground: true`, ActivityManager treats this as an essential foreground transition barrier.
+  3. When `tvdataexchanger.service` is masked by systemd, the Luna callback (`luna://com.webos.service.tvdataexchanger/startPowerOnDefault`) fails or hangs.
+  4. On webOS 24+ (e.g. LG G4), this failure stalls the power-on handoff to `com.webos.applicationManager`.
+  5. As a result, `videooutputd` never receives a matching `vssForegroundAppId` from `getForegroundApps`. In `videooutputd`, the `MAIN` sink starts muted at boot and only unmutes when the connecting app matches `vssForegroundAppId`. With the foreground state stalled at `unknown`, `videooutputd` holds `muted: true` indefinitely.
+* **Why Disabling Offers No Benefit**: On consumer/retail TVs where Hotel Mode is disabled (`enableHotelMode == 0`), `tvdataexchanger`'s power-on handlers (`CHotel::loadAvSettings()` and `CHotel::runAspectRatio()`) abort immediately. It does not touch AV settings or display configurations on consumer sets, uses negligible RAM (~1.8 MB), and consumes 0% CPU after boot.
+
+
