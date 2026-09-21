@@ -2515,7 +2515,7 @@ async function loadApps() {
     const d = await r.json();
     if (d && d.ok) {
       appsData = d;
-      renderApps();
+      renderAppsPanel();
     }
   } catch (e) {
     console.error('loadApps failed:', e);
@@ -2524,7 +2524,9 @@ async function loadApps() {
   }
 }
 
-function renderApps() {
+/* Not renderApps: that one draws the launcher grid in the control tab, and a
+   second declaration of the same name in this scope silently replaces it. */
+function renderAppsPanel() {
   if (!appsData) return;
   const d = appsData;
 
@@ -2682,7 +2684,7 @@ async function toggleService(serviceId, makeDisabled) {
       if (appsData && appsData.services) {
         const item = appsData.services.find(s => s.id === serviceId);
         if (item) item.disabled = makeDisabled;
-        renderApps();
+        renderAppsPanel();
       }
     } else {
       if (btn) {
@@ -2720,7 +2722,7 @@ async function confirmUninstall(appId, appTitle) {
       // Optimistically remove from local state immediately for responsive feedback
       if (appsData && appsData.installed) {
         appsData.installed = appsData.installed.filter(a => a.id !== appId);
-        renderApps();
+        renderAppsPanel();
       }
       await loadApps();
     } else {
@@ -2763,7 +2765,7 @@ async function toggleTileVisibility(appId, makeHidden) {
           }
         }
         appsData.hiddenCount = appsData.systemTiles.filter(t => t.hidden).length;
-        renderApps();
+        renderAppsPanel();
       }
       await loadApps();
     } else {
@@ -2797,16 +2799,16 @@ async function setTileHiding(enabled) {
     if (d && d.ok) {
       if (appsData) {
         appsData.tileHidingEnabled = enabled;
-        renderApps();
+        renderAppsPanel();
       }
       await loadApps();
     } else {
       alert('Could not update tile hiding: ' + ((d && d.error) || 'unknown error'));
-      renderApps();
+      renderAppsPanel();
     }
   } catch (e) {
     alert('Error updating tile hiding: ' + e.message);
-    renderApps();
+    renderAppsPanel();
   } finally {
     if (btnOff) btnOff.disabled = false;
     if (btnOn) btnOn.disabled = false;
