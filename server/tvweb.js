@@ -235,6 +235,7 @@ function num(v, dflt) {
   return isNaN(n) ? dflt : n;
 }
 var TOAST_SOURCE = 'com.webos.app.home';
+var BROWSER_APP = 'com.webos.app.browser';
 
 /*
 /*
@@ -534,6 +535,22 @@ function doControl(action, value, cb) {
       return luna('com.webos.applicationManager/launch', { id: appId }, function (r) {
         cb({ ok: !!(r && r.returnValue) });
       });
+
+    case 'launch_url':
+    case 'launchUrl':
+      /* The browser has no "open this" call of its own: the address rides in
+         as a launch parameter. Only http(s) is accepted - anything else, a
+         file: path or a javascript: line, would be handed to the browser as
+         written, and the dashboard is reachable by everyone on the network. */
+      var target = String(value || '').trim();
+      if (!/^https?:\/\/[^\s]+$/i.test(target)) {
+        return cb({ ok: false, error: 'url must start with http:// or https://' });
+      }
+      return luna('com.webos.applicationManager/launch',
+                  { id: BROWSER_APP, params: { target: target } },
+                  function (r) {
+                    cb({ ok: !!(r && r.returnValue), error: r && r.errorText });
+                  });
 
     case 'close_app':
     case 'closeApp':

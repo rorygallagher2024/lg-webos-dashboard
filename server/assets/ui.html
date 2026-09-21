@@ -885,6 +885,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </form>
     </div>
 
+    <div class="set"><div class="lbl">Open a web page</div>
+      <form class="toast-form" onsubmit="event.preventDefault();openUrl();">
+        <input type="text" id="url-input" placeholder="https://example.com" maxlength="2048" autocomplete="off" spellcheck="false">
+        <button type="submit" id="btn-url">Open</button>
+      </form>
+    </div>
+
     <div class="set"><div class="lbl">Power</div>
       <div class="btns">
         <button id="poff" onclick="pw('powerOff')">Power off</button>
@@ -2092,6 +2099,34 @@ async function sendToast() {
       btn.classList.add('on');
       setTimeout(() => {
         btn.textContent = 'Send';
+        btn.classList.remove('on');
+        btn.disabled = false;
+      }, 1400);
+    }
+  } catch (e) {
+    if (btn) btn.disabled = false;
+  }
+}
+async function openUrl() {
+  const inp = q('url-input');
+  let url = inp ? inp.value.trim() : '';
+  if (!url) return;
+  // "google.com" is what people type; the TV only takes a full address.
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = 'https://' + url;
+  const btn = q('btn-url');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await c('launch_url', url);
+    if (r && r.ok && inp) inp.value = '';
+    if (btn) {
+      // The browser takes a moment to come up, so say it went rather than
+      // leaving a button that looks like it did nothing.
+      if (r && r.ok) {
+        btn.textContent = 'Opened';
+        btn.classList.add('on');
+      }
+      setTimeout(() => {
+        btn.textContent = 'Open';
         btn.classList.remove('on');
         btn.disabled = false;
       }, 1400);

@@ -119,6 +119,7 @@ the things the remote does not do easily.
   has its own presets.
 * Screen blanking, sleep timer, standby LED, on-screen notifications, and power
   and restart (from here or from Home Assistant)
+* Opening a web page on the TV: type an address and the set's browser takes it
 
 ### Telemetry and diagnostics
 
