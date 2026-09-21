@@ -99,6 +99,7 @@ start_watch() {
 # heartbeat, or one still starting up, would otherwise be restarted forever.
 watch_loop() {
   last=$(date +%s)
+  stale=0
   while true; do
     sleep "$CHECK"
 
@@ -119,22 +120,40 @@ watch_loop() {
     last=$now
     if [ "$slept" -gt $(( CHECK * 3 )) ]; then
       echo "$(date): resumed after ${slept}s suspended - skipping one check" >> "$LOG"
+      stale=0
       continue
     fi
 
-    [ -f "$PIDFILE" ] || continue                     # stopped on purpose
+    [ -f "$PIDFILE" ] || { stale=0; continue; }       # stopped on purpose
     if ! kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
       echo "$(date): process gone - starting" >> "$RESTARTS"
       start_app
+      stale=0
       continue
     fi
     beat=$(cat "$BEAT" 2>/dev/null)
-    case "$beat" in ''|*[!0-9]*) continue ;; esac     # no usable heartbeat yet
+    case "$beat" in ''|*[!0-9]*) stale=0; continue ;; esac   # no usable heartbeat yet
     age=$(( $(date +%s) - beat ))
-    if [ "$age" -gt "$STALE" ]; then
-      echo "$(date): heartbeat ${age}s old - event loop wedged, restarting" >> "$RESTARTS"
-      stop_app; sleep 1; start_app
+    if [ "$age" -le "$STALE" ]; then
+      stale=0
+      continue
     fi
+    #
+    # One stale reading is not enough. Both halves of the resume check are wall
+    # clock - $slept from the stamp taken before the suspend, $age from a second
+    # read a moment later - and the clock steps when the set comes out of
+    # standby. A step landing between those two reads leaves $slept looking like
+    # a normal round while $age carries the whole suspension, which restarted a
+    # healthy server: "heartbeat 2509s old" at 14:41:07, then "resumed after
+    # 2529s suspended" from the next round, 33s later. Waiting for a second
+    # stale round lets that resume arrive and clear the count. A real wedge
+    # keeps the watchdog running, so it simply reports on the round after.
+    #
+    stale=$(( stale + 1 ))
+    [ "$stale" -lt 2 ] && continue
+    echo "$(date): heartbeat ${age}s old on two checks - event loop wedged, restarting" >> "$RESTARTS"
+    stop_app; sleep 1; start_app
+    stale=0
   done
 }
 
