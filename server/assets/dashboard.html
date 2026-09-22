@@ -834,7 +834,8 @@ function privacyRows(d) {
     r.push({ label: 'Consents switched on', value: on + ' of ' + all.length,
              cls: on === 0 ? 'on' : '',
              web: '/?tab=privacy',
-             hint: 'The agreements the TV records against this account. Each needs its own wording to mean anything, so they are read and changed in a browser rather than here. Scan to open the Privacy tab on a phone.' });
+             hint: 'The agreements the TV records against this account. Each needs its own wording to mean anything, so they are read and changed in a browser rather than here.',
+             scan: 'Scan to open the Privacy tab on a phone.' });
   }
 
   if (d.daemons && d.daemons.length) {
@@ -842,7 +843,8 @@ function privacyRows(d) {
     r.push({ label: 'LG data services running', value: run + ' of ' + d.daemons.length,
              cls: run === 0 ? 'on' : '',
              web: '/?tab=privacy',
-             hint: 'Background services that collect and send usage data. Scan to stop them from a phone.' });
+             hint: 'Background services that collect and send usage data. They are stopped from a browser rather than here.',
+             scan: 'Scan to stop them from a phone.' });
   }
   return r;
 }
@@ -1020,11 +1022,12 @@ function renderHint() {
   var r = rows[sel];
   if (!r || r.head) { el.className = ''; return; }
   document.getElementById('hintTitle').textContent = r.label;
-  document.getElementById('hintBody').textContent = r.hint || '';
+  // The scan prompt is added only when there is a code to scan.
+  document.getElementById('hintBody').textContent =
+    (r.hint || '') + (renderQr(r) && r.scan ? ' ' + r.scan : '');
   var act = document.getElementById('hintAct');
   act.textContent = r.act ? (r.press || 'Press OK to change') : 'View only';
   act.className = 'h-act' + (r.act ? '' : ' ro');
-  renderQr(r);
   el.className = 'on';
 }
 
@@ -1033,10 +1036,10 @@ function renderHint() {
    modules; an unreachable address or an over-long URL simply shows nothing. */
 function renderQr(r) {
   var box = document.getElementById('hintQr');
-  if (!r.web || !lanOrigin) { box.className = 'h-qr'; return; }
+  if (!r.web || !lanOrigin) { box.className = 'h-qr'; return false; }
   var url = lanOrigin + (r.web === true ? '/' : r.web);
   var m = qrMatrix(url);
-  if (!m) { box.className = 'h-qr'; return; }
+  if (!m) { box.className = 'h-qr'; return false; }
   var d = '';
   for (var y = 0; y < QR_SIZE; y++) {
     for (var x = 0; x < QR_SIZE; x++) {
@@ -1049,6 +1052,7 @@ function renderQr(r) {
                   (QR_SIZE + 4) + '" fill="#fff"/><path d="' + d + '" fill="#000"/>';
   document.getElementById('hintUrl').textContent = url.replace(/^https?:\/\//, '');
   box.className = 'h-qr on';
+  return true;
 }
 
 /* Headings are not landing places, so the selection skips over them and the

@@ -583,10 +583,20 @@ Nothing on the TV's read-only rootfs is ever modified.
 
 The dashboard binds to `0.0.0.0` with **no authentication by default**,
 allowing frictionless control from any phone or browser on your trusted local
-network. If you share your network or want to restrict access, configure
-`"token": "your-secret-token"` in `config.json`. **Never expose port 8080
-directly to the internet (do not port-forward).** If you only use Home
-Assistant, `"web": { "enabled": false }` removes the web endpoint entirely.
+network. **Never expose port 8080 directly to the internet (do not
+port-forward).** To narrow it, set one of these in `config.json` and restart
+the server:
+
+| Setting | Browser on the network | App on the TV | Home Assistant |
+| :--- | :--- | :--- | :--- |
+| `"token": "your-secret-token"` | with `?k=your-secret-token` | works | works |
+| `"host": "127.0.0.1"` | no — port 8080 is closed to the network | works | works |
+| `"web": { "enabled": false }` | no | does not work | works |
+
+`"host": "127.0.0.1"` is the one to use to keep the on-TV app while closing the
+port to everything else. The app runs on the same server, so switching the web
+server off entirely leaves its tile with nothing to open — remove it from the
+**Server** tab first; a first install with the web server off does not add it.
 
 The MQTT settings panel is part of that surface: on a default install, anyone
 who can reach the port can change the broker the TV publishes to, and so

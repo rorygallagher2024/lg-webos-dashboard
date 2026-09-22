@@ -13,15 +13,20 @@ it before exposing it more widely.
   TV off by anything that finds the port. Enable it deliberately.
 - **Turn the dashboard off if you do not use it.** `"web": { "enabled": false }`
   removes the HTTP endpoint altogether, which is stronger than gating it with a
-  token. An MQTT-only install has no reason to expose one.
+  token. An MQTT-only install has no reason to expose one. The on-TV app runs on
+  the same server, so it stops working too; a first install in this state does
+  not add it.
 - **The upgrade endpoint installs code.** `allowControl` gates it along with
   everything else, so on a default install anyone who can reach the port can
   move the TV to the current release. It is a fixed repository over verified
   TLS, so that is the whole of what they can do; `token` or
   `"allowControl": false` closes it.
 - **Never port-forward this.** It is designed for a trusted LAN.
-- Bind to `127.0.0.1` instead of `0.0.0.0` if you only want the TV itself to
-  reach it.
+- **Bind to `127.0.0.1` to keep the on-TV app but close the port.** With
+  `"host": "127.0.0.1"` nothing on the network can connect to port 8080, while
+  the on-TV app, which connects over the TV's own loopback, keeps working. The
+  app's QR codes are hidden in this mode, since they would point a phone at an
+  address the server no longer answers on.
 - No CORS headers are sent, so other websites cannot read your telemetry from
   your browser. Cross-origin `POST`s are refused, and `/api/control` requires
   `Content-Type: application/json`.

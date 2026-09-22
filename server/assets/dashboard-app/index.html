@@ -60,7 +60,8 @@ body{display:flex;display:-webkit-flex;align-items:center;-webkit-align-items:ce
     if (probeCount === 12 && statusEl) {
       statusEl.innerHTML = 'Waiting for background service to initialize<span class="dots"></span>';
     } else if (probeCount >= 80 && statusEl) {
-      statusEl.textContent = 'Service is taking longer than usual to start.';
+      // A server still starting and one switched off look the same from here.
+      statusEl.textContent = 'The dashboard is not answering. It may still be starting, or it may be switched off on this TV.';
       if (retryBtn) retryBtn.className = 'on';
     }
 

@@ -140,6 +140,14 @@ cd / && rm -rf "\$S"
 sleep 4
 "\$D/tvwebctl" status
 tail -6 "\$D/tvweb.log"
+# How this TV's own config exposes the dashboard, so the check at the end asks
+# for it only where it can answer. The TV keeps its own config.json, which is
+# the one that counts, not the copy on this computer.
+if tr -d ' \t\r\n' < "\$D/config.json" 2>/dev/null | grep -q '"web":{[^}]*"enabled":false'; then
+  echo "TVWEB_WEB_OFF"
+elif tr -d ' \t\r\n' < "\$D/config.json" 2>/dev/null | grep -qE '"host":"(127\.[0-9.]*|localhost|::1)"'; then
+  echo "TVWEB_WEB_LOCAL"
+fi
 # Added on a first install, left alone on an update, so removing it from the
 # Server tab sticks. Never fails the install: the dashboard is served to
 # browsers whether or not the TV has a tile for it.
@@ -252,11 +260,14 @@ EOF
 fi
 
 echo
-# With the dashboard switched off there is nothing to ask, so skip the check
-# rather than report a false failure.
-if [ -f "$DIR/config.json" ] &&
-   tr -d ' \t\r\n' < "$DIR/config.json" | grep -q '"web":{[^}]*"enabled":false'; then
-  echo "installed; the dashboard is switched off in config.json, so there is nothing to open."
+# Where the TV will not answer on the network by design, skip the check rather
+# than report a false failure.
+if grep -q '^TVWEB_WEB_OFF' "$WORK/out"; then
+  echo "installed; the dashboard is switched off in the TV's config.json, so there is nothing to open."
+  exit 0
+fi
+if grep -q '^TVWEB_WEB_LOCAL' "$WORK/out"; then
+  echo "installed; the dashboard answers only on the TV itself (\"host\" is loopback in its config.json)."
   exit 0
 fi
 

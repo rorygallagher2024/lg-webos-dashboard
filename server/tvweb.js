@@ -874,6 +874,9 @@ function assetPath(rel) {
  * code of "localhost" would be useless to the person holding the phone.
  */
 function lanOrigin() {
+  // Bound to loopback, the server answers nothing on the network, so any LAN
+  // address handed to a phone would be a dead link.
+  if (/^(127\.|::1$|localhost$)/.test(String(CONFIG.host))) return null;
   var ifaces = {};
   try { ifaces = os.networkInterfaces() || {}; } catch (e) { return null; }
   var best = null;

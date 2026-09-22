@@ -55,6 +55,14 @@ if [ "$ACTION" = remove ]; then
   exit 0
 fi
 
+# The app is a window onto the server's own dashboard, so with the dashboard
+# switched off it would open to a blank page. Leave it off the home screen.
+CONF=/var/lib/tvweb/config.json
+if [ -f "$CONF" ] && tr -d ' \t\r\n' < "$CONF" | grep -q '"web":{[^}]*"enabled":false'; then
+  echo "dashboard app not added: the dashboard is switched off in config.json"
+  exit 0
+fi
+
 [ -f "$SRC/appinfo.json" ] || { echo "dashboard app files not found in $SRC"; exit 0; }
 command -v luna-send >/dev/null 2>&1 || { echo "no luna-send; skipping the home-screen app"; exit 0; }
 
