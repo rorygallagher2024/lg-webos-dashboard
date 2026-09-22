@@ -1564,8 +1564,9 @@ if (CLI_MODE) {
                 '  auth=' + (CONFIG.token ? 'token' : 'none'));
     oled.detectOled(function () {});   // resolve and log panel type up front
     telemetry.detectLogoLight(function () {});
-    // The app on the home screen is a copy made when it was added; bring it up
-    // to date with this release. A removed app is left removed.
+    // The home-screen app packages its own loading screen, name and icons at
+    // install - the dashboard itself is served fresh - so bring those up to date
+    // with this release. A removed app is left removed.
     tvApp('refresh', function (r) {
       if (r && r.refreshed && r.ok) console.log('tv app: refreshed to this release');
     });
