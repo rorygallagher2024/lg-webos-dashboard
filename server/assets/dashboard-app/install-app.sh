@@ -55,6 +55,23 @@ if [ "$ACTION" = remove ]; then
   exit 0
 fi
 
+# An installed app is a copy packaged when it was added, so later changes to its
+# files never reach the home screen by themselves. Reinstall it in place when
+# they differ. Only an app that is installed is touched, so a removed one stays
+# removed.
+if [ "$ACTION" = refresh ]; then
+  installed || { echo '{"ok":true,"installed":false,"refreshed":false}'; exit 0; }
+  stale=""
+  for f in appinfo.json index.html assets/icon80.png assets/icon130.png; do
+    [ -f "$SRC/$f" ] || continue
+    if [ "$(md5sum < "$SRC/$f")" != "$(md5sum < "$APPDIR/$f" 2>/dev/null)" ]; then
+      stale=1; break
+    fi
+  done
+  [ -n "$stale" ] || { echo '{"ok":true,"installed":true,"refreshed":false}'; exit 0; }
+  ACTION=install
+fi
+
 # The app is a window onto the server's own dashboard, so with the dashboard
 # switched off it would open to a blank page. Leave it off the home screen.
 CONF=/var/lib/tvweb/config.json
