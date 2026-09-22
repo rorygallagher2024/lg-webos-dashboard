@@ -16,21 +16,22 @@
 @font-face{font-family:'Manrope';src:url('/assets/fonts/Manrope-SemiBold.ttf') format('truetype');font-weight:600;font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:#000;overflow:hidden}
-body{font-family:'Manrope',sans-serif;color:#fff;
+/* ---- Default Typography: webOS Native (LG Display / Museo Sans) ---- */
+body{font-family:'Museo Sans','MuseoSans','LG Smart UI','Manrope',sans-serif;color:#fff;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;
   /* the remote drives it; there is no pointer */ cursor:none}
 
 #stage{height:100vh;display:flex;flex-direction:column;padding:5vh 0 5vh 8vw}
 
-#clock{font-family:'Outfit';font-weight:300;font-size:4.4vh;letter-spacing:.01em;
+#clock{font-family:'LG Display','Outfit',sans-serif;font-weight:400;font-size:4.4vh;letter-spacing:.01em;
   line-height:1;opacity:.65;flex:0 0 auto;margin-bottom:3.4vh}
 
 #tabs{display:flex;display:-webkit-flex;align-items:baseline;-webkit-align-items:baseline;flex:0 0 auto;margin-bottom:4.4vh;white-space:nowrap}
-.tab{display:inline-block;font-family:'Outfit';font-weight:300;font-size:4.2vh;line-height:1;letter-spacing:.01em;
+.tab{display:inline-block;font-family:'LG Display','Outfit',sans-serif;font-weight:400;font-size:4.2vh;line-height:1;letter-spacing:.01em;
   color:rgba(255,255,255,.50);transition:color .22s ease;white-space:nowrap;
   flex:0 0 auto;-webkit-flex:0 0 auto;padding-right:2.8vw;cursor:pointer}
 .tab:last-child{padding-right:0}
-.tab.on{color:#fff;font-weight:400}
+.tab.on{color:#fff;font-weight:700}
 
 /* Two columns: the rows on the left, an explainer for whichever row is selected
    on the right. A row's label and value never needed the full width, and the
@@ -42,13 +43,13 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 #hint{flex:0 0 31%;margin-left:2.6vw;align-self:center;border-left:1px solid rgba(255,255,255,.14);
   padding-left:2.4vw;opacity:0;transition:opacity .22s ease}
 #hint.on{opacity:1}
-.h-title{font-family:'Outfit';font-weight:300;font-size:3.4vh;line-height:1.15;
+.h-title{font-family:'LG Display','Outfit',sans-serif;font-weight:400;font-size:3.4vh;line-height:1.15;
   letter-spacing:.005em;margin-bottom:1.6vh}
-.h-body{font-family:'Manrope';font-weight:400;font-size:2.1vh;line-height:1.65;
+.h-body{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:400;font-size:2.1vh;line-height:1.65;
   color:rgba(255,255,255,.68)}
 /* What OK does here, or that it does nothing. Green only when there is
    something to press, so the colour itself carries the distinction. */
-.h-act{font-family:'Manrope';font-weight:600;font-size:1.7vh;letter-spacing:.14em;
+.h-act{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:700;font-size:1.7vh;letter-spacing:.14em;
   text-transform:uppercase;margin-top:2.4vh;color:#1ec15f}
 .h-act.ro{color:rgba(255,255,255,.50)}
 
@@ -59,7 +60,7 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 .h-qr{margin-top:2.4vh;display:none}
 .h-qr.on{display:block}
 .h-qr svg{width:15vh;height:15vh;display:block;background:#fff;padding:1vh;border-radius:.6vh}
-.h-url{font-family:'Manrope';font-weight:400;font-size:1.6vh;letter-spacing:.01em;
+.h-url{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:400;font-size:1.6vh;letter-spacing:.01em;
   color:rgba(255,255,255,.55);margin-top:1.2vh;word-break:break-all}
 
 /* A row is a label and its value. Only the selected one is full white and
@@ -72,10 +73,10 @@ body{font-family:'Manrope',sans-serif;color:#fff;
   transform-origin:left center}
 .row:not(.head){cursor:pointer}
 .row.sel{opacity:1;transform:scale(1.03)}
-.lbl{font-family:'Manrope';font-weight:400;font-size:3.1vh;letter-spacing:.01em}
-.val{font-family:'Outfit';font-weight:300;font-size:3.1vh;color:rgba(255,255,255,.75);
+.lbl{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:500;font-size:3.1vh;letter-spacing:.01em}
+.val{font-family:'LG Display','Outfit',sans-serif;font-weight:400;font-size:3.1vh;color:rgba(255,255,255,.75);
   text-align:right;white-space:nowrap;padding-left:2vw}
-.row.sel .val{font-weight:400;color:rgba(255,255,255,.90)}
+.row.sel .val{font-weight:700;color:rgba(255,255,255,.90)}
 .val.on{color:#1ec15f}
 .val.off{color:rgba(255,255,255,.45)}
 .val.bad{color:#e65050}
@@ -96,19 +97,19 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 
 /* A heading inside the list - groups rows without being selectable itself. */
 .row.head{height:5.4vh;opacity:1;transform:none}
-.row.head .lbl{font-family:'Manrope';font-weight:600;font-size:1.5vh;letter-spacing:.24em;
+.row.head .lbl{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:700;font-size:1.5vh;letter-spacing:.24em;
   text-transform:uppercase;color:rgba(255,255,255,.55)}
 .row.head .lbl::before{display:none}
 
 #msg{position:absolute;top:50%;left:0;transform:translateY(-50%);
-  font-family:'Outfit';font-weight:300;font-size:4vh;color:rgba(255,255,255,.8)}
-#msg .msg-detail{font-family:'Manrope';font-weight:400;font-size:2vh;line-height:1.8;
+  font-family:'LG Display','Outfit',sans-serif;font-weight:400;font-size:4vh;color:rgba(255,255,255,.8)}
+#msg .msg-detail{font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:400;font-size:2vh;line-height:1.8;
   color:rgba(255,255,255,.6);margin-top:2.2vh}
 #msg .msg-url{color:rgba(255,255,255,.75)}
 
 /* In the lane the rows leave clear on the right, so neither the labels nor the
    values ever run underneath one. */
-.more{position:absolute;right:0;font-family:'Manrope';font-size:2.4vh;
+.more{position:absolute;right:0;font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-size:2.4vh;
   color:rgba(255,255,255,.50);opacity:0;transition:opacity .2s;pointer-events:none}
 .more.on{opacity:1}
 #moreUp{top:0}
@@ -116,15 +117,33 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 
 /* Shown briefly after an action so a press that changes something off-screen
    (opening the service menu, scheduling a refresher) still acknowledges. */
-#flash{position:absolute;right:8vw;bottom:5vh;font-family:'Manrope';font-weight:400;
+#flash{position:absolute;right:8vw;bottom:5vh;font-family:'Museo Sans','MuseoSans','Manrope',sans-serif;font-weight:400;
   font-size:2.2vh;color:rgba(255,255,255,.85);opacity:0;transition:opacity .3s}
 #flash.on{opacity:1}
+
+/* ---- Manrope Typography (With Heavier Font Weights) ---- */
+body.font-manrope{font-family:'Manrope',sans-serif}
+body.font-manrope #clock{font-family:'Outfit',sans-serif;font-weight:400}
+body.font-manrope .tab{font-family:'Outfit',sans-serif;font-weight:400}
+body.font-manrope .tab.on{font-weight:600}
+body.font-manrope .h-title{font-family:'Outfit',sans-serif;font-weight:400}
+body.font-manrope .h-body{font-family:'Manrope',sans-serif;font-weight:400}
+body.font-manrope .h-act{font-family:'Manrope',sans-serif;font-weight:600}
+body.font-manrope .h-url{font-family:'Manrope',sans-serif;font-weight:400}
+body.font-manrope .lbl{font-family:'Manrope',sans-serif;font-weight:500}
+body.font-manrope .val{font-family:'Outfit',sans-serif;font-weight:400}
+body.font-manrope .row.sel .val{font-weight:600}
+body.font-manrope .row.head .lbl{font-family:'Manrope',sans-serif;font-weight:600}
+body.font-manrope #msg{font-family:'Outfit',sans-serif;font-weight:400}
+body.font-manrope #msg .msg-detail{font-family:'Manrope',sans-serif;font-weight:400}
+body.font-manrope .more{font-family:'Manrope',sans-serif}
+body.font-manrope #flash{font-family:'Manrope',sans-serif;font-weight:400}
 
 /* ---- light theme ---- */
 body.light, html.light{background:#f5f5f5;color:#111}
 body.light #clock{color:#000;opacity:.7}
 body.light .tab{color:rgba(0,0,0,.52)}
-body.light .tab.on{color:#000;font-weight:500}
+body.light .tab.on{color:#000;font-weight:700}
 body.light #hint{border-left-color:rgba(0,0,0,.15)}
 body.light .h-title{color:#000}
 body.light .h-body{color:rgba(0,0,0,.78)}
@@ -134,15 +153,19 @@ body.light .h-qr svg{border:1px solid rgba(0,0,0,.15)}
 body.light .h-url{color:rgba(0,0,0,.65)}
 body.light .row{opacity:.62}
 body.light .row.sel{opacity:1}
-body.light .row.sel .lbl{color:#000;font-weight:600}
+body.light .row.sel .lbl{color:#000;font-weight:700}
 body.light .val{color:rgba(0,0,0,.70)}
-body.light .row.sel .val{color:rgba(0,0,0,.92)}
+body.light .row.sel .val{color:rgba(0,0,0,.92);font-weight:700}
 body.light .val.on{color:#15803d}
 body.light .val.off{color:rgba(0,0,0,.48)}
 body.light .val.bad{color:#dc2626}
 body.light .val.warn{color:#b45309}
 body.light .val.act{color:rgba(0,0,0,.52)}
 body.light .row.sel .val.act{color:#15803d}
+
+body.light.font-manrope .tab.on{font-weight:600}
+body.light.font-manrope .row.sel .lbl{font-weight:600}
+body.light.font-manrope .row.sel .val{font-weight:600}
 body.light .row.sel .val.bad{color:#dc2626}
 body.light .row.sel .val.warn{color:#b45309}
 body.light .row.doable .lbl::before{background:rgba(0,0,0,.38)}
@@ -487,21 +510,36 @@ fetch('/api/caps', { cache: 'no-store' })
   .catch(function () {});
 var data = {}, rows = [], timer = null, flashTimer = null;
 var currentTheme = 'dark';
+var currentFont = 'lg';
 try {
   var urlTheme = (location.search.match(/[?&]theme=([^&]+)/) || [])[1];
   currentTheme = urlTheme || localStorage.getItem('theme') || 'dark';
 } catch (e) { currentTheme = 'dark'; }
+try {
+  var urlFont = (location.search.match(/[?&]font=([^&]+)/) || [])[1];
+  currentFont = urlFont || localStorage.getItem('font') || 'lg';
+} catch (e) { currentFont = 'lg'; }
+
+function updateClassNames() {
+  var cls = [];
+  if (currentTheme === 'light') cls.push('light');
+  if (currentFont === 'manrope') cls.push('font-manrope');
+  var s = cls.join(' ');
+  if (document.documentElement) document.documentElement.className = s;
+  if (document.body) document.body.className = s;
+}
 
 function applyTheme(t) {
   currentTheme = t === 'light' ? 'light' : 'dark';
-  if (document.documentElement) {
-    document.documentElement.className = currentTheme === 'light' ? 'light' : '';
-  }
-  if (document.body) {
-    document.body.className = currentTheme === 'light' ? 'light' : '';
-  }
+  updateClassNames();
+}
+
+function applyFont(f) {
+  currentFont = f === 'manrope' ? 'manrope' : 'lg';
+  updateClassNames();
 }
 applyTheme(currentTheme);
+applyFont(currentFont);
 
 function T() { return TABS[tab]; }
 
@@ -620,6 +658,14 @@ function sysRows(d) {
     act: 'toggleTheme',
     press: 'Press OK to switch to ' + (currentTheme === 'light' ? 'Dark' : 'Light') + ' theme',
     hint: 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.'
+  });
+  r.push({
+    label: 'Typography',
+    value: currentFont === 'manrope' ? 'Manrope' : 'LG Display',
+    cls: 'act',
+    act: 'toggleFont',
+    press: 'Press OK to switch to ' + (currentFont === 'manrope' ? 'LG Display' : 'Manrope'),
+    hint: 'Switches typography between webOS system font (LG Display / Museo Sans) and bundled sans-serif (Manrope / Outfit).'
   });
   return r;
 }
@@ -1337,6 +1383,16 @@ function activate() {
       applyTheme(nextTheme);
       try { localStorage.setItem('theme', nextTheme); } catch (e) {}
       flash('Theme: ' + (nextTheme === 'light' ? 'Light' : 'Dark'));
+      if (T().key === 'system') {
+        rows = sysRows(data.system || {});
+        render();
+      }
+      return;
+    case 'toggleFont':
+      var nextFont = currentFont === 'manrope' ? 'lg' : 'manrope';
+      applyFont(nextFont);
+      try { localStorage.setItem('font', nextFont); } catch (e) {}
+      flash('Typography: ' + (nextFont === 'manrope' ? 'Manrope' : 'LG Display'));
       if (T().key === 'system') {
         rows = sysRows(data.system || {});
         render();
