@@ -52,6 +52,42 @@ var keyBackVal = null;
 var mapPowerStateFn = null;
 var isScreenSaverFn = null;
 
+function clearStagedScreensaver() {
+  try {
+    var marker = path.join(SCREENSAVER_DIR, SCREENSAVER_MARKER);
+    if (fs.existsSync(marker)) fs.unlinkSync(marker);
+  } catch (e) {}
+  try {
+    var levelMarker = path.join(SCREENSAVER_DIR, SCREENSAVER_LEVEL_MARKER);
+    if (fs.existsSync(levelMarker)) fs.unlinkSync(levelMarker);
+  } catch (e) {}
+  try {
+    var appinfo = path.join(SCREENSAVER_DIR, 'appinfo.json');
+    if (fs.existsSync(appinfo)) fs.unlinkSync(appinfo);
+  } catch (e) {}
+  try {
+    var qmlDir = path.join(SCREENSAVER_DIR, 'qml');
+    if (fs.existsSync(qmlDir)) {
+      var files = fs.readdirSync(qmlDir);
+      for (var i = 0; i < files.length; i++) {
+        try { fs.unlinkSync(path.join(qmlDir, files[i])); } catch (e) {}
+      }
+      try { fs.rmdirSync(qmlDir); } catch (e) {}
+    }
+  } catch (e) {}
+}
+
+function unmountScreensaver(cb) {
+  execFile('/bin/umount', [SCREENSAVER_APP_DIR], { timeout: 4000 }, function (err) {
+    if (err) {
+      return execFile('/bin/umount', ['-l', SCREENSAVER_APP_DIR], { timeout: 4000 }, function () {
+        cb();
+      });
+    }
+    cb();
+  });
+}
+
 function init(opts) {
   opts = opts || {};
   lunaFn = opts.luna;
@@ -61,6 +97,13 @@ function init(opts) {
   keyBackVal = opts.KEY_BACK;
   mapPowerStateFn = opts.mapPowerState;
   isScreenSaverFn = opts.isScreenSaver;
+
+  // Auto-heal: If the screensaver is currently stock (no active bind-mount on SCREENSAVER_APP_DIR),
+  // but an orphaned marker remains in SCREENSAVER_DIR, remove it so the boot hook does not
+  // re-mount a stale screensaver on the next cold reboot.
+  if (screensaverMode() === 'stock') {
+    clearStagedScreensaver();
+  }
 }
 
 function mkdirp(dir) {
@@ -177,8 +220,9 @@ function setScreensaver(mode, level, cb) {
   if (!SCREENSAVERS[mode]) return cb({ ok: false, error: 'unknown screen saver: ' + mode });
   level = (level === 'bright') ? 'bright' : 'dim';
 
-  execFile('/bin/umount', [SCREENSAVER_APP_DIR], { timeout: 4000 }, function () {
+  unmountScreensaver(function () {
     if (mode === 'stock') {
+      clearStagedScreensaver();
       return settleScreensaverApp(function () {
         cb({ ok: screensaverMode() === 'stock', current: screensaverMode(), level: screensaverLevel() });
       });
@@ -286,6 +330,8 @@ module.exports = {
   SCREENSAVER_DIR: SCREENSAVER_DIR,
   SCREENSAVERS: SCREENSAVERS,
   init: init,
+  clearStagedScreensaver: clearStagedScreensaver,
+  unmountScreensaver: unmountScreensaver,
   screensaverLevel: screensaverLevel,
   screensaverMode: screensaverMode,
   screensaverList: screensaverList,

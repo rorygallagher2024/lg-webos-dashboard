@@ -3,6 +3,7 @@
  */
 
 var assert = require('assert');
+var fs = require('fs');
 var path = require('path');
 var mockEnv = require('./mocks/mock-env');
 
@@ -165,6 +166,39 @@ console.log('Running test-screensavers.js ...');
     assert.strictEqual(result.ok, false);
     assert.ok(result.error.indexOf('luna') !== -1 || result.error.indexOf('not available') !== -1);
     console.log('  ✓ trigger returns error when luna bus is unavailable');
+
+    // 9. clearStagedScreensaver cleans up staged files and markers in SCREENSAVER_DIR
+    (function testClearStagedScreensaver() {
+      var stagedMarker = path.join(screensavers.SCREENSAVER_DIR, '.tvweb-screensaver');
+      var stagedLevel = path.join(screensavers.SCREENSAVER_DIR, '.tvweb-brightness');
+      var stagedAppinfo = path.join(screensavers.SCREENSAVER_DIR, 'appinfo.json');
+
+      env.files[stagedMarker] = 'clock';
+      env.files[stagedLevel] = 'bright';
+      env.files[stagedAppinfo] = '{"type":"qml"}';
+
+      assert.strictEqual(fs.existsSync(stagedMarker), true);
+      screensavers.clearStagedScreensaver();
+      assert.strictEqual(fs.existsSync(stagedMarker), false);
+      assert.strictEqual(fs.existsSync(stagedLevel), false);
+      assert.strictEqual(fs.existsSync(stagedAppinfo), false);
+      console.log('  ✓ clearStagedScreensaver cleans up all staged markers and files');
+    })();
+
+    // 10. init auto-heals orphaned staged markers when mode is stock
+    (function testInitAutoHealsOrphanedMarker() {
+      env.files[path.join(SCREENSAVER_APP_DIR, '.tvweb-screensaver')] = null;
+      assert.strictEqual(screensavers.screensaverMode(), 'stock');
+
+      var stagedMarker = path.join(screensavers.SCREENSAVER_DIR, '.tvweb-screensaver');
+      env.files[stagedMarker] = 'clock';
+      assert.strictEqual(fs.existsSync(stagedMarker), true);
+
+      screensavers.init();
+      assert.strictEqual(fs.existsSync(stagedMarker), false);
+      console.log('  ✓ init auto-heals orphaned staged markers when mode is stock');
+    })();
+
     console.log('ALL test-screensavers.js assertions passed!\n');
     env.restore();
   });

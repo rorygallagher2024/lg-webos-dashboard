@@ -586,4 +586,14 @@ The debloating engine (`server/lib/services.js`) manages background system daemo
   5. As a result, `videooutputd` never receives a matching `vssForegroundAppId` from `getForegroundApps`. In `videooutputd`, the `MAIN` sink starts muted at boot and only unmutes when the connecting app matches `vssForegroundAppId`. With the foreground state stalled at `unknown`, `videooutputd` holds `muted: true` indefinitely.
 * **Why Disabling Offers No Benefit**: On consumer/retail TVs where Hotel Mode is disabled (`enableHotelMode == 0`), `tvdataexchanger`'s power-on handlers (`CHotel::loadAvSettings()` and `CHotel::runAspectRatio()`) abort immediately. It does not touch AV settings or display configurations on consumer sets, uses negligible RAM (~1.8 MB), and consumes 0% CPU after boot.
 
+---
+
+## Screensaver Staging & Boot Persistence
+
+Custom QML screensavers are staged in `/var/lib/tvweb/screensaver` and bind-mounted over `/usr/palm/applications/com.webos.app.screensaver`.
+
+* **Cold Boot vs Quick Start+**: On Quick Start+ suspend-to-RAM, active bind-mounts persist in memory. On a cold boot (such as after the 4-hour OLED Pixel Cleaning cycle or extended standby on webOS 24/25), `/var/lib/webosbrew/init.d/50-tvweb` re-applies the bind-mount if `/var/lib/tvweb/screensaver/.tvweb-screensaver` is present.
+* **Reverting to Stock**: When the user selects "LG default" (`stock`), `screensavers.setScreensaver('stock')` unmounts the live overlay and deletes `.tvweb-screensaver` along with all staged files. Without this cleanup, the boot hook would see the stale marker file on cold boot and re-mount the previously staged screensaver. `screensavers.init()` also auto-heals any orphaned marker files if the live screensaver is currently stock.
+
+
 
