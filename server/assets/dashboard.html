@@ -1447,6 +1447,21 @@ function activate() {
 
 // ---- keys ----
 
+/*
+ * The app declares disableBackHistoryAPI, so Back is delivered to this page
+ * rather than handled by the system, and ignoring it left Back doing nothing.
+ * There is no screen to step back to, so it leaves the app as Back does
+ * everywhere else on the TV. platformBack is webOS's own Back; window.close
+ * covers the page being opened somewhere other than the app.
+ */
+function leaveApp() {
+  if (window.PalmSystem && typeof window.PalmSystem.platformBack === 'function') {
+    window.PalmSystem.platformBack();
+  } else {
+    window.close();
+  }
+}
+
 document.addEventListener('keydown', function (e) {
   var k = e.key, c = e.keyCode;
 
@@ -1455,7 +1470,7 @@ document.addEventListener('keydown', function (e) {
   else if (c === 38 || k === 'ArrowUp')    { move(-1);      e.preventDefault(); }
   else if (c === 40 || k === 'ArrowDown')  { move(1);       e.preventDefault(); }
   else if (c === 13 || k === 'Enter')      { activate();    e.preventDefault(); }
-  // Back (461 on webOS) is left to the system, which closes the app.
+  else if (c === 461 || k === 'GoBack' || k === 'BrowserBack') { leaveApp(); e.preventDefault(); }
 });
 window.addEventListener('resize', function () { if (rows.length) position(); });
 
