@@ -17,6 +17,7 @@ var net = require('net');
 var tls = require('tls');
 var child_process = require('child_process');
 var os = require('os');
+var crypto = require('crypto');
 var path = require('path');
 var execFile = child_process.execFile;
 var zlib = require('zlib');
@@ -876,7 +877,18 @@ function assetPath(rel) {
 function lanOrigin() {
   // Bound to loopback, the server answers nothing on the network, so any LAN
   // address handed to a phone would be a dead link.
-  if (/^(127\.|::1$|localhost$)/.test(String(CONFIG.host))) return null;
+  if (!networkOpen()) return null;
+  var ip = lanAddress();
+  return ip ? 'http://' + ip + ':' + CONFIG.port : null;
+}
+
+// Whether the dashboard answers on the network, or only on the TV itself.
+function networkOpen() {
+  return !/^(127\.|::1$|localhost$)/.test(String(CONFIG.host));
+}
+
+// The TV's own address on the home network, whatever the server is bound to.
+function lanAddress() {
   var ifaces = {};
   try { ifaces = os.networkInterfaces() || {}; } catch (e) { return null; }
   var best = null;
@@ -892,8 +904,141 @@ function lanOrigin() {
       if (!best || /^eth/.test(name)) best = a.address;
     }
   }
-  if (!best) return null;
-  return 'http://' + best + ':' + CONFIG.port;
+  return best;
+}
+
+// ---------------------------------------------------------------- first-run setup
+/*
+ * Setup screens on the TV: opening the dashboard to the network and connecting
+ * Home Assistant. An installer that leaves SETUP_PENDING shows them at first
+ * launch; the Settings tab offers the same afterwards. Everything here is reachable only from the TV (fromTV), and
+ * through its own endpoint rather than the control actions, which MQTT and the
+ * network can reach: whoever holds the remote is the owner, a phone on the
+ * network is not.
+ */
+var SETUP_PENDING = '/var/lib/tvweb/.setup-pending';
+
+function setupPending() {
+  try { return fs.existsSync(SETUP_PENDING); } catch (e) { return false; }
+}
+
+/*
+ * host is file-only everywhere else so a page cannot widen its own exposure.
+ * This is the one writer, and only the TV can reach it.
+ */
+function setNetworkAccess(open, cb) {
+  var file = readConfigFile();
+  file.host = open ? '0.0.0.0' : '127.0.0.1';
+  try {
+    var tmp = CONFIG_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(file, null, 2), 'utf8');
+    fs.chmodSync(tmp, parseInt('600', 8));
+    fs.renameSync(tmp, CONFIG_FILE);
+  } catch (err) { return cb(err); }
+  cb(null);
+}
+
+/*
+ * Home Assistant is set up on a phone, not typed with a remote. With the
+ * dashboard closed the phone cannot reach it, so a second, short-lived
+ * listener opens beside it serving only that one form, behind a one-time code
+ * carried in the QR code. It closes when the form is sent, after ten minutes,
+ * or when the TV leaves the screen - whichever is first.
+ */
+var HANDOFF = { server: null, code: null, timer: null };
+var HANDOFF_MS = 10 * 60 * 1000;
+
+function handoffPort() { return CONFIG.port + 1; }
+
+function stopHandoff() {
+  if (HANDOFF.timer) clearTimeout(HANDOFF.timer);
+  if (HANDOFF.server) { try { HANDOFF.server.close(); } catch (e) {} }
+  HANDOFF.server = HANDOFF.code = HANDOFF.timer = null;
+}
+
+function handoffUrl() {
+  var ip = lanAddress();
+  return ip && HANDOFF.code ? 'http://' + ip + ':' + handoffPort() + '/?c=' + HANDOFF.code : null;
+}
+
+function startHandoff(cb) {
+  if (HANDOFF.server) return cb(null, handoffUrl());
+  if (!lanAddress()) return cb(new Error('this TV has no network address'));
+  var code = crypto.randomBytes(8).toString('hex');
+  var srv = http.createServer(function (req, res) {
+    var u = url.parse(req.url, true);
+    if (!HANDOFF.code || u.query.c !== HANDOFF.code) {
+      return send(res, 403, 'This link has expired. Start again on the TV.', 'text/plain; charset=utf-8');
+    }
+    if (u.pathname === '/' && req.method === 'GET') {
+      var page = assetPath('setup-phone.html');
+      if (!page) return send(res, 404, 'setup page missing', 'text/plain');
+      return fs.readFile(page, function (err, buf) {
+        if (err) return send(res, 500, 'could not read the setup page', 'text/plain');
+        send(res, 200, buf, 'text/html; charset=utf-8');
+      });
+    }
+    if (u.pathname === '/mqtt' && req.method === 'POST') {
+      if (String(req.headers['content-type'] || '').indexOf('application/json') !== 0) {
+        return send(res, 415, JSON.stringify({ ok: false, error: 'Content-Type must be application/json' }));
+      }
+      var body = '';
+      req.on('data', function (d) { body += d; if (body.length > 4096) req.destroy(); });
+      req.on('end', function () {
+        var p = null;
+        try { p = JSON.parse(body); } catch (e) {
+          return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+        }
+        // The phone supplies the broker; everything else keeps its current value.
+        var cur = CONFIG.mqtt || {}, dev = CONFIG.device || {};
+        var v = validateSettings({
+          mqtt: {
+            enabled: true, host: p.host, port: p.port, tls: !!p.tls,
+            tlsRejectUnauthorized: cur.tlsRejectUnauthorized !== false,
+            username: p.username, password: typeof p.password === 'string' ? p.password : '',
+            topicPrefix: cur.topicPrefix, discoveryPrefix: cur.discoveryPrefix,
+            telemetryIntervalMs: cur.telemetryIntervalMs || 10000, entities: cur.entities
+          },
+          device: { id: dev.id, name: dev.name }
+        });
+        if (v.errors.length) {
+          return send(res, 400, JSON.stringify({ ok: false, error: v.errors.join('; ') }));
+        }
+        writeSettings(v.value, function (err) {
+          if (err) return send(res, 500, JSON.stringify({ ok: false, error: 'could not save the settings' }));
+          console.log('setup: Home Assistant broker set from a phone, restarting to connect');
+          send(res, 200, JSON.stringify({ ok: true }));
+          stopHandoff();                     // the code is spent
+          setTimeout(function () { restartSelf(); }, 300);
+        });
+      });
+      return;
+    }
+    send(res, 404, 'not found', 'text/plain');
+  });
+  srv.on('error', function (err) {
+    console.error('setup: could not open the phone link: ' + err.message);
+    stopHandoff();
+  });
+  srv.listen(handoffPort(), '0.0.0.0', function () {
+    HANDOFF.server = srv;
+    HANDOFF.code = code;
+    HANDOFF.timer = setTimeout(stopHandoff, HANDOFF_MS);
+    cb(null, handoffUrl());
+  });
+}
+
+function setupState() {
+  var m = CONFIG.mqtt || {};
+  return {
+    ok: true,
+    needed: setupPending(),
+    writable: CONFIG.allowControl,
+    network: networkOpen(),
+    address: lanAddress() ? lanAddress() + ':' + CONFIG.port : null,
+    homeAssistant: { configured: !!(m.enabled && m.host), state: MQTT_STATUS.state },
+    handoff: HANDOFF.server ? handoffUrl() : null
+  };
 }
 
 /*
@@ -1017,7 +1162,8 @@ function send(res, code, body, type) {
  * Settings the dashboard is allowed to write. Everything else in config.json
  * (port, host, allowControl, allowPower, token) stays file-only: those decide
  * who may reach this server at all, and a UI that can widen its own exposure
- * defeats the point of setting them.
+ * defeats the point of setting them. The one exception is host, from the TV
+ * itself during setup - see setNetworkAccess.
  */
 function readConfigFile() {
   try {
@@ -1148,11 +1294,14 @@ function authed(q, req) {
   // The on-TV dashboard app fetches from localhost and has no way to carry a
   // token (there is no login prompt on a TV remote).  A process on the TV
   // already has root, so the token adds nothing for local requests.
-  if (req) {
-    var ra = req.connection.remoteAddress || '';
-    if (ra === '127.0.0.1' || ra === '::1' || ra === '::ffff:127.0.0.1') return true;
-  }
-  return false;
+  return !!(req && fromTV(req));
+}
+
+// A request made on the TV itself - the on-TV app, or anything else running
+// there, which has root already. Nothing on the network can present as this.
+function fromTV(req) {
+  var ra = (req && req.connection && req.connection.remoteAddress) || '';
+  return ra === '127.0.0.1' || ra === '::1' || ra === '::ffff:127.0.0.1';
 }
 
 function readJsonBody(req, res, cb) {
@@ -1240,7 +1389,7 @@ var server = http.createServer(function (req, res) {
   if (pathname === '/api/caps') {
     return send(res, 200, JSON.stringify({
       ok: true, allowControl: CONFIG.allowControl, allowPower: CONFIG.allowPower,
-      origin: lanOrigin()
+      origin: lanOrigin(), version: TVWEB_VERSION, setupNeeded: setupPending()
     }));
   }
 
@@ -1254,6 +1403,53 @@ var server = http.createServer(function (req, res) {
 
   if (pathname === '/api/servicemenu') {
     return oled.serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
+  }
+
+  // First-run setup and the TV's own settings. The TV only: see fromTV.
+  if (pathname === '/api/setup') {
+    if (!fromTV(req)) return send(res, 403, JSON.stringify({ ok: false, error: 'only from the TV itself' }));
+    if (req.method === 'GET') return send(res, 200, JSON.stringify(setupState()));
+    if (req.method !== 'POST') return send(res, 405, JSON.stringify({ ok: false, error: 'GET or POST' }));
+    if (String(req.headers['content-type'] || '').toLowerCase().indexOf('application/json') !== 0) {
+      return send(res, 415, JSON.stringify({ ok: false, error: 'Content-Type must be application/json' }));
+    }
+    var stBody = '';
+    req.on('data', function (d) { stBody += d; if (stBody.length > 1024) req.destroy(); });
+    req.on('end', function () {
+      var a = null;
+      try { a = JSON.parse(stBody); } catch (e) {
+        return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+      }
+      if (!CONFIG.allowControl && a.action !== 'done') {
+        return send(res, 403, JSON.stringify({ ok: false, error: 'controls disabled in config' }));
+      }
+      if (a.action === 'network') {
+        var open = !!a.open;
+        if (open === networkOpen()) return send(res, 200, JSON.stringify({ ok: true, restarting: false }));
+        return setNetworkAccess(open, function (err) {
+          if (err) return send(res, 500, JSON.stringify({ ok: false, error: 'could not save the setting' }));
+          console.log('setup: dashboard ' + (open ? 'opened to the network' : 'closed to this TV') + ', restarting');
+          send(res, 200, JSON.stringify({ ok: true, restarting: true }));
+          setTimeout(function () { restartSelf(); }, 250);
+        });
+      }
+      if (a.action === 'handoff') {
+        return startHandoff(function (err, link) {
+          if (err) return send(res, 500, JSON.stringify({ ok: false, error: err.message }));
+          send(res, 200, JSON.stringify({ ok: true, url: link }));
+        });
+      }
+      if (a.action === 'handoffStop') {
+        stopHandoff();
+        return send(res, 200, JSON.stringify({ ok: true }));
+      }
+      if (a.action === 'done') {
+        try { fs.unlinkSync(SETUP_PENDING); } catch (e) {}
+        return send(res, 200, JSON.stringify({ ok: true }));
+      }
+      send(res, 400, JSON.stringify({ ok: false, error: 'unknown action' }));
+    });
+    return;
   }
 
   if (pathname === '/api/tvapp') {

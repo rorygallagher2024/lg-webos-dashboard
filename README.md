@@ -506,9 +506,10 @@ ssh root@<tv-ip>
 /var/lib/tvweb/tvwebctl stop
 rm -rf /var/lib/tvweb
 rm -f /var/lib/webosbrew/init.d/50-tvweb* /var/lib/webosbrew/init.d/20-tvweb-services /var/lib/webosbrew/init.d/20-services.sh
+rm -f /var/lib/webosbrew/tvweb-boot.log*
 ```
 
-Nothing on the TV's read-only rootfs is ever modified.
+Nothing on the TV's read-only rootfs is ever modified. [What the dashboard changes on the TV](docs/TV-CHANGES.md) lists everything else, including the settings that uninstalling leaves as they are.
 
 ---
 

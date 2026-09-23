@@ -14,6 +14,13 @@
 
 export PATH="/bin:/sbin:/usr/bin:/usr/sbin:$PATH"
 
+# Nothing records a boot hook's output, so keep a short log of our own. Kept
+# under /var/lib/webosbrew so the boot that went wrong is still there after.
+BOOTLOG=/var/lib/webosbrew/tvweb-boot.log
+[ "$(wc -c < "$BOOTLOG" 2>/dev/null || echo 0)" -gt 32768 ] && mv -f "$BOOTLOG" "$BOOTLOG.old"
+exec >>"$BOOTLOG" 2>&1
+echo "$(date): starting"
+
 # Hold down the LG daemons switched off in the dashboard. Done in the delayed
 # block below, after upstart has had its go at starting them.
 

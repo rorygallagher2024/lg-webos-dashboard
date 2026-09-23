@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920,initial-scale=1">
+<title>TV Dashboard setup</title>
+<style>
+/* First-run setup on the TV, and the Home Assistant screen the dashboard's
+   Settings tab reuses. Same type and palette as the dashboard. */
+@font-face{font-family:'Outfit';src:url('/assets/fonts/Outfit.ttf') format('truetype');font-weight:100 900;font-display:swap}
+@font-face{font-family:'Manrope';src:url('/assets/fonts/Manrope.ttf') format('truetype');font-weight:200 800;font-display:swap}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;color:#fff;overflow:hidden;cursor:none}
+body{font-family:'Manrope',sans-serif}
+#stage{position:relative;height:100vh;padding:12vh 8vw 8vh}
+.step{font-family:'Manrope';font-weight:600;font-size:1.6vh;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.4)}
+.title{font-family:'Outfit';font-weight:300;font-size:6.4vh;line-height:1.1;margin:2.4vh 0 2vh}
+.sub{font-size:2.5vh;line-height:1.6;color:rgba(255,255,255,.6);max-width:62vw}
+.rows{margin-top:5vh;width:52vw}
+.row{display:flex;align-items:center;justify-content:space-between;height:8vh;
+  font-size:3.3vh;color:rgba(255,255,255,.4);transition:color .2s}
+.row .lbl::before{content:'';display:inline-block;width:1vh;height:1vh;border-radius:50%;
+  margin-right:2vh;vertical-align:middle;background:rgba(255,255,255,.3)}
+.row.sel{color:#fff}.row.sel .lbl::before{background:#1ec15f}
+.row.ro .lbl::before{display:none}
+.row .val{font-family:'Outfit';font-weight:300}.val.on{color:#1ec15f}
+.btn{display:inline-block;margin-top:5vh;font-size:2.6vh;font-weight:600;color:#000;background:#1ec15f;
+  padding:1.6vh 3.2vw;border-radius:1vh}
+#hint{position:absolute;right:8vw;top:42vh;width:30vw;border-left:1px solid rgba(255,255,255,.14);padding-left:2.4vw}
+#hint .ht{font-family:'Outfit';font-weight:300;font-size:3.2vh;margin-bottom:1.4vh}
+#hint .hb{font-size:2.1vh;line-height:1.65;color:rgba(255,255,255,.55)}
+#hint .ok{font-weight:600;font-size:1.7vh;letter-spacing:.14em;text-transform:uppercase;margin-top:2.4vh;color:#1ec15f}
+#qr{position:absolute;right:10vw;top:22vh;width:34vh;text-align:center}
+#qr svg{width:34vh;height:34vh;display:block;background:#fff;border-radius:1vh}
+#qr .url{font-size:1.9vh;color:rgba(255,255,255,.45);margin-top:1.6vh}
+.wait{margin-top:5vh;font-size:2.8vh}.wait::before{content:'';display:inline-block;width:1vh;height:1vh;border-radius:50%;
+  margin-right:2vh;vertical-align:middle;background:#1ec15f}
+.dots{position:absolute;left:8vw;bottom:7vh;display:flex;gap:1vh}
+.dots i{display:block;width:3.4vh;height:.5vh;border-radius:.3vh;background:rgba(255,255,255,.2)}.dots i.on{background:#fff}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="/assets/qr.js"></script>
+<script>
+/*
+ * Four screens - welcome, network, Home Assistant, summary - plus the phone
+ * handoff. Opened with #ha from the dashboard's Settings tab, only the handoff
+ * runs, and it returns there when done.
+ */
+(function () {
+  var FROM_SETTINGS = location.hash === '#ha';
+  var DONE_URL = '/assets/dashboard.html?tab=' + (FROM_SETTINGS ? 'settings' : 'system');
+  var stage = document.getElementById('stage');
+  var state = null;          // the server's view: network, homeAssistant, handoff
+  var screen = null, rows = [], sel = 0, busy = false, poll = null;
+  var netChosen = false;
+
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function api(method, body, cb) {
+    var x = new XMLHttpRequest();
+    x.open(method, '/api/setup?t=' + Date.now(), true);
+    if (body) x.setRequestHeader('Content-Type', 'application/json');
+    x.timeout = 5000;
+    x.onload = function () {
+      var r = null;
+      try { r = JSON.parse(x.responseText); } catch (e) {}
+      cb(x.status === 200 && r ? r : null);
+    };
+    x.onerror = x.ontimeout = function () { cb(null); };
+    x.send(body ? JSON.stringify(body) : null);
+  }
+
+  // Waits out a restart: the server goes away, then answers again.
+  function whenBack(cb, tries) {
+    tries = tries === undefined ? 60 : tries;
+    api('GET', null, function (s) {
+      if (s) { state = s; return cb(); }
+      if (tries <= 0) return show('trouble');
+      setTimeout(function () { whenBack(cb, tries - 1); }, 1000);
+    });
+  }
+
+  function dots(n) {
+    if (FROM_SETTINGS) return '';
+    var h = '<div class="dots">';
+    for (var i = 1; i <= 4; i++) h += '<i' + (i <= n ? ' class="on"' : '') + '></i>';
+    return h + '</div>';
+  }
+
+  function render(html) {
+    stage.innerHTML = html;
+    drawRows();
+  }
+
+  function drawRows() {
+    var box = document.getElementById('rows');
+    if (!box) return;
+    box.innerHTML = rows.map(function (r, i) {
+      return '<div class="row' + (i === sel ? ' sel' : '') + (r.ro ? ' ro' : '') + '"><span class="lbl">' +
+             esc(r.label) + '</span>' + (r.value ? '<span class="val' + (r.cls ? ' ' + r.cls : '') + '">' +
+             esc(r.value) + '</span>' : '') + '</div>';
+    }).join('');
+    var h = document.getElementById('hint'), r = rows[sel];
+    if (h && r && !r.ro) {
+      h.innerHTML = '<div class="ht">' + esc(r.label) + '</div><div class="hb">' + esc(r.hint || '') +
+                    '</div><div class="ok">Press OK to choose</div>';
+    }
+  }
+
+  function show(name) {
+    screen = name;
+    rows = []; sel = 0;
+    if (poll) { clearInterval(poll); poll = null; }
+
+    if (name === 'welcome') {
+      render('<div class="step">TV Dashboard</div><div class="title" style="margin-top:16vh">Your TV, on your terms</div>' +
+        '<div class="sub">Readings, controls and privacy settings for this TV, right here with the remote. ' +
+        'Two quick choices first, and you can change both later.</div><div class="btn">Get started</div>' + dots(1));
+    } else if (name === 'network') {
+      rows = [
+        { id: 'open', label: 'Phones and computers at home too',
+          hint: 'Open it in a browser on anything connected to your home network. The browser version does more than this one. There is no password, so anyone on that network can use it.' },
+        { id: 'closed', label: 'Only on this TV',
+          hint: 'Nothing else on your network can reach it. The safest choice, and you can open it up later.' }
+      ];
+      // A fresh install starts closed, so the TV's current state would always
+      // preselect "Only on this TV"; only follow it once a choice has been made.
+      sel = (netChosen && !state.network) ? 1 : 0;
+      render('<div class="step">Step 1 of 2</div><div class="title">Use it from your phone too?</div>' +
+        '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(2));
+    } else if (name === 'ha') {
+      rows = [
+        { id: 'phone', label: 'Set it up on my phone',
+          hint: 'Scan a code with your phone and fill in your broker’s details there.' },
+        { id: 'later', label: 'Not now',
+          hint: 'The dashboard works without it. Set it up any time from Settings.' }
+      ];
+      render('<div class="step">Step 2 of 2</div><div class="title">Connect to Home Assistant?</div>' +
+        '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(3));
+    } else if (name === 'handoff') {
+      render('<div class="step">Home Assistant</div><div class="title">Finish on your phone</div>' +
+        '<div class="sub" id="hsub" style="max-width:44vw">Setting up the link…</div>' +
+        '<div class="wait" id="hwait" style="visibility:hidden">Waiting for your phone…</div>' + dots(3));
+      startHandoff();
+    } else if (name === 'summary') {
+      var ha = state.homeAssistant || {};
+      rows = [
+        { ro: true, label: 'On this TV', value: 'Yes', cls: 'on' },
+        { ro: true, label: 'Phones and computers', value: state.network ? 'Yes' : 'Not yet', cls: state.network ? 'on' : '' },
+        { ro: true, label: 'Home Assistant', value: ha.state === 'connected' ? 'Connected' : (ha.configured ? 'Connecting' : 'Not set up'),
+          cls: ha.state === 'connected' ? 'on' : '' }
+      ];
+      render('<div class="step">All set</div><div class="title">Ready to go</div>' +
+        '<div class="rows" id="rows"></div><div class="sub" style="margin-top:2vh">Change any of these in Settings.</div>' +
+        '<div class="btn">Open dashboard</div>' + dots(4));
+    } else if (name === 'restarting') {
+      render('<div class="step">One moment</div><div class="title">Applying your choice…</div>' + dots(2));
+    } else if (name === 'trouble') {
+      render('<div class="step">Setup</div><div class="title">Something went wrong</div>' +
+        '<div class="sub">The dashboard stopped answering. Press OK to try again.</div>');
+    }
+  }
+
+  // The phone link: a one-time code in a QR code, then wait for the TV to connect.
+  function startHandoff() {
+    api('POST', { action: 'handoff' }, function (r) {
+      if (screen !== 'handoff') return;
+      var sub = document.getElementById('hsub');
+      if (!r || !r.ok || !r.url) {
+        sub.textContent = 'The link could not be opened. Press OK to try again.';
+        return;
+      }
+      sub.textContent = 'Scan this with your phone’s camera. This screen moves on by itself once the TV connects.';
+      var qr = document.createElement('div');
+      qr.id = 'qr';
+      qr.innerHTML = '<svg shape-rendering="crispEdges"></svg><div class="url"></div>';
+      stage.appendChild(qr);
+      qrDraw(qr.querySelector('svg'), r.url);
+      qr.querySelector('.url').textContent = r.url.replace(/^https?:\/\//, '').replace(/\/\?c=.*/, '');
+      document.getElementById('hwait').style.visibility = 'visible';
+      // The server closes the link and restarts once the phone sends its
+      // details, so a failed poll means they arrived. No link and no restart,
+      // twice running, means the code ran out instead.
+      var restarted = false, failedFor = 0, goneFor = 0;
+      poll = setInterval(function () {
+        api('GET', null, function (s) {
+          if (screen !== 'handoff') return;
+          if (!s) { restarted = true; return; }
+          state = s;
+          var ha = s.homeAssistant || {};
+          var wait = document.getElementById('hwait');
+          if (restarted && ha.state === 'connected') {
+            clearInterval(poll); poll = null;
+            wait.textContent = 'Connected';
+            setTimeout(next, 1500);
+          } else if (restarted && ha.state === 'error' && ++failedFor > 5) {
+            clearInterval(poll); poll = null;
+            wait.textContent = 'It did not connect. Check the details and press OK to try again.';
+          } else if (!restarted && !s.handoff && ++goneFor >= 2) {
+            clearInterval(poll); poll = null;
+            wait.textContent = 'The code has expired. Press OK for a new one.';
+          }
+        });
+      }, 2000);
+    });
+  }
+
+  function next() {
+    if (screen === 'welcome') return show('network');
+    if (screen === 'network') {
+      var open = rows[sel].id === 'open';
+      netChosen = true;
+      if (open === !!state.network) return show('ha');
+      busy = true;
+      show('restarting');
+      return api('POST', { action: 'network', open: open }, function () {
+        setTimeout(function () { whenBack(function () { busy = false; show('ha'); }); }, 1500);
+      });
+    }
+    if (screen === 'ha') return show(rows[sel].id === 'phone' ? 'handoff' : 'summary');
+    if (screen === 'handoff') {
+      if (FROM_SETTINGS) return location.replace(DONE_URL);
+      var ha = state.homeAssistant || {};
+      if (ha.state === 'connected') return show('summary');
+      return show('handoff');                           // try again with a new code
+    }
+    if (screen === 'summary') {
+      busy = true;
+      return api('POST', { action: 'done' }, function () { location.replace(DONE_URL); });
+    }
+    if (screen === 'trouble') return whenBack(function () { show(FROM_SETTINGS ? 'handoff' : 'welcome'); });
+  }
+
+  function back() {
+    if (screen === 'handoff') api('POST', { action: 'handoffStop' }, function () {});
+    if (FROM_SETTINGS) return location.replace(DONE_URL);
+    if (screen === 'network') return show('welcome');
+    if (screen === 'ha') return show('network');
+    if (screen === 'handoff') return show('ha');
+    if (screen === 'summary') return show('ha');
+    // Welcome: leave the app, as Back does everywhere else on the TV.
+    if (window.PalmSystem && typeof window.PalmSystem.platformBack === 'function') window.PalmSystem.platformBack();
+    else window.close();
+  }
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.key, c = e.keyCode;
+    if (busy) { e.preventDefault(); return; }
+    if ((c === 38 || k === 'ArrowUp') && rows.length && !rows[0].ro) { sel = Math.max(0, sel - 1); drawRows(); e.preventDefault(); }
+    else if ((c === 40 || k === 'ArrowDown') && rows.length && !rows[0].ro) { sel = Math.min(rows.length - 1, sel + 1); drawRows(); e.preventDefault(); }
+    else if (c === 13 || k === 'Enter') { next(); e.preventDefault(); }
+    else if (c === 461 || k === 'GoBack' || k === 'BrowserBack' || c === 37 || k === 'ArrowLeft') { back(); e.preventDefault(); }
+  });
+
+  // Leaving the screen closes the phone link rather than leaving it open.
+  window.addEventListener('beforeunload', function () {
+    if (screen === 'handoff') api('POST', { action: 'handoffStop' }, function () {});
+  });
+
+  whenBack(function () { show(FROM_SETTINGS ? 'handoff' : 'welcome'); });
+})();
+</script>
+</body>
+</html>
