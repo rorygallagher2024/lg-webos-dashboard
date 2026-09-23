@@ -774,11 +774,11 @@ function updateRows(d) {
   var r = [];
   r.push(head('Software Updates'));
 
-  var inst = d.installed ? ('v' + d.installed) : '—';
+  var inst = d.installed ? ('Glasshouse ' + d.installed) : '—';
   r.push({
     label: 'Installed version',
     value: inst,
-    hint: 'The version of the dashboard running on this TV.'
+    hint: 'The version of Glasshouse running on this TV.'
   });
 
   if (d.state === 'checking') {
