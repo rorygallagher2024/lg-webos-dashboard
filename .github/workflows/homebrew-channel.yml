@@ -28,6 +28,11 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           [ "$code" = "$tag" ] || { echo "tag v$tag, but server/tvweb.js says $code"; exit 1; }
 
+      # LG's packager: the store's checks reject packages without the control
+      # fields it writes. Pinned, so a new release of it cannot change a build.
+      - name: install ares-package
+        run: npm install -g @webos-tools/cli@3.2.6
+
       - name: build
         run: python3 scripts/build-ipk.py
 

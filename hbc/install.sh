@@ -46,6 +46,9 @@ adopt() {
 # the app is removed the link leads nowhere and nothing runs at boot. Replaces
 # the copy an earlier build or deploy.sh left there.
 link_hook() {
+  # The same for the app itself, whose page has the Homebrew Channel run this
+  # as root, and whose hook runs at boot.
+  chmod -R go-w "$(dirname "$HERE")" 2>/dev/null
   chmod +x "$SRC/50-tvweb.sh" 2>/dev/null
   mkdir -p "$HOOKDIR" && ln -sf "$SRC/50-tvweb.sh" "$HOOKDIR/50-tvweb"
 }
@@ -78,6 +81,9 @@ cp -r "$SRC" "$S" || fail "could not copy the server files"
   mv -f "$S/$f" "$D/$f"
 done
 chmod +x "$D/tvwebctl" 2>/dev/null
+# ares-package stores plain files as 0666. The server runs as root, so nothing
+# else on the TV may be able to change its code.
+chmod -R go-w "$D" 2>/dev/null
 
 # A first install starts closed - answering only on the TV itself - and asks
 # the owner through the setup screens whether to open it to the network. One

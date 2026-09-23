@@ -4,22 +4,29 @@ Build the app the Homebrew Channel installs: an .ipk carrying the launch page
 and, under payload/, the server itself, plus the manifest that the Homebrew
 Channel's repository points at.
 
+The package is made by LG's own packager, ares-package from @webos-tools/cli:
+the repository's checks reject packages that lack the control fields only an
+official packager writes (Installed-Size, webOS-Package-Format-Version,
+webOS-Packager-Version). This script lays out the app directory and writes
+the manifest from what the packager produced.
+
 The server files are exactly deploy.sh's FILES, read from deploy.sh so there is
 one list. Nothing else from server/ goes in - in particular no config.json,
 which can hold a broker password.
 
     scripts/build-ipk.py            -> dist/<id>_<version>_all.ipk
                                        dist/<id>.manifest.json
+
+ares-package is found on PATH, or named by $ARES_PACKAGE.
 """
 
-import gzip
 import hashlib
-import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
-import tarfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SERVER = os.path.join(ROOT, 'server')
@@ -52,51 +59,11 @@ def deploy_files():
     return m.group(1).replace('\\\n', ' ').split()
 
 
-def add(tar, name, data, mode):
-    """Owned by root, dated 0, so the same sources always build the same file."""
-    info = tarfile.TarInfo(name)
-    info.size = len(data)
-    info.mode = mode
-    info.uid = info.gid = 0
-    info.uname = info.gname = 'root'
-    info.mtime = 0
-    tar.addfile(info, io.BytesIO(data))
-
-
-def add_dir(tar, name):
-    info = tarfile.TarInfo(name)
-    info.type = tarfile.DIRTYPE
-    info.mode = 0o755
-    info.uid = info.gid = 0
-    info.uname = info.gname = 'root'
-    info.mtime = 0
-    tar.addfile(info)
-
-
-def targz(entries):
-    """entries: list of (path, bytes or None for a directory, mode)."""
-    raw = io.BytesIO()
-    with tarfile.open(fileobj=raw, mode='w', format=tarfile.USTAR_FORMAT) as tar:
-        for path, data, mode in entries:
-            if data is None:
-                add_dir(tar, path)
-            else:
-                add(tar, path, data, mode)
-    out = io.BytesIO()
-    with gzip.GzipFile(fileobj=out, mode='wb', mtime=0) as gz:
-        gz.write(raw.getvalue())
-    return out.getvalue()
-
-
-def ar(members):
-    """The ipk format is an ar archive of three members with 60-byte headers."""
-    out = bytearray(b'!<arch>\n')
-    for name, data in members:
-        out += ('%-16s%-12d%-6d%-6d%-8s%-10d`\n' % (name, 0, 0, 0, '100644', len(data))).encode()
-        out += data
-        if len(data) % 2:
-            out += b'\n'
-    return bytes(out)
+def put(path, data, mode):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as f:
+        f.write(data)
+    os.chmod(path, mode)
 
 
 def read(path):
@@ -104,12 +71,9 @@ def read(path):
         return f.read()
 
 
-def main():
-    ver = version()
-    appdir = './usr/palm/applications/%s/' % APP_ID
-    pkgdir = './usr/palm/packages/%s/' % APP_ID
+def stage(app, ver):
+    """Lay out the app directory ares-package is given."""
     icons = os.path.join(SERVER, 'assets', 'dashboard-app', 'assets')
-
     appinfo = {
         'id': APP_ID, 'version': ver, 'vendor': 'lg-webos-dashboard', 'type': 'web',
         'main': 'index.html', 'title': TITLE, 'appDescription': DESCRIPTION,
@@ -119,48 +83,48 @@ def main():
     page = read(os.path.join(HBC, 'app', 'index.html')).decode('utf-8')
     if '@VERSION@' not in page:
         sys.exit('hbc/app/index.html has no @VERSION@ to fill in')
-    page = page.replace('@VERSION@', ver)
 
-    entries = [('./usr/', None, 0), ('./usr/palm/', None, 0),
-               ('./usr/palm/applications/', None, 0), (appdir, None, 0),
-               ('./usr/palm/packages/', None, 0), (pkgdir, None, 0),
-               (appdir + 'appinfo.json', json.dumps(appinfo, indent=2).encode(), 0o644),
-               (appdir + 'index.html', page.encode('utf-8'), 0o644),
-               (appdir + 'icon80.png', read(os.path.join(icons, 'icon80.png')), 0o644),
-               (appdir + 'icon130.png', read(os.path.join(icons, 'icon130.png')), 0o644),
-               (appdir + 'payload/', None, 0),
-               (appdir + 'payload/install.sh', read(os.path.join(HBC, 'install.sh')), 0o755)]
+    put(os.path.join(app, 'appinfo.json'), json.dumps(appinfo, indent=2).encode(), 0o644)
+    put(os.path.join(app, 'index.html'), page.replace('@VERSION@', ver).encode('utf-8'), 0o644)
+    for icon in ('icon80.png', 'icon130.png'):
+        put(os.path.join(app, icon), read(os.path.join(icons, icon)), 0o644)
+    put(os.path.join(app, 'payload', 'install.sh'), read(os.path.join(HBC, 'install.sh')), 0o755)
 
-    # Directories first, parents before children, then the files in them.
     payload = deploy_files() + ['50-tvweb.sh']
-    base = appdir + 'payload/server/'
-    dirs = {base}
-    for rel in payload:
-        parts = rel.split('/')[:-1]
-        for i in range(len(parts)):
-            dirs.add(base + '/'.join(parts[:i + 1]) + '/')
-    entries += [(d, None, 0) for d in sorted(dirs)]
     for rel in payload:
         src = os.path.join(SERVER, rel)
         if not os.path.isfile(src):
             sys.exit('deploy.sh lists %s, which does not exist' % rel)
-        mode = 0o755 if EXECUTABLE.search(rel) else 0o644
-        entries.append((base + rel, read(src), mode))
+        put(os.path.join(app, 'payload', 'server', rel), read(src),
+            0o755 if EXECUTABLE.search(rel) else 0o644)
+    return len(payload)
 
-    packageinfo = {'id': APP_ID, 'version': ver, 'app': APP_ID, 'loc_name': TITLE, 'vendor': 'lg-webos-dashboard'}
-    entries.append((pkgdir + 'packageinfo.json', json.dumps(packageinfo).encode(), 0o644))
 
-    control = ('Package: %s\nVersion: %s\nArchitecture: all\nMaintainer: %s\nDescription: %s\n'
-               % (APP_ID, ver, REPO, DESCRIPTION)).encode()
-    ipk = ar([('debian-binary', b'2.0\n'),
-              ('control.tar.gz', targz([('./control', control, 0o644)])),
-              ('data.tar.gz', targz(entries))])
+def main():
+    ver = version()
+    ares = os.environ.get('ARES_PACKAGE') or shutil.which('ares-package')
+    if not ares:
+        sys.exit('ares-package not found: npm install -g @webos-tools/cli, or set ARES_PACKAGE')
+
+    work = os.path.join(DIST, 'stage')
+    shutil.rmtree(work, ignore_errors=True)
+    app = os.path.join(work, APP_ID)
+    count = stage(app, ver)
 
     os.makedirs(DIST, exist_ok=True)
     ipk_name = '%s_%s_all.ipk' % (APP_ID, ver)
-    with open(os.path.join(DIST, ipk_name), 'wb') as f:
-        f.write(ipk)
+    ipk_path = os.path.join(DIST, ipk_name)
+    if os.path.exists(ipk_path):
+        os.remove(ipk_path)
+    # --no-minify is accepted though not in its help. Minifying would rewrite
+    # the TVWEB_VERSION line the installer and the update check read, and the
+    # server has to stay the ES5 that node 0.12 on webOS 4 parses.
+    run = subprocess.run([ares, '--no-minify', '--outdir', DIST, app], capture_output=True, text=True)
+    if run.returncode != 0 or not os.path.isfile(ipk_path):
+        sys.exit('ares-package failed:\n' + run.stdout + run.stderr)
+    shutil.rmtree(work, ignore_errors=True)
 
+    ipk = read(ipk_path)
     # ipkUrl is relative, as the Homebrew Channel's own manifest has it: it is
     # resolved against the manifest's URL, so both sit in the same release.
     manifest = {
@@ -173,7 +137,7 @@ def main():
         json.dump(manifest, f, indent=2)
         f.write('\n')
 
-    print('%s  %d files, %d KB' % (ipk_name, len(payload), len(ipk) // 1024))
+    print('%s  %d files, %d KB' % (ipk_name, count, len(ipk) // 1024))
 
 
 if __name__ == '__main__':
