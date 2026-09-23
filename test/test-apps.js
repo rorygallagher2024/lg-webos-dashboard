@@ -40,6 +40,16 @@ test('isProtected strictly protects core TV system services', function () {
   });
 });
 
+test('Home Assistant names apps, keeping each option distinct', function () {
+  var ha = require('../server/lib/ha');
+  var byId = ha.appNames([{ id: 'netflix', title: 'Netflix' }, { id: 'x.other', title: 'Netflix' },
+                          { id: 'no.title' }]);
+  assert.strictEqual(byId.netflix, 'Netflix');
+  assert.strictEqual(byId['x.other'], 'Netflix (x.other)');
+  assert.strictEqual(byId['no.title'], 'no.title');
+  assert.strictEqual(ha.appNames([])['youtube.leanback.v4'], 'YouTube');
+});
+
 test('isProtected allows normal user and LG bloatware apps', function () {
   var normalIds = [
     'com.webos.app.igallery',

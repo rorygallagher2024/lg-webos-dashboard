@@ -135,6 +135,37 @@ function entityCategory(e) {
   return ENTITY_CATEGORIES[e.type + '.' + e.id] || ENTITY_CATEGORIES[e.id] || 'diagnostics';
 }
 
+/*
+ * Launch App options by name. Before the app list has loaded, the common apps
+ * stand in so the select is not empty. A name two apps share gets the id of
+ * the second, since the select needs every option to be distinct.
+ */
+var DEFAULT_APPS = {
+  'com.webos.app.livetv': 'Live TV',
+  'youtube.leanback.v4': 'YouTube',
+  'netflix': 'Netflix',
+  'amazon': 'Prime Video',
+  'spotify-beehive': 'Spotify',
+  'com.apple.appletv': 'Apple TV'
+};
+
+function appNames(installed) {
+  var byId = {}, taken = {};
+  var add = function (id, title) {
+    if (byId[id]) return;
+    var name = title || id;
+    if (taken[name]) name += ' (' + id + ')';
+    taken[name] = true;
+    byId[id] = name;
+  };
+  if (!installed || !installed.length) {
+    for (var d in DEFAULT_APPS) add(d, DEFAULT_APPS[d]);
+  } else {
+    for (var i = 0; i < installed.length; i++) add(installed[i].id, installed[i].title);
+  }
+  return byId;
+}
+
 function selectState(expr, options) {
   var quoted = [];
   for (var i = 0; i < options.length; i++) quoted.push('\'' + options[i] + '\'');
@@ -786,22 +817,18 @@ function buildEntities(opts) {
       {
         type: 'select', id: 'app',
         payload: (function () {
-          /*
-           * Full app ids on both sides: listApps and telemetry's app_id report
-           * com.webos.app.livetv, and launch wants that same id back, so the
-           * option list needs no translation in either direction.
-           */
-          var opts = ['com.webos.app.livetv', 'youtube.leanback.v4', 'netflix', 'amazon', 'spotify-beehive', 'com.apple.appletv'];
-          var merged = {};
-          for (var o = 0; o < opts.length; o++) merged[opts[o]] = 1;
-          for (var a = 0; a < installedApps.length; a++) merged[installedApps[a].id] = 1;
-          var appOptions = Object.keys(merged);
+          var byId = appNames(installedApps);
+          var toId = {};
+          for (var id in byId) toId[byId[id]] = id;
           return {
             name: 'Launch App',
             command_topic: pfx + '/command/launch_app',
+            // A name outside the list goes through as written, so an app id
+            // sent by an older automation still launches.
+            command_template: '{{ ' + JSON.stringify(toId) + '.get(value, value) }}',
             state_topic: telemetryTopic,
-            value_template: selectState('value_json.app_id', appOptions),
-            options: appOptions,
+            value_template: '{{ ' + JSON.stringify(byId) + '.get(value_json.app_id, "None") }}',
+            options: Object.keys(toId),
             icon: 'mdi:apps'
           };
         })()
@@ -1100,6 +1127,7 @@ module.exports = {
   ENTITY_CATEGORIES: ENTITY_CATEGORIES,
   entityCategory: entityCategory,
   selectState: selectState,
+  appNames: appNames,
   RETIRED_ENTITIES: RETIRED_ENTITIES,
   HDMI_DIAG_ONLY: HDMI_DIAG_ONLY,
   OLED_ONLY: OLED_ONLY,

@@ -533,6 +533,15 @@ function doControl(action, value, cb) {
     case 'launchApp':
       var appId = String(value || '').trim();
       if (!appId) return cb({ ok: false, error: 'missing app id' });
+      // Home Assistant sends ids, but a name is accepted too, matched loosely.
+      var apps = telemetry.getInstalledApps() || [];
+      var isId = apps.some(function (x) { return x.id === appId; });
+      if (!isId) {
+        var want = appId.toLowerCase();
+        for (var ai = 0; ai < apps.length; ai++) {
+          if (String(apps[ai].title || '').toLowerCase() === want) { appId = apps[ai].id; break; }
+        }
+      }
       return luna('com.webos.applicationManager/launch', { id: appId }, function (r) {
         cb({ ok: !!(r && r.returnValue) });
       });
