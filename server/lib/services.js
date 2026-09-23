@@ -81,7 +81,10 @@ var CATALOG = [
 
 var stateDir = '/var/lib/tvweb';
 var disabledFilePath = null;
-var initScriptPath = '/var/lib/webosbrew/init.d/20-services.sh';
+// run-parts skips any name containing a character outside a-zA-Z0-9-_, so the
+// hook must not end in .sh. It once did, and never ran.
+var initScriptPath = '/var/lib/webosbrew/init.d/20-tvweb-services';
+var oldInitScriptPath = '/var/lib/webosbrew/init.d/20-services.sh';
 var transientDir = '/run/systemd/transient';
 
 function getSystemctl() {
@@ -197,6 +200,12 @@ function init(options) {
     disabled = disabled.filter(function (id) { return id !== 'tvdataexchanger'; });
     writeDisabledList(disabled);
   }
+  try {
+    if (fs.existsSync(oldInitScriptPath)) {
+      fs.unlinkSync(oldInitScriptPath);
+      syncBootScript(disabled);
+    }
+  } catch (e) {}
 
   var systemctl = getSystemctl();
 

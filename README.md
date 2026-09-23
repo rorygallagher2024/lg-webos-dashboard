@@ -505,7 +505,7 @@ The request says nothing about the TV beyond the address any HTTP request reveal
 ssh root@<tv-ip>
 /var/lib/tvweb/tvwebctl stop
 rm -rf /var/lib/tvweb
-rm -f /var/lib/webosbrew/init.d/50-tvweb*
+rm -f /var/lib/webosbrew/init.d/50-tvweb* /var/lib/webosbrew/init.d/20-tvweb-services /var/lib/webosbrew/init.d/20-services.sh
 ```
 
 Nothing on the TV's read-only rootfs is ever modified.
