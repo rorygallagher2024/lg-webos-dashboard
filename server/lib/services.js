@@ -96,15 +96,48 @@ var initScriptPath = '/var/lib/webosbrew/init.d/20-tvweb-services';
 var oldInitScriptPath = '/var/lib/webosbrew/init.d/20-services.sh';
 var transientDir = '/run/systemd/transient';
 
-// Names of the programs running, from each process's executable.
+// The processes running, by program name, from each one's executable.
 function runningPrograms() {
   var out = {}, pids = [];
   try { pids = fs.readdirSync('/proc'); } catch (e) { return out; }
   for (var i = 0; i < pids.length; i++) {
     if (!/^\d+$/.test(pids[i])) continue;
-    try { out[path.basename(fs.readlinkSync('/proc/' + pids[i] + '/exe'))] = true; } catch (e2) {}
+    try {
+      var name = path.basename(fs.readlinkSync('/proc/' + pids[i] + '/exe'));
+      (out[name] = out[name] || []).push(parseInt(pids[i], 10));
+    } catch (e2) {}
   }
   return out;
+}
+
+/*
+ * Stops any switched-off service found running. The boot hook stops them
+ * once, but on webOS 9 the service hub launches some on demand whenever
+ * something asks for them, outside the unit: uploadd was seen running 22s into
+ * a C2's boot, before the hook got to it. The unit or job is stopped first, so
+ * nothing supervising it starts it again; anything left is then signalled
+ * directly, which is how one the hub launched ends.
+ */
+function enforce() {
+  var disabled = readDisabledList();
+  if (!disabled.length) return;
+  var procs = runningPrograms(), systemctl = getSystemctl(), initctl = getInitctl();
+  CATALOG.forEach(function (item) {
+    var pids = item.bin && procs[item.bin];
+    if (!pids || disabled.indexOf(item.id) === -1) return;
+    console.log('services: ' + item.id + ' was running while switched off, stopping it');
+    if (systemctl && item.unit) execFile(systemctl, ['stop', item.unit], function () {});
+    if (initctl && item.upstart) execFile(initctl, ['stop', item.upstart], function () {});
+    setTimeout(function () {
+      var left = runningPrograms()[item.bin] || [];
+      left.forEach(function (pid) { try { process.kill(pid, 'SIGTERM'); } catch (e) {} });
+    }, 3000);
+  });
+}
+
+function startEnforcing() {
+  setTimeout(enforce, 30000);
+  setInterval(enforce, 5 * 60000);
 }
 
 function getSystemctl() {
@@ -399,5 +432,6 @@ module.exports = {
   init: init,
   CATALOG: CATALOG,
   getServices: getServices,
-  toggleService: toggleService
+  toggleService: toggleService,
+  startEnforcing: startEnforcing
 };

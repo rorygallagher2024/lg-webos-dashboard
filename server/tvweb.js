@@ -1783,6 +1783,8 @@ if (!CLI_MODE && !webEnabled && !mqttEnabled) {
 
 privacy.checkBootAdBlock(CLI_MODE);
 
+if (!CLI_MODE) servicesModule.startEnforcing();
+
 if (CLI_MODE) {
   // A one-shot run installs a release and exits: no listener, no bridge, no
   // timers, and nothing that would fight the server already running.

@@ -25,7 +25,7 @@ the first reboot after uninstalling.
 | :------ | :----------- | :-------- |
 | Ad blocker | Bind-mounts a replacement `/etc/hosts` | Switching it off |
 | Hidden home-screen tiles | Bind-mounts edited `appinfo.json` files, then restarts the app manager so the home screen rereads them | Switching tile hiding off |
-| Switched-off background services | Stops them and masks their systemd units under `/run` | Switching them back on |
+| Switched-off background services | Stops them and masks their systemd units under `/run`, then stops any found running again every five minutes | Switching them back on |
 | Replacement screen saver | Bind-mounts over the built-in screen saver app; restarts the app manager at boot when the replacement is a different app type | Choosing the stock screen saver |
 
 ## Changes that stay
