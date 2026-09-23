@@ -205,7 +205,7 @@ function statCoreLoads() {
   var prev = prevCoreTicks, loads = [];
   prevCoreTicks = now;
   if (!prev) return loads;
-  Object.keys(now).sort(function (a, b) { return a - b; }).forEach(function (c) {
+  Object.keys(now).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (c) {
     if (!prev[c]) return;
     var dt = now[c].total - prev[c].total, di = now[c].idle - prev[c].idle;
     if (dt > 0) loads.push(Math.max(0, Math.min(100, Math.round(100 * (dt - di) / dt))));
