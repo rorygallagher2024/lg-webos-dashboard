@@ -841,14 +841,6 @@ function updateRows(d) {
     });
   }
 
-  if (d.client) {
-    r.push({
-      label: 'Download client',
-      value: d.client,
-      hint: 'HTTP client used to download updates (' + d.client + ').'
-    });
-  }
-
   if (!d.writable) {
     r.push({
       label: 'Controls disabled',
