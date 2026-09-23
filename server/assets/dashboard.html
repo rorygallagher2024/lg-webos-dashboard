@@ -1373,8 +1373,10 @@ function leaveApp() {
 document.addEventListener('keydown', function (e) {
   var k = e.key, c = e.keyCode;
 
-  if      (c === 37 || k === 'ArrowLeft')  { switchTab(-1); e.preventDefault(); }
-  else if (c === 39 || k === 'ArrowRight') { switchTab(1);  e.preventDefault(); }
+  // Inside a list opened from a row, Left goes back up to it rather than to
+  // another tab, and Right has nowhere to go.
+  if      (c === 37 || k === 'ArrowLeft')  { if (sub) closeSub(); else switchTab(-1); e.preventDefault(); }
+  else if (c === 39 || k === 'ArrowRight') { if (!sub) switchTab(1); e.preventDefault(); }
   else if (c === 38 || k === 'ArrowUp')    { move(-1);      e.preventDefault(); }
   else if (c === 40 || k === 'ArrowDown')  { move(1);       e.preventDefault(); }
   else if (c === 13 || k === 'Enter')      { activate();    e.preventDefault(); }

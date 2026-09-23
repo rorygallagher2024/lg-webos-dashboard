@@ -428,6 +428,12 @@ function readConsentFlags() {
       out.other.push(describeUnlabelled(key, on, groups));
     }
   }
+  // The file's order is not stable: writing a flag moves it within the file,
+  // so a list in that order reshuffles as flags are switched. Named flags go
+  // in the order they are described above, the rest by key.
+  var order = Object.keys(CONSENT_LABELS);
+  out.known.sort(function (a, b) { return order.indexOf(a.key) - order.indexOf(b.key); });
+  out.other.sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
   return out;
 }
 
