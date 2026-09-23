@@ -26,6 +26,14 @@ SELF=$(readlink -f "$0" 2>/dev/null || echo /var/lib/tvweb/tvwebctl)
 STALE=90
 CHECK=30
 
+# In its first minutes a server has less slack: node 0.12 on a B8 (webOS 4) has
+# stalled mid-start, its child frozen between fork and exec and the server
+# waiting on it for good, and boot is when most of those children are started.
+# A shorter limit then brings the TV back in under two minutes rather than two
+# and a half. Measured from the pid file, which every start writes.
+STARTUP=300
+STARTUP_STALE=45
+
 # Log rotation. /var/lib is flash, and nothing else trims this file: a broker
 # the TV cannot reach, or a chatty automation, appends to it indefinitely.
 # Rotating at 256k keeps at most 512k on disk across the two generations.
@@ -134,14 +142,17 @@ watch_loop() {
     beat=$(cat "$BEAT" 2>/dev/null)
     case "$beat" in ''|*[!0-9]*) stale=0; continue ;; esac   # no usable heartbeat yet
     age=$(( $(date +%s) - beat ))
-    if [ "$age" -le "$STALE" ]; then
+    limit=$STALE
+    up=$(( $(date +%s) - $(date -r "$PIDFILE" +%s 2>/dev/null || echo 0) ))
+    [ "$up" -lt "$STARTUP" ] && limit=$STARTUP_STALE
+    if [ "$age" -le "$limit" ]; then
       stale=0
       continue
     fi
     #
     # One stale reading is not enough. Both halves of the resume check are wall
     # clock - $slept from the stamp taken before the suspend, $age from a second
-    # read a moment later - and the clock steps when the set comes out of
+    # read a moment later - and the clock steps when the TV comes out of
     # standby. A step landing between those two reads leaves $slept looking like
     # a normal round while $age carries the whole suspension, which restarted a
     # healthy server: "heartbeat 2509s old" at 14:41:07, then "resumed after
