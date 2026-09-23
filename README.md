@@ -31,12 +31,12 @@ Use it for remote control, app management and removal, OLED panel care, privacy 
 
 ## Quick start
 
-Root the TV and install the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel), then either:
+1. Root the TV and install the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
+2. Clone this repository on a computer on the same network as the TV.
+3. Run `./deploy.sh <tv-ip>` from the `server/` directory.
+4. Open `http://<tv-ip>:8080/` in a browser.
 
-* **From the Homebrew Channel:** install **TV Dashboard**, then open it from the home screen. The first launch asks two questions and the dashboard is ready. No computer needed.
-* **With a computer:** clone this repository, run `./deploy.sh <tv-ip>` from the `server/` directory, and open `http://<tv-ip>:8080/` in a browser.
-
-[Installation](#installation) compares the two.
+That's it. The dashboard is ready to use.
 
 For compatibility, screenshots, the full feature list, troubleshooting and configuration details, continue below.
 
@@ -241,7 +241,7 @@ A firmware update restores the LG default.
 
 The dashboard can also run directly on the TV's home screen, driven by the remote, for when there is no phone or laptop to hand.
 
-Installed from the Homebrew Channel, that app is the dashboard's tile. With `deploy.sh`, a first install adds it; updating an existing one leaves the home screen alone. It can be added or removed at any time from the **Server** tab, which is also where it turns up for anyone who updated in place rather than re-running the installer.
+A first install adds it; updating an existing one leaves the home screen alone. It can be added or removed at any time from the **Server** tab, which is also where it turns up for anyone who updated in place rather than re-running the installer.
 
 Removing it changes nothing else, since the dashboard reaches any browser on the network regardless. Where a TV will not take the app, the control is hidden and everything else works as before.
 
@@ -270,7 +270,7 @@ It also adds or removes [the app on the TV's home screen](#the-dashboard-on-the-
 ### Requirements
 
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
-* To install with `deploy.sh` instead, a computer on the same network: a Mac, a Linux machine, or a Windows PC. It uses Git and requires no other software on the computer. The TV does not need internet access.
+* A computer on the same network to install from: a Mac, a Linux machine, or a Windows PC. The installation uses Git and requires no other software on the computer. The TV does not need internet access.
 
 If you want to use the MQTT bridge, you will also need an MQTT broker on the network. Home Assistant's Mosquitto add-on is one option, but any compatible MQTT broker works.
 
@@ -296,23 +296,6 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED48C55LA | 25 (10.3.1)  | 33.31.68 | OLED  | Installed over telnet; in-app update to 0.37.2 confirmed       |
 
 **Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with your TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` — whether everything worked or something broke — and we will add a row.
-
-### From the Homebrew Channel
-
-1. Open the Homebrew Channel, find **TV Dashboard**, and install it.
-2. Open **TV Dashboard** from the home screen. The first launch puts the server in place, which takes a few seconds.
-3. Setup asks whether phones and computers on the network may use the dashboard, and whether to connect Home Assistant. Broker details are typed on a phone, which scans a code from the TV. Both can be changed later in the **Settings** tab.
-
-An install from the Homebrew Channel differs from one made with `deploy.sh` in a few ways:
-
-* It answers only on the TV itself until setup opens it to the network.
-* Updates come through the Homebrew Channel. The **Server** tab still says when a release is out, and the server follows an updated app within a few minutes, without the app being opened.
-* Uninstalling the app removes the server as well: see [Uninstalling](#uninstalling).
-* Hiding built-in home-screen tiles is not offered, since it restarts the app manager during boot, which the Homebrew Channel asks its apps not to do.
-
-An existing `deploy.sh` install is taken over in place, configuration and all, the first time the app is opened. Its old home-screen tile is removed.
-
-The steps below install it from a computer with `deploy.sh` instead.
 
 ### 1. Get the files
 
@@ -474,11 +457,7 @@ ssh root@<tv-ip> /var/lib/tvweb/tvwebctl status    # start | stop | restart | st
 
 ### Updating
 
-How depends on the install.
-
-**From the Homebrew Channel.** Update TV Dashboard there. The server installs the new version within a few minutes, even if the app is not opened.
-
-**With `deploy.sh`.** One with a **Server** tab in its dashboard updates itself; an older one is updated by deploying again, after which it has the tab.
+How depends on the install. One with a **Server** tab in its dashboard updates itself; an older one is updated by deploying again, after which it has the tab.
 
 **With the Server tab.** Opening it looks for a newer release, and **Check now** looks again. **Install** puts it on and restarts the server, and **Roll back** returns to the version it replaced.
 
@@ -521,10 +500,6 @@ With it on, the server asks GitHub for the latest release once a day, the dashbo
 The request says nothing about the TV beyond the address any HTTP request reveals.
 
 ### Uninstalling
-
-Installed from the Homebrew Channel: uninstall TV Dashboard there. The server stops starting at boot straight away, and within a few minutes it removes its Home Assistant entities and deletes itself, config included.
-
-Installed with `deploy.sh`:
 
 ```bash
 ssh root@<tv-ip>
