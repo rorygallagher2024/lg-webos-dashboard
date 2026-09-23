@@ -2303,9 +2303,7 @@ async function loadPrivacy() {
       const state = x.running ? 'Running' : 'Stopped';
       const cls = x.running ? 'idle' : 'good';
       const note = x.heldDown ? ' <span class="k">&middot; kept stopped at boot</span>' : '';
-      const pill = (x.stoppable && cw)
-        ? `<button class="pill ${cls}" data-svc="${esc(x.name)}" data-next="${x.running ? '0' : '1'}">${state}</button>`
-        : `<span class="pill ${cls}">${state}</span>`;
+      const pill = `<span class="pill ${cls}">${state}</span>`;
       return pvRow(esc(x.label), esc(x.detail) + note, pill);
     }).join('');
     const liveOn = (d.acr && d.acr.active ? 1 : 0) + (d.acr && d.acr.capturing ? 1 : 0);
@@ -2318,10 +2316,8 @@ async function loadPrivacy() {
     q('pv-running-note').innerHTML =
       'A service can be running with its permission switched off &mdash; it simply has ' +
       'nothing it is allowed to send. ' +
-      (dae.some(x => x.stoppable)
-        ? 'Switching one off here keeps it off across reboots.'
-        : 'This firmware does not run them as jobs the dashboard can stop, so they are ' +
-          'read-only here.') +
+      'They are switched off in the Apps tab, under Turn off background services, which keeps them ' +
+      'off across reboots.' +
       ' LG\'s recognition and advertising services are not listed: anything that asks them a ' +
       'question starts them, this panel included.';
 
@@ -2364,14 +2360,6 @@ q('pv-consent').addEventListener('click', async (ev) => {
   loadPrivacy();
 });
 
-q('pv-daemons').addEventListener('click', async (ev) => {
-  const btn = ev.target.closest('button.pill[data-svc]');
-  if (!btn) return;
-  btn.disabled = true;
-  btn.textContent = '...';
-  await c('service', { name: btn.dataset.svc, enabled: btn.dataset.next === '1' });
-  loadPrivacy();
-});
 
 async function setAdBlockMode(mode) {
   for (const m of ['off', 'ads', 'full']) { const b = q('ab-' + m); if (b) b.disabled = true; }
@@ -2694,7 +2682,7 @@ function renderAppsPanel() {
             </div>
             <div class="prot-status" style="display:flex;align-items:center;gap:10px">
               ${badge ? `<span class="pv-badge" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--w06);color:var(--t2)">${badge}</span>` : ''}
-              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ' title="Switched off, but running. It stops when the TV next restarts."' : ''}>${stillRunning ? 'Disabled, still running' : isDisabled ? 'Disabled' : 'Active'}</button>
+              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ' title="Switched off, but something on the TV has started it again."' : ''}>${stillRunning ? 'Disabled, still running' : isDisabled ? 'Disabled' : 'Active'}</button>
             </div>
           </div>`;
         }).join('');

@@ -492,17 +492,18 @@ function appsRows(d) {
     r.push(head('Turn Off Background Services'));
     for (var k = 0; k < svcs.length; k++) {
       var s = svcs[k];
-      var isActive = !s.disabled;
+      var isActive = !s.disabled, still = s.disabled && s.running;
       r.push({
         label: s.title || s.id,
-        value: isActive ? 'Active' : 'Disabled',
+        value: isActive ? 'Active' : still ? 'Disabled, still running' : 'Disabled',
         cls: isActive ? 'good' : 'warn',
         act: 'serviceToggle',
         key: s.id,
         title: s.title || s.id,
         on: isActive,
         press: isActive ? 'Press OK to disable service' : 'Press OK to enable service',
-        hint: (s.badge ? '[' + s.badge + '] ' : '') + (s.desc || '')
+        hint: (s.badge ? '[' + s.badge + '] ' : '') + (s.desc || '') +
+              (still ? ' Switched off, but something on the TV has started it again.' : '')
       });
     }
   }
@@ -573,7 +574,7 @@ function privacyRows(d) {
     r.push({ label: 'LG data services running', value: run + ' of ' + sup.length,
              cls: run === 0 ? 'on' : '', act: 'open', key: 'services',
              press: 'Press OK to see them',
-             hint: 'Background services that collect and send usage data.' });
+             hint: 'Background services that collect and send usage data. They are switched off in the Apps tab.' });
   }
   return r;
 }
@@ -658,18 +659,15 @@ function consentRows(d) {
   return r;
 }
 
+// What is running, and where to switch it off: the Apps tab's background
+// services, which hold them off across reboots.
 function serviceRows(d) {
   var r = [backRow(), head('LG data services')];
-  var cw = d && d.consentWritable !== false;
   supervised(d).forEach(function (x) {
-    var can = cw && x.stoppable;
     r.push({ label: x.label || x.name, value: x.running ? 'Running' : 'Stopped',
-             cls: x.running ? 'off' : 'on', act: can ? 'daemon' : null, key: x.name, on: x.running,
-             press: x.running ? 'Press OK to stop it' : 'Press OK to start it',
+             cls: x.running ? 'off' : 'on',
              hint: (x.detail ? x.detail.replace(/([^.!?])$/, '$1.') + ' ' : '') +
-                   (x.heldDown ? 'Kept stopped at every boot. ' : '') +
-                   (can ? 'Stopping it keeps it stopped across reboots.'
-                        : 'This firmware does not let the dashboard stop it.') });
+                   'Switched off in the Apps tab, under Turn Off Background Services.' });
   });
   if (r.length === 2) r.push({ label: 'None on this TV', value: '' });
   return r;
@@ -1229,9 +1227,6 @@ function activate() {
     case 'consent':
       return send({ action: 'consent', value: { key: r.key, enabled: !r.on } },
                   r.on ? 'Switched off' : 'Switched on');
-    case 'daemon':
-      return send({ action: 'service', value: { name: r.key, enabled: !r.on } },
-                  r.on ? 'Stopped' : 'Started');
     case 'resetAdId':
       return send({ action: 'resetAdId' }, 'Advertising ID reset');
     case 'lock':

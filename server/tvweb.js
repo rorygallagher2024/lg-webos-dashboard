@@ -633,10 +633,6 @@ function doControl(action, value, cb) {
       var cOn = !!(value && (value.enabled === true || value.enabled === 'true'));
       return privacy.setConsent(ckey, cOn, cb);
 
-    case 'service':
-      return privacy.setServiceEnabled((value && value.name) ? String(value.name) : '',
-        !!(value && (value.enabled === true || value.enabled === 'true')), cb);
-
     case 'clearAdCookies':
       return privacy.clearAdCookies(cb);
 

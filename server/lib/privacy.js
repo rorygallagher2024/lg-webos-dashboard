@@ -453,31 +453,6 @@ function upstartJobs(cb) {
   });
 }
 
-// initctl will start or stop any job it is given, so only the listed ones.
-function setServiceEnabled(name, enable, cb) {
-  if (!SERVICE_CONTROLLABLE[name]) {
-    return cb({ ok: false, error: name ? name + ' is not controllable' : 'no service named' });
-  }
-  execFile('/sbin/initctl', [enable ? 'start' : 'stop', name], { timeout: 6000 }, function () {
-    upstartJobs(function (jobs) {
-      var running = String(jobs[name] || '').indexOf('start/') === 0;
-      var list = stoppedServices(), at = list.indexOf(name);
-      if (enable && at !== -1) list.splice(at, 1);
-      if (!enable && at === -1) list.push(name);
-      try {
-        if (list.length) fs.writeFileSync(SERVICES_FILE, list.join('\n') + '\n', 'utf8');
-        else if (fs.existsSync(SERVICES_FILE)) fs.unlinkSync(SERVICES_FILE);
-      } catch (e) {}
-      clearCache();
-      console.log('service: ' + name + ' -> ' + (enable ? 'start' : 'stop') +
-                  (running === enable ? '' : ' (did not take)'));
-      cb(running === enable
-        ? { ok: true, name: name, running: running }
-        : { ok: false, error: 'the TV did not ' + (enable ? 'start' : 'stop') + ' ' + name });
-    });
-  });
-}
-
 function runningDaemons(cb) {
   var held = stoppedServices();
   upstartJobs(function (jobs) {
@@ -638,7 +613,6 @@ module.exports = {
   clearAdCookies: clearAdCookies,
   collectPrivacy: collectPrivacy,
   setConsent: setConsent,
-  setServiceEnabled: setServiceEnabled,
   readConsentFlags: readConsentFlags,
   clearCache: clearCache,
   ADBLOCK_ADS: ADBLOCK_ADS,

@@ -7,6 +7,7 @@ var execFile = require('child_process').execFile;
 var CATALOG = [
   {
     id: 'mycar',
+    bin: 'com.webos.service.mycar',
     title: 'Car-to-Home Telematics',
     unit: 'com.webos.service.mycar.service',
     upstart: null,
@@ -15,6 +16,7 @@ var CATALOG = [
   },
   {
     id: 'camera',
+    bin: 'com.webos.service.camera2',
     title: 'USB Camera Listener',
     unit: 'com.webos.service.camera.service',
     upstart: null,
@@ -23,6 +25,7 @@ var CATALOG = [
   },
   {
     id: 'uploadd',
+    bin: 'uploadd',
     title: 'Telemetry & Diagnostics Uploader',
     unit: 'uploadd.service',
     upstart: 'uploadd',
@@ -31,6 +34,7 @@ var CATALOG = [
   },
   {
     id: 'rdxd',
+    bin: 'rdxd',
     title: 'Remote Diagnostics Daemon',
     unit: 'rdxd.service',
     upstart: 'rdxd',
@@ -39,6 +43,7 @@ var CATALOG = [
   },
   {
     id: 'crashreportd',
+    bin: 'crashreportd',
     title: 'Jira Crash Reporter',
     unit: null,
     upstart: 'crashreportd',
@@ -47,6 +52,7 @@ var CATALOG = [
   },
   {
     id: 'contentminer',
+    bin: 'contentminer',
     title: 'ACR Content Miner',
     unit: 'contentminer.service',
     upstart: null,
@@ -55,6 +61,7 @@ var CATALOG = [
   },
   {
     id: 'nudge',
+    bin: 'nudge',
     title: 'LG Promotions & Tips Popups',
     unit: 'nudge.service',
     upstart: null,
@@ -63,6 +70,7 @@ var CATALOG = [
   },
   {
     id: 'alwaysready',
+    bin: 'alwaysready',
     title: 'Always Ready Ambient Mode',
     unit: 'alwaysready.service',
     upstart: null,
@@ -71,6 +79,7 @@ var CATALOG = [
   },
   {
     id: 'remotelogger',
+    bin: 'remotelogger',
     title: 'Remote Logging Daemon',
     unit: 'remotelogger.service',
     upstart: 'remotelogger',
@@ -86,6 +95,17 @@ var disabledFilePath = null;
 var initScriptPath = '/var/lib/webosbrew/init.d/20-tvweb-services';
 var oldInitScriptPath = '/var/lib/webosbrew/init.d/20-services.sh';
 var transientDir = '/run/systemd/transient';
+
+// Names of the programs running, from each process's executable.
+function runningPrograms() {
+  var out = {}, pids = [];
+  try { pids = fs.readdirSync('/proc'); } catch (e) { return out; }
+  for (var i = 0; i < pids.length; i++) {
+    if (!/^\d+$/.test(pids[i])) continue;
+    try { out[path.basename(fs.readlinkSync('/proc/' + pids[i] + '/exe'))] = true; } catch (e2) {}
+  }
+  return out;
+}
 
 function getSystemctl() {
   if (fs.existsSync('/bin/systemctl')) return '/bin/systemctl';
@@ -278,6 +298,7 @@ function getServices(cb) {
   }
 
   // Probe running state for available services
+  var procs = runningPrograms();
   var pending = available.length;
   function doneOne() {
     pending--;
@@ -295,17 +316,22 @@ function getServices(cb) {
       for (var k = 0; k < CATALOG.length; k++) {
         if (CATALOG[k].id === svc.id) { catItem = CATALOG[k]; break; }
       }
+      // The program itself counts as well as the unit or job: on webOS 9 the
+      // service hub launches some of these on demand, outside the unit that
+      // systemd reports on (uploadd, observed 22s into a boot on a C2).
+      var seen = !!(catItem && catItem.bin && procs[catItem.bin]);
       if (systemctl && catItem && catItem.unit) {
         execFile(systemctl, ['is-active', catItem.unit], function (err, stdout) {
-          svc.running = (!err && String(stdout).trim() === 'active');
+          svc.running = seen || (!err && String(stdout).trim() === 'active');
           doneOne();
         });
       } else if (initctl && catItem && catItem.upstart) {
         execFile(initctl, ['status', catItem.upstart], function (err, stdout) {
-          svc.running = (!err && String(stdout).indexOf('start/running') !== -1);
+          svc.running = seen || (!err && String(stdout).indexOf('start/running') !== -1);
           doneOne();
         });
       } else {
+        svc.running = seen;
         doneOne();
       }
     })(available[j]);
