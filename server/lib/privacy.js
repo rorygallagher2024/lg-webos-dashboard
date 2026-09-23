@@ -72,8 +72,7 @@ var CONSENT_GROUPS = [
   ['analytics',   'Analytics and sharing'],
   ['services',    'LG services'],
   ['unknown',     'No published description',
-   'The TV records these, but LG publishes nothing about them. The ones no ' +
-   'agreement refers to have nothing on the TV reading them, and are left read-only.'],
+   'The TV records these, but LG publishes nothing about them.'],
   ['platform',    'Set on the TV itself',
    'Acceptance records rather than collection choices. Changed in the TV\'s own menus, ' +
    'under Settings \u203a General \u203a About This TV \u203a User Agreements.']
@@ -461,9 +460,13 @@ function readConsentFlags() {
     } else if (byDoc) {
       out.known.push({ key: key, label: byDoc[0], detail: byDoc[1], described: true,
                        enabled: on, settable: consentSettable(key), group: byDoc[2] });
-    } else {
+    } else if (on || groups[key] || CONSENT_NAMES[key] || CONSENT_LOCKED[key]) {
       out.other.push(describeUnlabelled(key, on, groups));
     }
+    // Otherwise left out: a flag that is off, that no agreement refers to and
+    // that nothing on the TV reads (additional2 to 5 on the test TVs) says
+    // nothing and can do nothing. It appears if it is ever on, or once a
+    // firmware maps it to an agreement.
   }
   // The file's order is not stable: writing a flag moves it within the file,
   // so a list in that order reshuffles as flags are switched. Named flags go
