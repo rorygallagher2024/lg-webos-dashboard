@@ -45,6 +45,19 @@ telemetry.init({
 console.log('Running test-telemetry.js ...');
 
 // 1. eMMC wear tests
+(function testDynamicRange() {
+  var f = telemetry.formatDynamicRange;
+  assert.strictEqual(f('sdr'), 'SDR');
+  assert.strictEqual(f(''), 'SDR');
+  assert.strictEqual(f('hdr'), 'HDR');
+  assert.strictEqual(f('hdrALLM'), 'HDR \u00b7 Low latency');
+  assert.strictEqual(f('dolbyHdrALLM'), 'Dolby Vision \u00b7 Low latency');
+  assert.strictEqual(f('technicolorHdr'), 'Technicolor HDR');
+  assert.strictEqual(f('hlg'), 'HLG');
+  assert.strictEqual(f('hdr10Plus'), 'HDR10 Plus');
+  console.log('  dynamic range names are readable');
+})();
+
 (function testEmmc() {
   var info = telemetry.emmcInfo();
   assert.strictEqual(info.wear, '0-10%', 'Expected 0-10% wear');

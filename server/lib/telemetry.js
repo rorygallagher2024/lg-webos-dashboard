@@ -469,12 +469,23 @@ function formatPicMode(mode) {
   return PIC_MODE_MAP[mode] || mode;
 }
 
+/*
+ * The picture setting's "dimension". LG's own picture settings code (webOS 9.2,
+ * QuickSettings PictureModeInterfaces) knows sdr, hdr, dolbyHdr and
+ * technicolorHdr, each of the three HDR kinds also with an ALLM suffix: the
+ * source asked for Auto Low Latency Mode, the TV's game-style low-latency
+ * picture. Anything else is shown readably rather than as one word in capitals.
+ */
+var DYNAMIC_RANGES = { sdr: 'SDR', hdr: 'HDR', dolbyHdr: 'Dolby Vision', technicolorHdr: 'Technicolor HDR' };
+
 function formatDynamicRange(dr) {
-  if (!dr || dr === 'sdr') return 'SDR';
-  if (dr === 'dolbyHdr') return 'Dolby Vision';
-  if (dr === 'hdr') return 'HDR';
-  if (dr === 'technicolorHdr') return 'Technicolor HDR';
-  return String(dr).toUpperCase();
+  if (!dr) return 'SDR';
+  var s = String(dr), low = /ALLM$/.test(s);
+  if (low) s = s.slice(0, -4);
+  var name = DYNAMIC_RANGES[s] ||
+    s.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^(sdr|hdr|hlg)/i, function (m) { return m.toUpperCase(); })
+     .replace(/^./, function (c) { return c.toUpperCase(); });
+  return low ? name + ' \u00b7 Low latency' : name;
 }
 
 function pictureModes(cb) {
