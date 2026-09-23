@@ -2341,10 +2341,10 @@ async function loadPrivacy() {
       off:  { label: 'Off',
               detail: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
       ads:  { label: 'Ads & telemetry',
-              detail: `Blocks ${ab.adCount} advertising, tracking and diagnostics addresses. LG's app ` +
+              detail: `Blocks advertising, tracking and diagnostics addresses. LG's app ` +
                       `store and software updates still work.` },
       full: { label: 'Everything',
-              detail: `Blocks all ${ab.count} addresses, including LG's platform services.` }
+              detail: `Also blocks LG's platform services, so the app store and software updates may stop working.` }
     }[mode] || {};
     q('adblock-detail').textContent = AB.detail || '';
     for (const m of ['off', 'ads', 'full']) {

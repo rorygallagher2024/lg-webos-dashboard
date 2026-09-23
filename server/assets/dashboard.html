@@ -545,12 +545,11 @@ function privacyRows(d) {
       off:  { label: 'Off', next: 'ads',
               hint: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
       ads:  { label: 'Ads & telemetry', next: 'full',
-              hint: 'Blocks ' + (ab.adCount || 'the') + ' advertising, tracking and diagnostics addresses. ' +
+              hint: 'Blocks advertising, tracking and diagnostics addresses. ' +
                     'LG’s app store and software updates still work.' },
       full: { label: 'Everything', next: 'off',
-              hint: 'Blocks all ' + (ab.count || '') + ' addresses, including LG’s platform services' +
-                    (ab.platform && ab.platform.length ? ' (' + ab.platform.slice(0, 2).join(', ') + ' and others)' : '') +
-                    '. Features that rely on them, such as the app store, may stop working.' }
+              hint: 'Also blocks LG’s platform services. Features that rely on them, such as the app ' +
+                    'store, may stop working.' }
     };
     var cur = AB[abMode] || AB.off;
     r.push(head('Ad and tracker blocking'));
@@ -558,9 +557,6 @@ function privacyRows(d) {
              act: 'adblock', key: cur.next,
              press: 'Press OK for ' + AB[cur.next].label,
              hint: cur.hint + ' Streaming apps are untouched.' });
-    if (ab.enabled && ab.count !== null && ab.count !== undefined)
-      r.push({ label: 'Addresses blocked', value: num(abMode === 'ads' && ab.adCount ? ab.adCount : ab.count),
-        hint: 'How many addresses the setting above covers.' });
   }
 
   if (d.acr) {
