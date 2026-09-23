@@ -89,9 +89,17 @@ body{
 
 /* ---- masthead ---- */
 header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
-.hdr-left{display:flex;align-items:baseline}
-.mark{font-family:'Outfit';font-weight:300;font-size:clamp(19px,2.4vw,26px);color:var(--w100);letter-spacing:.01em}
-.mark #model{color:var(--w50);font-size:.68em;letter-spacing:.02em;margin-left:2px}
+.hdr-left{display:flex;align-items:flex-start;gap:18px}
+/* The masthead speaks in the page's two voices: the name in the thin display
+   face the big readings use, the TV beneath it as a tracked label. */
+.mark{display:flex;flex-direction:column;gap:10px}
+.mark-name{font-family:'Outfit';font-weight:200;font-size:clamp(30px,4.4vw,48px);line-height:.95;
+  letter-spacing:-.02em;color:var(--w100)}
+.mark-kind{color:var(--w40);white-space:nowrap}
+.mark-tv{display:flex;align-items:center;gap:12px;font-family:'Manrope';font-weight:500;font-size:11px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--w50)}
+.mark-tv i{width:22px;height:1px;background:var(--w25)}
+.mark-tv #model{color:var(--w80);letter-spacing:.14em}
 
 /* Theme toggle */
 .theme-toggle{
@@ -593,7 +601,10 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <header>
   <div class="hdr-left">
-    <div class="mark"><span id="brand">LG TV</span> <span id="model">&mdash;</span></div>
+    <div class="mark">
+      <div class="mark-name">Glasshouse <span class="mark-kind">web dashboard</span></div>
+      <div class="mark-tv"><span id="brand">LG TV</span><i></i><span id="model">&mdash;</span></div>
+    </div>
     <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme">☾</button>
   </div>
   <div class="src">
