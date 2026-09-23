@@ -73,6 +73,9 @@ var lastPicModes = [];
 var inputNameMap = {};
 var lastInputScan = 0;
 var installedApps = [];
+// Every app's title by id, hidden ones included: the app list leaves out apps
+// hidden from the home screen, but one can still be the app on screen.
+var appTitles = {};
 var lastAppsScan = 0;
 
 var SOC_ARCH = {
@@ -533,6 +536,7 @@ function parseAppList(raw) {
   var seen = {};
   for (var i = 0; i < raw.length; i++) {
     var a = raw[i];
+    if (a && a.id && a.title) appTitles[a.id] = a.title;
     if (a && a.id && a.visible !== false && a.id.indexOf('com.webos.app.container') !== 0) {
       if (!seen[a.id]) {
         seen[a.id] = true;
@@ -1125,9 +1129,12 @@ function collectStats(cb) {
             var shortApp = String(app.appId).replace('com.webos.app.', '');
             out.app = shortApp;
             out.app_id = app.appId;
-            out.app_name = inputNameMap[shortApp] || shortApp;
-            out.display_title = (inputNameMap[shortApp] && inputNameMap[shortApp] !== shortApp) ?
-              (inputNameMap[shortApp] + ' (' + shortApp.toUpperCase() + ')') : shortApp;
+            // Inputs by the names given them in the TV's settings, apps by
+            // their titles; the id only when neither is known.
+            var isInput = inputNameMap[shortApp] && inputNameMap[shortApp] !== shortApp;
+            out.app_name = inputNameMap[shortApp] || appTitles[app.appId] || shortApp;
+            out.display_title = isInput ?
+              (inputNameMap[shortApp] + ' (' + shortApp.toUpperCase() + ')') : out.app_name;
           }
 
           lunaCachedFn('com.webos.service.settings/getSystemSettings',
