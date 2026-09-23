@@ -5,6 +5,16 @@
 
 var INPUTS = { hdmi1: 1, hdmi2: 1, hdmi3: 1, hdmi4: 1, livetv: 1 };
 
+// Screen saver names come from the registry, so a new one reaches Home
+// Assistant without a second list to keep in step (Bokeh was missed once).
+var SS = require('./screensavers').SCREENSAVERS;
+var SS_IDS = Object.keys(SS);
+function ssMap(byLabel) {
+  var m = {};
+  SS_IDS.forEach(function (k) { if (byLabel) m[SS[k].label] = k; else m[k] = SS[k].label; });
+  return m;
+}
+
 var SOUND_OUTPUT_MAP = {
   tv_speaker: 'TV Speaker',
   external_arc: 'HDMI ARC',
@@ -900,9 +910,9 @@ function buildEntities(opts) {
           name: 'Screen Saver',
           command_topic: pfx + '/command/screensaverMode',
           state_topic: telemetryTopic,
-          options: ['LG default', 'Clock', 'Starfield', 'Fireworks', 'Panel vitals'],
-          command_template: '{{ {"LG default":"stock","Clock":"clock","Starfield":"starfield","Fireworks":"fireworks","Panel vitals":"vitals"}[value] }}',
-          value_template: '{{ {"stock":"LG default","clock":"Clock","starfield":"Starfield","fireworks":"Fireworks","vitals":"Panel vitals"}.get(value_json.screensaverMode, "LG default") }}',
+          options: SS_IDS.map(function (k) { return SS[k].label; }),
+          command_template: '{{ ' + JSON.stringify(ssMap(true)) + '[value] }}',
+          value_template: '{{ ' + JSON.stringify(ssMap(false)) + '.get(value_json.screensaverMode, "LG default") }}',
           icon: 'mdi:television-shimmer'
         }
       },

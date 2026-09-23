@@ -200,6 +200,18 @@ console.log('Running test-screensavers.js ...');
       console.log('  ✓ init auto-heals orphaned staged markers when mode is stock');
     })();
 
+    // 11. Home Assistant offers every screen saver in the catalog
+    (function testHaOffersEveryScreensaver() {
+      var ha = require('../server/lib/ha');
+      var sel = ha.buildEntities({}).filter(function (e) { return e.id === 'screensaver_mode'; })[0];
+      Object.keys(screensavers.SCREENSAVERS).forEach(function (k) {
+        var label = screensavers.SCREENSAVERS[k].label;
+        assert.ok(sel.payload.options.indexOf(label) !== -1, label + ' missing from Home Assistant');
+        assert.ok(sel.payload.value_template.indexOf('"' + k + '":"' + label + '"') !== -1, k + ' not mapped');
+      });
+      console.log('  ✓ Home Assistant offers every screen saver in the catalog');
+    })();
+
     console.log('ALL test-screensavers.js assertions passed!\n');
     env.restore();
   });
