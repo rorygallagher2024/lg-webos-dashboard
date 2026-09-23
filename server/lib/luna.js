@@ -7,16 +7,43 @@ var childProcess = require('child_process');
 var execFile = childProcess.execFile;
 var spawn = childProcess.spawn;
 
-function call(uri, payload, cb, appId) {
-  var args = appId ? ['-a', appId] : [];
-  args = args.concat(['-n', '1', '-w', '2000', '-f', 'luna://' + uri, JSON.stringify(payload || {})]);
-  execFile('/usr/bin/luna-send', args, { timeout: 3500 }, function (err, stdout) {
+/*
+ * One-shot calls run at most two at a time, the rest in turn. Node 0.12 on a
+ * B8 (webOS 4) has frozen in its first second at start: a luna-send child
+ * stuck between fork and exec on a lock it inherited held, the server waiting
+ * on it, and every later child the same. Start fires off a burst of these
+ * calls at once, which is when it happened. Subscriptions start once and stay
+ * open, so they are not counted.
+ */
+var PARALLEL = 2;
+var running = 0;
+var waiting = [];
+
+function pump() {
+  while (running < PARALLEL && waiting.length) {
+    var job = waiting.shift();
+    running++;
+    run(job);
+  }
+}
+
+function run(job) {
+  execFile('/usr/bin/luna-send', job.args, { timeout: 3500 }, function (err, stdout) {
+    running--;
+    pump();
     var parsed = null;
     if (!err && stdout) {
       try { parsed = JSON.parse(stdout); } catch (e) {}
     }
-    if (cb) cb(parsed, String(stdout || ''));
+    if (job.cb) job.cb(parsed, String(stdout || ''));
   });
+}
+
+function call(uri, payload, cb, appId) {
+  var args = appId ? ['-a', appId] : [];
+  args = args.concat(['-n', '1', '-w', '2000', '-f', 'luna://' + uri, JSON.stringify(payload || {})]);
+  waiting.push({ args: args, cb: cb });
+  pump();
 }
 
 function Subscription(uri, payload, appId, handlers) {
