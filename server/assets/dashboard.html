@@ -1235,7 +1235,7 @@ function activate() {
     case 'saver':
       return send({ action: 'screensaverMode', value: r.key });
     case 'saverStart':
-      return send({ action: 'screensaver' });
+      return startSaverAfterRelease();
     case 'quickBoot':
       return send({ action: 'quickBoot', value: !r.on }, r.on ? 'Quick Boot turned off' : 'Quick Boot turned on');
     case 'standbyLight':
@@ -1394,6 +1394,29 @@ function leaveApp() {
   } else {
     window.close();
   }
+}
+
+/*
+ * The screen saver ends on any button, and OK acts on the key going down: the
+ * release of that same press reached it and ended it, 145ms after it showed
+ * on a C2. So it starts once OK is let go, with a moment's grace, or after a
+ * second if no release comes (a click, or a remote that sends none).
+ */
+var saverPending = null;
+function startSaverAfterRelease() {
+  if (saverPending) return;
+  flash('Starting the screen saver…');
+  function go() {
+    if (!saverPending) return;
+    clearTimeout(saverPending);
+    saverPending = null;
+    setTimeout(function () { send({ action: 'screensaver' }); }, 300);
+  }
+  saverPending = setTimeout(go, 1000);
+  document.addEventListener('keyup', function once() {
+    document.removeEventListener('keyup', once);
+    go();
+  });
 }
 
 document.addEventListener('keydown', function (e) {
