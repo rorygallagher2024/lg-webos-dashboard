@@ -62,7 +62,7 @@ advertising needs consent beyond the Viewing Information Agreement.
 
 ACR is off until the Viewing Information Agreement is accepted. Several
 agreement flags decide whether it runs and what its data may be used for;
-the Privacy tab shows each with LG's name for it:
+the Privacy tab lists each under a descriptive name:
 
 | Flag in the Privacy tab | Controls |
 | --- | --- |
@@ -74,6 +74,6 @@ the Privacy tab shows each with LG's name for it:
 | Personalised advertising | interest-based ads |
 
 Switching the flags off stops the TV acting on them. The ad blocker's **Ads &
-telemetry** mode also blocks the Alphonso and LG Ad Solutions servers, so a TV
+telemetry** mode also blocks the Alphonso servers LG Ad Solutions runs ACR through, so a TV
 that still has a flag on, or re-enables one after a firmware update, has
 nowhere to send the data.
