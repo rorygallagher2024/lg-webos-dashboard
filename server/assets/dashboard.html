@@ -517,19 +517,30 @@ function privacyRows(d) {
   if (!d || !d.ok) return [];
   var r = [];
 
+  // The same three settings as the browser dashboard, stepped through with OK
+  // as logo luminance is: off, then ads and telemetry, then everything.
   if (d.adblock) {
+    var ab = d.adblock, abMode = ab.enabled ? (ab.mode || 'full') : 'off';
+    var AB = {
+      off:  { label: 'Off', next: 'ads',
+              hint: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
+      ads:  { label: 'Ads & telemetry', next: 'full',
+              hint: 'Blocks ' + (ab.adCount || 'the') + ' advertising, tracking and diagnostics addresses. ' +
+                    'LG’s app store and software updates still work.' },
+      full: { label: 'Everything', next: 'off',
+              hint: 'Blocks all ' + (ab.count || '') + ' addresses, including LG’s platform services' +
+                    (ab.platform && ab.platform.length ? ' (' + ab.platform.slice(0, 2).join(', ') + ' and others)' : '') +
+                    '. Features that rely on them, such as the app store, may stop working.' }
+    };
+    var cur = AB[abMode] || AB.off;
     r.push(head('Ad and tracker blocking'));
-    r.push({ label: 'Blocking', value: d.adblock.enabled ? 'On' : 'Off',
-             cls: d.adblock.enabled ? 'on' : 'off', act: 'adblock', on: d.adblock.enabled,
-             press: d.adblock.enabled ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'Points LG’s advertising and telemetry domains nowhere, so the TV cannot reach them. Streaming apps are untouched.' });
-    if (d.adblock.enabled) {
-      if (d.adblock.mode) r.push({ label: 'Mode', value: d.adblock.mode,
-        hint: 'Which list is in force: ads only, or the wider telemetry list as well.' });
-      if (d.adblock.count !== null && d.adblock.count !== undefined)
-        r.push({ label: 'Domains blocked', value: num(d.adblock.count),
-          hint: 'How many addresses the list currently covers.' });
-    }
+    r.push({ label: 'Blocking', value: cur.label, cls: abMode === 'off' ? 'off' : 'on',
+             act: 'adblock', key: cur.next,
+             press: 'Press OK for ' + AB[cur.next].label,
+             hint: cur.hint + ' Streaming apps are untouched.' });
+    if (ab.enabled && ab.count !== null && ab.count !== undefined)
+      r.push({ label: 'Addresses blocked', value: num(abMode === 'ads' && ab.adCount ? ab.adCount : ab.count),
+        hint: 'How many addresses the setting above covers.' });
   }
 
   if (d.acr) {
@@ -1225,7 +1236,7 @@ function activate() {
     case 'standbyLight':
       return send({ action: 'standbyLight', value: !r.on }, r.on ? 'Standby LED turned off' : 'Standby LED turned on');
     case 'adblock':
-      return send({ action: 'toggleAdBlock' });
+      return send({ action: 'setAdBlock', value: r.key });
     case 'acr':
       return send({ action: 'acr', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
     case 'open':
