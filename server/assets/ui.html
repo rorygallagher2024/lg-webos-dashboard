@@ -2686,6 +2686,7 @@ function renderAppsPanel() {
           const desc = esc(svc.desc || '');
           const unit = esc(svc.unit || '');
           const isDisabled = !!svc.disabled;
+          const stillRunning = isDisabled && svc.running;
           return `<div class="prot-row">
             <div class="prot-main">
               <div class="prot-title">${title} <span class="prot-sub">&middot; ${unit}</span></div>
@@ -2693,7 +2694,7 @@ function renderAppsPanel() {
             </div>
             <div class="prot-status" style="display:flex;align-items:center;gap:10px">
               ${badge ? `<span class="pv-badge" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--w06);color:var(--t2)">${badge}</span>` : ''}
-              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}>${isDisabled ? 'Disabled' : 'Active'}</button>
+              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ' title="Switched off, but running. It stops when the TV next restarts."' : ''}>${stillRunning ? 'Disabled, still running' : isDisabled ? 'Disabled' : 'Active'}</button>
             </div>
           </div>`;
         }).join('');
