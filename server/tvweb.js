@@ -596,9 +596,19 @@ function doControl(action, value, cb) {
     case 'soundOutput':
       var sOut = String(value || '').trim();
       if (!sOut) return cb({ ok: false, error: 'missing sound output' });
-      return luna('com.webos.service.settings/setSystemSettings',
-                  { category: 'sound', settings: { soundOutput: sOut } },
-                  function (r) { cb({ ok: !!(r && r.returnValue) }); });
+      /* Home Assistant sends one id per name, and some names cover two ids
+         that differ between firmware; the other is tried if the first is
+         refused. */
+      var sAlias = { optical: 'external_optical', external_optical: 'optical',
+                     tv_speaker: 'internal', internal: 'tv_speaker' }[sOut];
+      var setOut = function (id, next) {
+        luna('com.webos.service.settings/setSystemSettings',
+             { category: 'sound', settings: { soundOutput: id } }, function (r) { next(!!(r && r.returnValue)); });
+      };
+      return setOut(sOut, function (ok) {
+        if (ok || !sAlias) return cb({ ok: ok });
+        setOut(sAlias, function (ok2) { cb({ ok: ok2 }); });
+      });
 
     case 'playback':
     case 'media':

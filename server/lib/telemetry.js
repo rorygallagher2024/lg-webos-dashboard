@@ -86,30 +86,7 @@ var SOC_ARCH = {
   M16PLUS: 'Alpha 7 (M16P)'
 };
 
-var PIC_MODE_MAP = {
-  dolbyHdrVivid: 'Dolby Vision Vivid',
-  dolbyHdrCinemaBright: 'Dolby Vision Cinema Bright',
-  dolbyHdrCinema: 'Dolby Vision Cinema',
-  dolbyHdrCinemaHome: 'Dolby Vision Cinema Home',
-  dolbyHdrStandard: 'Dolby Vision Standard',
-  dolbyHdrGame: 'Dolby Vision Game',
-  hdrCinema: 'HDR Cinema',
-  hdrCinemaHome: 'HDR Cinema Home',
-  hdrStandard: 'HDR Standard',
-  hdrGame: 'HDR Game',
-  cinema: 'Cinema',
-  personalized: 'Personalized',
-  expert1: 'ISF Expert (Bright)',
-  expert2: 'ISF Expert (Dark)',
-  game: 'Game',
-  standard: 'Standard',
-  eco: 'Eco',
-  technicolor: 'Technicolor',
-  technicolorHdr: 'Technicolor HDR',
-  hdrEffect: 'HDR Effect',
-  vivid: 'Vivid',
-  normal: 'Standard'
-};
+var PIC_MODE_MAP = ha.PIC_MODE_MAP;
 
 function init(opts) {
   opts = opts || {};
