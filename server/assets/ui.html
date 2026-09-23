@@ -101,11 +101,13 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .mark-tv i{width:22px;height:1px;background:var(--w25)}
 .mark-tv #model{color:var(--w80);letter-spacing:.14em}
 
-/* Theme toggle */
+/* Theme toggle, at the end of the footer: a set-and-forget control, which
+   left the masthead room to stay on one line at narrower widths. */
+.foot-end{display:inline-flex;align-items:center;flex-wrap:wrap}
 .theme-toggle{
   display:inline-flex;align-items:center;justify-content:center;
-  width:30px;height:30px;border:1px solid var(--w12);border-radius:50%;
-  background:transparent;color:var(--w60);font-size:15px;
+  width:26px;height:26px;border:1px solid var(--w12);border-radius:50%;
+  background:transparent;color:var(--w60);font-size:13px;
   cursor:pointer;transition:color .2s,border-color .2s;
   padding:0;min-height:0;letter-spacing:0;text-transform:none;
   margin-left:12px;flex-shrink:0;vertical-align:middle;line-height:1;
@@ -605,7 +607,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="mark-name">Glasshouse <span class="mark-kind">web dashboard</span></div>
       <div class="mark-tv"><span id="brand">LG TV</span><i></i><span id="model">&mdash;</span></div>
     </div>
-    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme">☾</button>
   </div>
   <div class="src">
     <div class="st" id="state"><i></i><span>&mdash;</span></div>
@@ -1207,7 +1208,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a></span>
+  <span class="foot-end"><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme">☾</button></span>
 </footer>
 
 <script>
