@@ -696,33 +696,34 @@ function settingsRows(d) {
     return [{ label: 'Changed on the TV itself', value: '',
               hint: 'These settings can only be changed with the remote, on the TV.' }].concat(appearanceRows());
   }
+  var WEB = 'A fuller version of this dashboard, with more controls, for a browser on a phone or computer. ';
   var r = [head('This dashboard')];
-  r.push({ label: 'Phones and computers', value: d.network ? 'On' : 'Off', cls: d.network ? 'on' : 'off',
+  r.push({ label: 'Web dashboard', value: d.network ? 'On' : 'Off', cls: d.network ? 'on' : 'off',
            act: d.writable ? 'net' : null, on: d.network,
-           press: d.network ? 'Press OK to keep it to this TV' : 'Press OK to open it to your network',
-           hint: d.network
+           press: d.network ? 'Press OK to switch it off' : 'Press OK to switch it on',
+           hint: WEB + (d.network
              ? (d.token
-               ? 'Anything on your home network can open it in a browser, but only with its access token. Scanning the code here fills that in.'
-               : 'Anything on your home network can open it in a browser. There is no password, so anyone on that network can use it.')
-             : 'Only this TV can open it. Open it up to use it from a phone or computer, where it does more than here.' });
+               ? 'It is on for your home network, and needs the dashboard’s access token, which the code under Address includes.'
+               : 'It is on for your home network, with no password, so anyone on that network can use it.')
+             : 'It is off, so only this TV can reach the dashboard.') });
   if (d.network && d.address) {
     r.push({ label: 'Address', value: d.address, web: '/',
-             hint: 'Where to find it from a phone or computer on your home network.',
+             hint: 'Where the web dashboard is, for a browser on a phone or computer on your home network.',
              scan: 'Scan to open it on your phone.' });
   }
   var ha = d.homeAssistant || {};
   var haValue = !ha.configured ? 'Not set up' :
                 ha.state === 'connected' ? 'Connected' :
                 ha.state === 'error' ? 'Not connecting' : 'Connecting';
-  r.push(head('Home Assistant'));
+  r.push(head('Home Assistant (MQTT)'));
   r.push({ label: 'Home Assistant', value: haValue, cls: ha.state === 'connected' ? 'on' : '',
            act: d.writable ? 'ha' : null,
            press: ha.configured ? 'Press OK to set it up again' : 'Press OK to set it up on your phone',
            hint: ha.state === 'connected'
-             ? 'This TV reports to Home Assistant and takes its commands, so it can join your automations.'
+             ? 'Connected to Home Assistant through your MQTT broker. The TV reports its state and takes commands, so it can join your automations.'
              : ha.configured
-               ? 'The details are saved but it is not connected yet. Set it up again to check them.'
-               : 'Use this TV in Home Assistant automations. You finish setting it up on your phone.' });
+               ? 'The MQTT broker’s details are saved, but the TV cannot connect to it yet. Set it up again to check them.'
+               : 'Connects this TV to Home Assistant through an MQTT broker, such as Home Assistant’s Mosquitto add-on, so it can join your automations. The broker’s details are entered on your phone.' });
   return r.concat(appearanceRows());
 }
 
@@ -763,14 +764,14 @@ function updateRows(d) {
       label: 'Latest release',
       value: 'Checking…',
       cls: 'warn',
-      hint: 'Checking GitHub for new releases.'
+      hint: 'Looking for a new release.'
     });
   } else if (d.available && d.latest) {
     r.push({
       label: 'Latest release',
       value: 'v' + d.latest,
       cls: 'on',
-      hint: 'A newer release is available on GitHub (v' + d.latest + ').'
+      hint: 'A newer release is available (v' + d.latest + ').'
     });
     if (d.viaHomebrewChannel) {
       r.push({
@@ -801,7 +802,7 @@ function updateRows(d) {
       label: 'Latest release',
       value: 'Check failed',
       cls: 'bad',
-      hint: 'Could not check GitHub: ' + d.error
+      hint: 'Could not check for a new release: ' + d.error
     });
   }
 
@@ -812,7 +813,7 @@ function updateRows(d) {
       cls: 'act',
       act: 'updateCheck',
       press: 'Press OK to check for updates',
-      hint: 'Queries GitHub releases to check if a new version is available.'
+      hint: 'Looks for a newer release now.'
     });
   }
 
@@ -836,7 +837,7 @@ function updateRows(d) {
     r.push({
       label: 'Last checked',
       value: checkedStr,
-      hint: 'When the TV last reached GitHub to check for updates.'
+      hint: 'When the TV last checked for a new release.'
     });
   }
 

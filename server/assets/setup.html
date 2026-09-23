@@ -121,21 +121,21 @@ body{font-family:'Manrope',sans-serif}
         'Two quick choices first, and you can change both later.</div><div class="btn">Get started</div>' + dots(1));
     } else if (name === 'network') {
       rows = [
-        { id: 'open', label: 'Phones and computers at home too',
-          hint: 'Open it in a browser on anything connected to your home network. The browser version does more than this one. ' +
-            (state.token ? 'Using it there needs its access token.' : 'There is no password, so anyone on that network can use it.') },
-        { id: 'closed', label: 'Only on this TV',
-          hint: 'Nothing else on your network can reach it. The safest choice, and you can open it up later.' }
+        { id: 'open', label: 'Yes, on phones and computers at home',
+          hint: 'A fuller version of this dashboard, with more controls, that opens in a browser on any phone or computer on your home network. ' +
+            (state.token ? 'Using it needs the dashboard’s access token.' : 'There is no password, so anyone on that network can use it.') },
+        { id: 'closed', label: 'No, only on this TV',
+          hint: 'Nothing else on your network can reach the dashboard. The safest choice, and it can be switched on later in Settings.' }
       ];
       // A fresh install starts closed, so the TV's current state would always
       // preselect "Only on this TV"; only follow it once a choice has been made.
       sel = (netChosen && !state.network) ? 1 : 0;
-      render('<div class="step">Step 1 of 2</div><div class="title">Use it from your phone too?</div>' +
+      render('<div class="step">Step 1 of 2</div><div class="title">Turn on the web dashboard?</div>' +
         '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(2));
     } else if (name === 'ha') {
       rows = [
         { id: 'phone', label: 'Set it up on my phone',
-          hint: 'Scan a code with your phone and fill in your broker’s details there.' },
+          hint: 'The TV connects through an MQTT broker, such as Home Assistant’s Mosquitto add-on. Scan a code with your phone and enter the broker’s details there.' },
         { id: 'later', label: 'Not now',
           hint: 'The dashboard works without it. Set it up any time from Settings.' }
       ];
@@ -150,7 +150,7 @@ body{font-family:'Manrope',sans-serif}
       var ha = state.homeAssistant || {};
       rows = [
         { ro: true, label: 'On this TV', value: 'Yes', cls: 'on' },
-        { ro: true, label: 'Phones and computers', value: state.network ? 'Yes' : 'Not yet', cls: state.network ? 'on' : '' },
+        { ro: true, label: 'Web dashboard', value: state.network ? 'On' : 'Off', cls: state.network ? 'on' : '' },
         { ro: true, label: 'Home Assistant', value: ha.state === 'connected' ? 'Connected' : (ha.configured ? 'Connecting' : 'Not set up'),
           cls: ha.state === 'connected' ? 'on' : '' }
       ];
