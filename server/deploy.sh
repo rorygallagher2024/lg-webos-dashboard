@@ -279,9 +279,11 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 0
 fi
 # A restart takes a few seconds, so give it twenty before calling it a failure.
+# Any reply counts: with a token set, the 401 is the server answering.
 answered=""
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-  if curl -sf --max-time 4 "http://$TV:8080/api/caps" >/dev/null; then answered=1; break; fi
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://$TV:8080/api/caps")
+  if [ -n "$code" ] && [ "$code" != 000 ]; then answered=1; break; fi
   sleep 2
 done
 if [ -z "$answered" ]; then

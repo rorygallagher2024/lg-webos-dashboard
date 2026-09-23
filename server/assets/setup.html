@@ -122,7 +122,8 @@ body{font-family:'Manrope',sans-serif}
     } else if (name === 'network') {
       rows = [
         { id: 'open', label: 'Phones and computers at home too',
-          hint: 'Open it in a browser on anything connected to your home network. The browser version does more than this one. There is no password, so anyone on that network can use it.' },
+          hint: 'Open it in a browser on anything connected to your home network. The browser version does more than this one. ' +
+            (state.token ? 'Using it there needs its access token.' : 'There is no password, so anyone on that network can use it.') },
         { id: 'closed', label: 'Only on this TV',
           hint: 'Nothing else on your network can reach it. The safest choice, and you can open it up later.' }
       ];

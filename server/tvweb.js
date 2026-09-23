@@ -1035,6 +1035,7 @@ function setupState() {
     needed: setupPending(),
     writable: CONFIG.allowControl,
     network: networkOpen(),
+    token: !!CONFIG.token,
     address: lanAddress() ? lanAddress() + ':' + CONFIG.port : null,
     homeAssistant: { configured: !!(m.enabled && m.host), state: MQTT_STATUS.state },
     handoff: HANDOFF.server ? handoffUrl() : null
@@ -1387,10 +1388,15 @@ var server = http.createServer(function (req, res) {
   }
 
   if (pathname === '/api/caps') {
-    return send(res, 200, JSON.stringify({
+    var caps = {
       ok: true, allowControl: CONFIG.allowControl, allowPower: CONFIG.allowPower,
       origin: lanOrigin(), version: TVWEB_VERSION, setupNeeded: setupPending()
-    }));
+    };
+    // The token goes into the TV's QR codes, so a phone that scans one can use
+    // what it opens. Only to the TV itself: whoever sees the screen holds the
+    // remote, and the remote needs no token.
+    if (CONFIG.token && fromTV(req)) caps.key = CONFIG.token;
+    return send(res, 200, JSON.stringify(caps));
   }
 
   if (pathname === '/api/screensaver') {
