@@ -556,7 +556,8 @@ function collectPrivacy(cb) {
             out.advertisingId = {
               available: adOk,
               label: 'Advertising identifier',
-              detail: 'A unique ID your TV hands to advertisers. Resetting it breaks the link to your past activity.',
+              detail: 'A unique ID your TV hands to advertisers so they can target ads at you. ' +
+                      'Resetting it breaks the link to your past activity.',
               present: !!id,
               limitTracking: !!(ad && String(ad.LMT).toLowerCase() === 'on'),
               limitTrackingLabel: 'Limit ad tracking',

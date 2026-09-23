@@ -1022,8 +1022,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
     <div>
       <div class="pv-h">Advertising identifier</div>
-      <div class="pv-sub">A unique ID your TV hands to advertisers. Resetting it breaks the
-        link between your TV and any profile built from past activity.</div>
+      <div class="pv-sub">A unique ID your TV hands to advertisers so they can recognise it and
+        target ads at you. Resetting it breaks the link to any profile built from past activity.</div>
       <div id="pv-adid"></div>
       <div id="pv-lmt"></div>
       <div class="sub" id="pv-adnote" style="margin-top:8px"></div>
@@ -2239,8 +2239,7 @@ async function loadPrivacy() {
     // consent flags
     const c = d.consent || { known: [], other: [] };
     const cw = !!d.consentWritable;
-    // Labelled rows show their label; the rest are named by their raw key,
-    // which is all the name they have.
+    // A flag with no label falls back to its raw key, the only name it has.
     // A flag cannot be off while an agreement it shares stays accepted, so the
     // rows it takes with it are named before the click, not after.
     const shared = f => f.sharesWith && f.sharesWith.length
@@ -2250,9 +2249,7 @@ async function loadPrivacy() {
       .concat((c.other || []).map(f => ({
         ...f,
         name: f.label || f.key,
-        // A named row still shows its key; an unnamed one is already titled by it.
-        detail: esc(f.detail || '') + shared(f) +
-                (f.label ? ` <span class="k">${esc(f.key)}</span>` : '')
+        detail: esc(f.detail || '') + shared(f)
       })));
     let html = '';
     for (const [id, title, note] of (d.consentGroups || [['unknown', '']])) {
@@ -2282,8 +2279,7 @@ async function loadPrivacy() {
               inGroup.map(f => pvRow(esc(f.name), f.detail, pvConsentPill(f, cw))).join('') +
               (anon.length ? pvRow(
                 anon.length + ' unidentified flag' + (anon.length === 1 ? '' : 's'),
-                'Recorded by the TV, tied to no agreement on this firmware and not writable. ' +
-                  '<span class="k">' + anon.map(f => esc(f.key)).join(', ') + '</span>',
+                'Recorded by the TV, tied to no agreement on this firmware and not writable.',
                 `<span class="pill fixed ${anon.some(f => f.enabled) ? 'warn' : 'good'}">` +
                   (anon.some(f => f.enabled)
                     ? anon.filter(f => f.enabled).length + ' on'
