@@ -617,6 +617,9 @@ function doControl(action, value, cb) {
     case 'resetAdId':
       return privacy.resetAdId(cb);
 
+    case 'limitAdTracking':
+      return privacy.setLimitTracking(value === true || value === 'on' || value === 'true', cb);
+
     case 'acr':
       var acrOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings', {

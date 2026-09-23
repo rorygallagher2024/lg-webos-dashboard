@@ -596,6 +596,26 @@ function resetAdId(cb) {
   });
 }
 
+/*
+ * Limit ad tracking is the TV's own setting, "lmt" in the general category,
+ * which the ad service reports as LMT: on a C2 (webOS 9.2) writing one changed
+ * the other within a second. Confirmed from the ad service, since that is the
+ * value apps are given.
+ */
+function setLimitTracking(on, cb) {
+  if (!luna) return cb({ ok: false, error: 'no luna wrapper' });
+  luna('com.webos.settingsservice/setSystemSettings',
+       { category: 'general', settings: { lmt: on ? 'on' : 'off' } }, function (r) {
+    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
+    luna('com.webos.service.admanager/getAdid', {}, function (ad) {
+      clearCache();
+      var now = !!(ad && String(ad.LMT).toLowerCase() === 'on');
+      cb(now === !!on ? { ok: true, limitTracking: now }
+                      : { ok: false, error: 'the setting did not take' });
+    });
+  });
+}
+
 function clearAdCookies(cb) {
   if (!luna) return cb({ ok: false, error: 'no luna wrapper' });
   luna('com.webos.service.admanager/inactivateCookies', {}, function (r) {
@@ -659,6 +679,7 @@ module.exports = {
   setAdBlock: setAdBlock,
   checkBootAdBlock: checkBootAdBlock,
   resetAdId: resetAdId,
+  setLimitTracking: setLimitTracking,
   clearAdCookies: clearAdCookies,
   collectPrivacy: collectPrivacy,
   setConsent: setConsent,

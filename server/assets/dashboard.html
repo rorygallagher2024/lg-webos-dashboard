@@ -562,6 +562,8 @@ function privacyRows(d) {
     r.push({ label: d.advertisingId.limitTrackingLabel || 'Limit ad tracking',
              value: d.advertisingId.limitTracking ? 'On' : 'Off',
              cls: d.advertisingId.limitTracking ? 'on' : 'off',
+             act: d.consentWritable === false ? null : 'lmt', on: d.advertisingId.limitTracking,
+             press: d.advertisingId.limitTracking ? 'Press OK to switch off' : 'Press OK to switch on',
              hint: 'When on, apps are asked not to use the TV’s advertising ID to profile the viewer. It is a request, not an enforcement.' });
     r.push({ label: 'Reset the advertising ID', value: '→', cls: 'act', act: 'resetAdId',
              press: 'Press OK to reset',
@@ -1248,6 +1250,8 @@ function activate() {
                   r.on ? 'Switched off' : 'Switched on');
     case 'resetAdId':
       return send({ action: 'resetAdId' }, 'Advertising ID reset');
+    case 'lmt':
+      return send({ action: 'limitAdTracking', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
     case 'lock':
       return send({ action: 'serviceMenuLock', value: { locked: !r.on } });
     case 'menu':

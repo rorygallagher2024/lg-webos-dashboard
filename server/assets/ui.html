@@ -2216,6 +2216,8 @@ async function loadPrivacy() {
       ad.limitTrackingLabel || 'Limit ad tracking',
       adOk ? (ad.limitTrackingDetail || '') : 'Read from the same call, so it is unknown here.',
       !adOk ? '<span class="pill idle">Unknown</span>'
+            : d.consentWritable
+            ? `<button class="pill ${ad.limitTracking ? 'good' : 'warn'}" id="lmt-toggle" data-next="${ad.limitTracking ? '0' : '1'}">${ad.limitTracking ? 'On' : 'Off'}</button>`
             : `<span class="pill ${ad.limitTracking ? 'good' : 'warn'}">${ad.limitTracking ? 'On' : 'Off'}</span>`);
     // The two ad actions go through the same service, so they cannot work either.
     for (const id of ['adid-reset', 'adcookies-clear']) {
@@ -2351,6 +2353,14 @@ async function loadPrivacy() {
  * Delegated: the rows are re-rendered on every load, so per-button listeners
  * would have to be reattached each time.
  */
+q('pv-lmt').addEventListener('click', async (ev) => {
+  const btn = ev.target.closest('#lmt-toggle');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  await c('limitAdTracking', btn.dataset.next === '1');
+  loadPrivacy();
+});
 q('pv-consent').addEventListener('click', async (ev) => {
   const btn = ev.target.closest('button.pill[data-key]');
   if (!btn) return;
