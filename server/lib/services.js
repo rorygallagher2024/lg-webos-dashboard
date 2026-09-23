@@ -288,10 +288,9 @@ function getServices(cb) {
 
   for (var j = 0; j < available.length; j++) {
     (function (svc) {
-      if (svc.disabled) {
-        svc.running = false;
-        return doneOne();
-      }
+      // Probed even when switched off: the setting says what was asked for,
+      // not what the TV did, and the two differed while the boot hook was
+      // never run.
       var catItem = null;
       for (var k = 0; k < CATALOG.length; k++) {
         if (CATALOG[k].id === svc.id) { catItem = CATALOG[k]; break; }
