@@ -72,8 +72,8 @@ var CONSENT_GROUPS = [
   ['analytics',   'Analytics and sharing'],
   ['services',    'LG services'],
   ['unknown',     'No published description',
-   'The TV records these and LG publishes nothing about what they mean. ' +
-   'The ones it cannot tie to any agreement are left read-only.'],
+   'The TV records these, but LG publishes nothing about them. The ones no ' +
+   'agreement refers to have nothing on the TV reading them, and are left read-only.'],
   ['platform',    'Set on the TV itself',
    'Acceptance records rather than collection choices. Changed in the TV\'s own menus, ' +
    'under Settings \u203a General \u203a About This TV \u203a User Agreements.']
@@ -97,7 +97,7 @@ var CONSENT_GROUP_OF = {
   acrOnAllowed: 'watching',
   marketingOnAllowed: 'advertising',
   chpAllowed: 'services',
-  shoppingOnAllowed: 'services',
+  shoppingOnAllowed: 'advertising',
 
   networkAllowed: 'platform',
   generalTermsAllowed: 'platform',
@@ -105,10 +105,42 @@ var CONSENT_GROUP_OF = {
   allAllowed: 'platform'
 };
 
+/*
+ * Flags LG leaves unnamed, known by the agreement their mapping requires. By
+ * agreement rather than by key, since which numbered slot LG uses for what can
+ * differ by region: on UK firmware additional1Allowed maps to the Data
+ * Partners Agreement, and acr2 reads it, logging it as "DPA". takeOnAllowed
+ * maps to S_TAK, the Who.Where.What? agreement run with TheTake, and livepick
+ * reads it. marketingOnAllowed maps to S_MKT and is read by sdx, which sends
+ * the accepted terms to LG.
+ */
+var CONSENT_BY_DOCUMENT = {
+  S_DPA: ['Sharing viewing data with data partners',
+          'Lets LG and Alphonso, its screen recognition partner, pass viewing and device information to other companies for ad measurement and analytics', 'analytics'],
+  S_TAK: ['Who.Where.What?',
+          'LG\'s content discovery, run with TheTake: identifies people, places and products in what is on screen, using viewing information that can include captured images of it', 'watching'],
+  S_MKT: ['Marketing messages',
+          'Lets LG show marketing pop-ups and notifications on the TV: special offers and news about its content and services', 'advertising']
+};
+
+// Named from what reads them, where no agreement of their own names them.
+// adoverlay-service, which places ads over live TV, reads shoppingOnAllowed
+// with customadsAllowed and acrOnAllowed.
+var CONSENT_READ_BY = {
+  shoppingOnAllowed: 'Read by the service that places ads and offers over live TV, alongside personalised advertising'
+};
+
+function consentByDocument(key) {
+  if (CONSENT_LOCKED[key]) return null;
+  var docs = loadConsentGroups()[key] || [];
+  for (var i = 0; i < docs.length; i++) if (CONSENT_BY_DOCUMENT[docs[i]]) return CONSENT_BY_DOCUMENT[docs[i]];
+  return null;
+}
+
 var CONSENT_NAMES = {
   networkAllowed:      'Network use',
   marketingOnAllowed:  'Marketing',
-  shoppingOnAllowed:   'Shopping',
+  shoppingOnAllowed:   'Shopping on live TV',
   generalTermsAllowed: 'Terms of Use and Privacy Policy',
   chpAllowed:          'LG Channels',
   acrOnAllowed:        'Screen recognition (master consent)',
@@ -359,6 +391,7 @@ function describeUnlabelled(key, on, groups) {
   if (CONSENT_NAMES[key]) row.label = CONSENT_NAMES[key];
   var docs = groups[key];
   if (docs) row.documents = docs;
+  if (CONSENT_READ_BY[key]) { row.detail = CONSENT_READ_BY[key]; row.described = true; return row; }
   if (CONSENT_LOCKED[key]) {
     row.detail = CONSENT_LOCKED[key];
     return row;
@@ -394,7 +427,7 @@ function annotateConsent(consent, eln) {
     for (var j = 0; j < need.length; j++) if (titles[need[j]]) names.push(titles[need[j]]);
     if (names.length) {
       row.agreements = names;
-      if (!CONSENT_LABELS[row.key]) {
+      if (!CONSENT_LABELS[row.key] && !row.described) {
         row.detail = 'Accepted under ' + (names.length > 1
           ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
           : names[0]) + '.';
@@ -420,10 +453,14 @@ function readConsentFlags() {
   var re = /"([a-zA-Z0-9_]+Allowed)"\s*:\s*(true|false)/g, m;
   while ((m = re.exec(raw)) !== null) {
     var key = m[1], on = m[2] === 'true';
+    var byDoc = CONSENT_LABELS[key] ? null : consentByDocument(key);
     if (CONSENT_LABELS[key]) {
       out.known.push({ key: key, label: CONSENT_LABELS[key][0], detail: CONSENT_LABELS[key][1],
                        enabled: on, settable: consentSettable(key),
                        group: consentGroup(key) });
+    } else if (byDoc) {
+      out.known.push({ key: key, label: byDoc[0], detail: byDoc[1], described: true,
+                       enabled: on, settable: consentSettable(key), group: byDoc[2] });
     } else {
       out.other.push(describeUnlabelled(key, on, groups));
     }
@@ -432,7 +469,10 @@ function readConsentFlags() {
   // so a list in that order reshuffles as flags are switched. Named flags go
   // in the order they are described above, the rest by key.
   var order = Object.keys(CONSENT_LABELS);
-  out.known.sort(function (a, b) { return order.indexOf(a.key) - order.indexOf(b.key); });
+  function rank(f) { var i = order.indexOf(f.key); return i < 0 ? order.length : i; }
+  out.known.sort(function (a, b) {
+    return rank(a) - rank(b) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  });
   out.other.sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
   return out;
 }
