@@ -42,18 +42,32 @@ var PROTECTED_APP_IDS = {
   'eula': true,
   'com.webos.app.webapphost': true,
   'webapphost': true,
-  // Hiding AirPlay's tile does not stick: it adds a bookmark tile of its own
-  // whenever its tile is missing, one more after each boot. A B8 (webOS 4)
-  // had four after a day of restarts.
+  // Its only tile is a bookmark it re-adds at boot; hiding it adds more.
   'airplay': true
 };
 
 /*
- * A TV that hid AirPlay before it was protected still hides it at boot, since
- * the boot hook reads the hidden list itself, and still shows the bookmarks it
- * gathered. So it comes off the list, its override goes, and the bookmarks are
- * removed; its own tile is back from the next boot.
+ * AirPlay has no tile of its own (its appinfo says visible: false); its tile is
+ * a bookmark that airplay-adaptor adds at boot when it finds none. On the B8
+ * (webOS 4) that check misses the bookmarks already there, and it added one
+ * 39s into a boot with two present, so every boot leaves another. The first is
+ * kept and the rest removed, once at start and again after the adaptor runs.
  */
+function dedupeAirPlay() {
+  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
+    var extra = ((r && r.launchPoints) || []).filter(function (p) {
+      return p.id === 'airplay' && p.lptype === 'bookmark';
+    }).slice(1);
+    extra.forEach(function (p) {
+      lunaFn('com.webos.applicationManager/removeLaunchPoint', { launchPointId: p.launchPointId }, function () {});
+    });
+    if (extra.length) console.log('apps: removed ' + extra.length + ' duplicate AirPlay tile' +
+                                  (extra.length === 1 ? '' : 's'));
+  });
+}
+
+// A TV that hid AirPlay before it was protected still hides it at boot, since
+// the boot hook reads the hidden list itself.
 function releaseAirPlay() {
   var lines = [];
   try { lines = fs.readFileSync(HIDDEN_APPS_FILE, 'utf8').split('\n'); } catch (e) { return; }
@@ -66,16 +80,7 @@ function releaseAirPlay() {
   } catch (e2) {
     return console.error('apps: could not take AirPlay off the hidden list: ' + e2.message);
   }
-  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
-    var extra = ((r && r.launchPoints) || []).filter(function (p) {
-      return p.id === 'airplay' && p.lptype === 'bookmark';
-    });
-    extra.forEach(function (p) {
-      lunaFn('com.webos.applicationManager/removeLaunchPoint', { launchPointId: p.launchPointId }, function () {});
-    });
-    console.log('apps: AirPlay can no longer be hidden; unhidden, and ' + extra.length +
-                ' duplicate tile' + (extra.length === 1 ? '' : 's') + ' removed');
-  });
+  console.log('apps: AirPlay can no longer be hidden; unhidden');
 }
 
 var lunaFn = null;
@@ -85,7 +90,11 @@ function init(opts) {
   opts = opts || {};
   lunaFn = opts.luna;
   configObj = opts.config;
-  if (lunaFn) releaseAirPlay();
+  if (lunaFn) {
+    releaseAirPlay();
+    dedupeAirPlay();
+    setTimeout(dedupeAirPlay, 180000);
+  }
 }
 
 function isProtected(id) {
