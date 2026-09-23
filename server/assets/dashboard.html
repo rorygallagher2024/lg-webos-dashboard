@@ -570,7 +570,7 @@ function privacyRows(d) {
              value: d.acr.active ? 'Active' : 'Off', cls: d.acr.active ? 'off' : 'on',
              act: canAcr ? 'acr' : null, on: d.acr.active,
              press: d.acr.active ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'LG calls this ACR. It samples what is on screen - including from HDMI - to work out what is being watched and build a profile from it.' });
+             hint: 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.' });
     if (d.acr.captureState)
       r.push({ label: 'Capture', value: d.acr.capturing ? 'Capturing' : 'Stopped',
                cls: d.acr.capturing ? 'off' : 'on',

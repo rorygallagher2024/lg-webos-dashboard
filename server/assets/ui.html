@@ -1008,8 +1008,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <div class="pv-top">
     <div>
       <div class="pv-h">Ad &amp; telemetry blocker</div>
-      <div class="pv-sub">Blocks LG's ad, tracking and diagnostics servers at the TV itself,
-        by holding a blackhole list over <code>/etc/hosts</code>. Survives a reboot.</div>
+      <div class="pv-sub">Stops the TV reaching LG's ad, tracking and diagnostics servers.</div>
       <div class="btns" style="max-width:520px">
         <button id="ab-off" onclick="setAdBlockMode('off')">Off</button>
         <button id="ab-ads" onclick="setAdBlockMode('ads')">Ads &amp; telemetry</button>
@@ -2203,7 +2202,7 @@ async function loadPrivacy() {
      * pill beside it already says.
      */
     q('pv-live').innerHTML =
-      pvRow('Content recognition', 'LG calls this ACR. It works out what is on screen.',
+      pvRow('Content recognition', 'LG’s ACR captures what’s on your screen to target ads at you.',
           `<span class="pill ${a.active ? 'warn' : 'good'}">${a.active ? 'Running' : 'Not running'}</span>`) +
       pvRow('Screen capturing', 'Sampling frames from the screen for recognition.',
           `<span class="pill ${a.capturing ? 'warn' : 'good'}">${a.capturing ? 'Capturing' : 'Stopped'}</span>`);
@@ -2344,12 +2343,12 @@ async function loadPrivacy() {
     const mode = ab.mode || (ab.enabled ? 'full' : 'off');
     const AB = {
       off:  { label: 'Off',
-              detail: 'Nothing is blocked. LG telemetry and ad hosts resolve normally.' },
+              detail: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
       ads:  { label: 'Ads & telemetry',
-              detail: `Blocks ${ab.adCount} ad, tracking and diagnostics hosts. LG's store and ` +
-                      `update endpoints still resolve.` },
+              detail: `Blocks ${ab.adCount} advertising, tracking and diagnostics addresses. LG's app ` +
+                      `store and software updates still work.` },
       full: { label: 'Everything',
-              detail: `Blocks all ${ab.count} hosts, including ${(ab.platform || []).join(', ')}.` }
+              detail: `Blocks all ${ab.count} addresses, including LG's platform services.` }
     }[mode] || {};
     q('adblock-detail').textContent = AB.detail || '';
     for (const m of ['off', 'ads', 'full']) {

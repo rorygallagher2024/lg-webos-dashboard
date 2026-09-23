@@ -544,7 +544,7 @@ function collectPrivacy(cb) {
       luna('com.webos.service.acr/getACRSolutionStatus', {}, function (acr) {
         out.acr = {
           label: 'Screen content recognition',
-          detail: 'LG calls this ACR. It samples what is on screen to work out what you are watching.',
+          detail: 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.',
           active: !!(acr && acr.ACRSolutionStatus)
         };
         luna('com.webos.service.acr/getVideoCaptureStatus', {}, function (cap) {
