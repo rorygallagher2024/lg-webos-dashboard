@@ -313,14 +313,9 @@ function sysRows(d) {
   if (d.remote && d.remote.battery !== null && d.remote.battery !== undefined)
     r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
   if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
-  if (d.tvwebVersion) {
-    r.push({ label: 'Dashboard Server', value: 'v' + d.tvwebVersion, act: 'gotoUpdate',
-             press: 'Press OK to view updates',
-             hint: 'The version of this dashboard server. Press OK to open the Updates tab.' });
-  }
 
   if (d.quickBoot !== undefined || (d.lights && d.lights.standby !== undefined)) {
-    r.push(head('Settings'));
+    r.push(head('Power'));
     if (d.quickBoot !== undefined) {
       r.push({
         label: 'Quick Boot',
@@ -345,16 +340,18 @@ function sysRows(d) {
     }
   }
 
-  r.push(head('Appearance'));
-  r.push({
+  return r;
+}
+
+function appearanceRows() {
+  return [head('Appearance'), {
     label: 'Theme',
     value: currentTheme === 'light' ? 'Light' : 'Dark',
     cls: 'act',
     act: 'toggleTheme',
     press: 'Press OK to switch to ' + (currentTheme === 'light' ? 'Dark' : 'Light') + ' theme',
     hint: 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.'
-  });
-  return r;
+  }];
 }
 
 function oledRows(d) {
@@ -590,7 +587,7 @@ function privacyRows(d) {
 function settingsRows(d) {
   if (!d || !d.ok) {
     return [{ label: 'Changed on the TV itself', value: '',
-              hint: 'These settings can only be changed with the remote, on the TV.' }];
+              hint: 'These settings can only be changed with the remote, on the TV.' }].concat(appearanceRows());
   }
   var r = [head('This dashboard')];
   r.push({ label: 'Phones and computers', value: d.network ? 'On' : 'Off', cls: d.network ? 'on' : 'off',
@@ -619,7 +616,7 @@ function settingsRows(d) {
              : ha.configured
                ? 'The details are saved but it is not connected yet. Set it up again to check them.'
                : 'Use this TV in Home Assistant automations. You finish setting it up on your phone.' });
-  return r;
+  return r.concat(appearanceRows());
 }
 
 function svcRows(d) {
@@ -1138,18 +1135,13 @@ function activate() {
       return setNetwork(!r.on);
     case 'ha':
       return location.assign('/assets/setup.html#ha');
-    case 'gotoUpdate':
-      for (var ti = 0; ti < TABS.length; ti++) {
-        if (TABS[ti].key === 'update') { openTab(ti); break; }
-      }
-      return;
     case 'toggleTheme':
       var nextTheme = currentTheme === 'light' ? 'dark' : 'light';
       applyTheme(nextTheme);
       try { localStorage.setItem('theme', nextTheme); } catch (e) {}
       flash('Theme: ' + (nextTheme === 'light' ? 'Light' : 'Dark'));
-      if (T().key === 'system') {
-        rows = sysRows(data.system || {});
+      if (T().key === 'settings') {
+        rows = settingsRows(data.settings || {});
         render();
       }
       return;
