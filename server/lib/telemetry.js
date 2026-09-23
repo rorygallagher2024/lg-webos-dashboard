@@ -14,7 +14,12 @@ var ha = require('./ha');
 
 var SOUND_OUTPUT_MAP = ha.SOUND_OUTPUT_MAP;
 
-var THERMAL_PRESENT = fs.existsSync('/proc/lg/pm/temperature');
+// LG's own reading where it exists. Models without it (the 55QNED826QB, webOS
+// 7.6) still have the kernel's thermal zone, in millidegrees: 68000 = 68 C.
+var LG_THERMAL = '/proc/lg/pm/temperature';
+var SYS_THERMAL = '/sys/class/thermal/thermal_zone0/temp';
+var THERMAL_SOURCE = fs.existsSync(LG_THERMAL) ? LG_THERMAL : fs.existsSync(SYS_THERMAL) ? SYS_THERMAL : null;
+var THERMAL_PRESENT = !!THERMAL_SOURCE;
 var EMMC_WEAR_PRESENT = fs.existsSync('/sys/block/mmcblk0/device/life_time');
 
 var lunaFn = null;
@@ -174,6 +179,38 @@ function emmcInfo() {
     eol: eol
   };
   return EMMC_CACHE;
+}
+
+function socTemp() {
+  if (!THERMAL_SOURCE) return null;
+  var t = num(rd(THERMAL_SOURCE), null);
+  if (t !== null && THERMAL_SOURCE === SYS_THERMAL) t = Math.round(t / 1000);
+  return (t !== null && t > 0) ? t : null;
+}
+
+// Per-core load from /proc/stat, for models whose /proc/lg/pm/status has no
+// load line. Each call measures since the previous one, so the first is empty.
+// Offline cores drop out of /proc/stat, so only cores in both samples count.
+var prevCoreTicks = null;
+function statCoreLoads() {
+  var now = {};
+  var lines = (rd('/proc/stat') || '').split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^cpu(\d+)\s+(.*)$/);
+    if (!m) continue;
+    var f = m[2].trim().split(/\s+/).map(Number), total = 0;
+    for (var j = 0; j < f.length; j++) total += f[j] || 0;
+    now[m[1]] = { total: total, idle: (f[3] || 0) + (f[4] || 0) };
+  }
+  var prev = prevCoreTicks, loads = [];
+  prevCoreTicks = now;
+  if (!prev) return loads;
+  Object.keys(now).sort(function (a, b) { return a - b; }).forEach(function (c) {
+    if (!prev[c]) return;
+    var dt = now[c].total - prev[c].total, di = now[c].idle - prev[c].idle;
+    if (dt > 0) loads.push(Math.max(0, Math.min(100, Math.round(100 * (dt - di) / dt))));
+  });
+  return loads;
 }
 
 function onlineCpus(status) {
@@ -896,7 +933,10 @@ function collectStats(cb) {
   var coreSlots = coreMatch ? coreMatch[1].trim().split(/\s+/).map(Number) : [];
   var liveCpus = onlineCpus(status);
   var coreLoads = [];
-  if (liveCpus) {
+  if (!coreSlots.length) {
+    coreLoads = statCoreLoads();
+    coreSlots = coreLoads;
+  } else if (liveCpus) {
     for (var ci = 0; ci < liveCpus.length; ci++) {
       if (liveCpus[ci] < coreSlots.length) coreLoads.push(coreSlots[liveCpus[ci]]);
     }
@@ -953,10 +993,7 @@ function collectStats(cb) {
       tcon_module: HARDWARE_INFO.tconModule
     } : null,
     remote: readRemoteInfo(),
-    temp: (function () {
-      var t = num(rd('/proc/lg/pm/temperature'), null);
-      return (t !== null && t > 0) ? t : null;
-    })(),
+    temp: socTemp(),
     temps: null,
     load: coreLoads.length
       ? Math.round(coreLoads.reduce(function (a, b) { return a + b; }, 0) / coreLoads.length)

@@ -23,7 +23,7 @@ Use it for remote control, app management and removal, OLED panel care, privacy 
 * **webOS**: 3.4 through 25 confirmed; tested across 2016–2025 models. Other versions likely work as well
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel). Telnet or SSH. No external dependencies or internet access needed on the TV
-* **Tested hardware**: 13 models verified so far (UH6030, UH610V, B7, B8, C8, C9, C1, C2, B4, G4, C5). Other rooted models should work; [see full table](#tested-tvs)
+* **Tested hardware**: 14 models verified so far (UH6030, UH610V, B7, B8, C8, C9, C1, QNED82, C2, B4, G4, C5). Other rooted models should work; [see full table](#tested-tvs)
 
 [Quick start](#quick-start) • [What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt) • [Managing the server](#managing-the-server) • [Security](#security)
 
@@ -289,6 +289,7 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED65C9AUA | 4.9.x (4.5+) | 05.50.00 | OLED  |                                                                |
 | OLED55C17LB | 6.x          | —        | OLED  | HDMI 2.1 diagnostics and remote battery reporting              |
 | OLED55C1PUB | 6.x (6.3+)   | 03.53.45 | OLED  | SSH install and MQTT bridge confirmed                          |
+| 55QNED826QB | 7.6.0        | 04.60.90 | LCD   | Installed over SSH; MQTT bridge confirmed                      |
 | OLED42C24LA | 9.2.2 (22+)  | 23.25.55 | OLED  | Rooted with jsbro-autoroot                                     |
 | OLED55B46LA | 24 (9.24.8)  | 23.23.30 | OLED  | Installed over telnet                                          |
 | OLED55G42LW | 24           | 33.31.68 | OLED  | Rooted with slopbro, not the Homebrew Channel                  |
