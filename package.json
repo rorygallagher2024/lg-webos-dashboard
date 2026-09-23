@@ -1,6 +1,6 @@
 {
   "name": "lg-webos-dashboard",
-  "version": "0.46.0",
+  "version": "0.46.1",
   "private": true,
   "description": "Dashboard, remote control, OLED care, and Home Assistant MQTT bridge for LG webOS TVs",
   "devDependencies": {
