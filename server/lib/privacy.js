@@ -37,11 +37,12 @@ var ADBLOCK_ADS = [
 ];
 
 /*
- * The firmware builds these names with a region or country prefix
- * (us.info.lgsmartad.com, aic.cdpbeacon.lgtvcommon.com, gb.rdx2.lgtvsdp.com)
- * and a hosts file only matches whole names, so each prefix is listed. The
- * bare lgtvsdp.com family also serves the Content Store, which is why only its
- * rdx2 ad subdomain is here.
+ * The firmware builds these names with a prefix (gb.info.lgsmartad.com,
+ * aic.cdpbeacon.lgtvcommon.com), and a hosts file only matches whole names. A
+ * TV uses its own country code and LG's regional ones, so those are listed
+ * rather than every country, which would cost the B8 ~4ms a lookup (74KB
+ * table). The bare lgtvsdp.com family also serves the Content Store, which is
+ * why only its rdx2 ad subdomain is here.
  */
 var ADBLOCK_REGIONAL = [
   'info.lgsmartad.com',
@@ -52,18 +53,21 @@ var ADBLOCK_REGIONAL = [
   'cdpsvc.lgtvcommon.com',
   'wau.lgtvcommon.com'
 ];
-var ADBLOCK_PREFIXES = ('aic eic kic ' +
-  'ad ae af ag al am ao ar at au az ba bd be bf bg bh bi bj bn bo br bs bt bw by bz ' +
-  'ca cd cf cg ch ci cl cm cn co cr cu cv cy cz de dj dk do dz ec ee eg es et eu fi ' +
-  'fj fr ga gb ge gh gm gn gq gr gt gw gy hk hn hr ht hu id ie il in iq ir is it jm ' +
-  'jo jp ke kg kh km kr kw kz la lb lk lr ls lt lu lv ly ma md me mg mk ml mm mn mo ' +
-  'mr mt mu mv mw mx my mz na ne ng ni nl no np nz om pa pe pg ph pk pl pr ps pt py ' +
-  'qa ro rs ru rw sa sc sd se sg si sk sl sn so sr ss sv sy sz td tg th tj tl tm tn ' +
-  'tr tt tw tz ua ug uk us uy uz ve vn ye za zm zw').split(' ');
-ADBLOCK_REGIONAL.forEach(function (name) {
-  [name].concat(ADBLOCK_PREFIXES.map(function (p) { return p + '.' + name; }))
-    .forEach(function (h) { if (ADBLOCK_ADS.indexOf(h) === -1) ADBLOCK_ADS.push(h); });
-});
+var ADBLOCK_REGION_PREFIXES = ['aic', 'eic', 'kic', 'eu'];
+// Until the TV has reported its country, the countries LG is seen using.
+var ADBLOCK_FALLBACK_COUNTRIES = ['us', 'gb', 'au', 'br', 'ca', 'de', 'fr'];
+var COUNTRY_FILE = '/var/lib/tvweb/country';
+
+function adBlockAds() {
+  var country = (rd(COUNTRY_FILE) || '').toLowerCase();
+  var prefixes = ADBLOCK_REGION_PREFIXES.concat(/^[a-z]{2}$/.test(country) ? [country] : ADBLOCK_FALLBACK_COUNTRIES);
+  var list = ADBLOCK_ADS.slice();
+  ADBLOCK_REGIONAL.forEach(function (name) {
+    [name].concat(prefixes.map(function (p) { return p + '.' + name; }))
+      .forEach(function (h) { if (list.indexOf(h) === -1) list.push(h); });
+  });
+  return list;
+}
 
 var ADBLOCK_PLATFORM = [
   'lgtvsdp.com',
@@ -78,7 +82,6 @@ var ADBLOCK_PLATFORM = [
   'aic-ngfts.lge.com'
 ];
 
-var ADBLOCK_DOMAINS = ADBLOCK_ADS.concat(ADBLOCK_PLATFORM);
 
 /*
  * The Homebrew Channel blackholes LG's update servers when its own flag file is
@@ -238,7 +241,7 @@ function adBlockPlatform() {
 }
 
 function adBlockList(mode) {
-  return mode === 'full' ? ADBLOCK_ADS.concat(adBlockPlatform()) : ADBLOCK_ADS;
+  return mode === 'full' ? adBlockAds().concat(adBlockPlatform()) : adBlockAds();
 }
 
 function isAdBlockActive() {
@@ -617,7 +620,7 @@ function collectPrivacy(cb) {
               enabled: isAdBlockActive(),
               mode: adBlockMode(),
               count: adBlockList('full').length,
-              adCount: ADBLOCK_ADS.length,
+              adCount: adBlockAds().length,
               platform: adBlockPlatform()
             };
             cachedPrivacy = out;
@@ -719,6 +722,23 @@ function init(opts) {
   if (opts.luna) luna = opts.luna;
   if (opts.lunaCached) lunaCached = opts.lunaCached;
   if (opts.config) config = opts.config;
+  if (luna) learnCountry();
+}
+
+// Saved so the boot-time table is right before the settings service answers.
+function learnCountry() {
+  luna('com.webos.settingsservice/getSystemSettings',
+       { category: 'option', keys: ['smartServiceCountryCode2'] }, function (r) {
+    var cc = String((r && r.settings && r.settings.smartServiceCountryCode2) || '').toLowerCase();
+    if (!/^[a-z]{2}$/.test(cc) || cc === (rd(COUNTRY_FILE) || '').toLowerCase()) return;
+    try {
+      fs.writeFileSync(COUNTRY_FILE, cc, 'utf8');
+      var flag = rd(ADBLOCK_FLAG_FILE);
+      if (flag && isAdBlockActive()) {
+        fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(flag === 'ads' ? 'ads' : 'full'), 'utf8');
+      }
+    } catch (e) {}
+  });
 }
 
 module.exports = {
@@ -738,7 +758,6 @@ module.exports = {
   clearCache: clearCache,
   ADBLOCK_ADS: ADBLOCK_ADS,
   ADBLOCK_PLATFORM: ADBLOCK_PLATFORM,
-  ADBLOCK_DOMAINS: ADBLOCK_DOMAINS,
   adBlockHostsTable: adBlockHostsTable,
   CONSENT_LABELS: CONSENT_LABELS,
   CONSENT_LOCKED: CONSENT_LOCKED,

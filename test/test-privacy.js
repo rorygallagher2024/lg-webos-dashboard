@@ -21,7 +21,7 @@ function sinkholed(table, host) {
 test('every blocked host is answered on both families', function () {
   ['ads', 'full'].forEach(function (mode) {
     var table = privacy.adBlockHostsTable(mode);
-    var hosts = mode === 'full' ? privacy.ADBLOCK_DOMAINS : privacy.ADBLOCK_ADS;
+    var hosts = privacy.adBlockList(mode);
     hosts.forEach(function (host) {
       assert.ok(sinkholed(table, host), mode + ': ' + host + ' is missing an IPv4 or IPv6 line');
     });

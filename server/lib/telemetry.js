@@ -1160,7 +1160,7 @@ function collectStats(cb) {
                   out.privacy = {
                     adblock: {
                       enabled: privacyModule ? privacyModule.isAdBlockActive() : false,
-                      count: (privacyModule && privacyModule.ADBLOCK_DOMAINS) ? privacyModule.ADBLOCK_DOMAINS.length : 0
+                      count: (privacyModule && privacyModule.adBlockList) ? privacyModule.adBlockList('full').length : 0
                     }
                   };
                   if (!oledModule) {
