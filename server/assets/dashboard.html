@@ -427,6 +427,14 @@ function saverRows(d) {
                ? 'LG’s own screen saver.'
                : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
   });
+  // The same action as the browser dashboard's Start screen saver. From the
+  // dashboard it starts over this app; the server refuses only HDMI and live TV.
+  if (d.writable) {
+    r.push(head('Show it now'));
+    r.push({ label: 'Start screen saver', value: '→', cls: 'act', act: 'saverStart',
+             press: 'Press OK to start it',
+             hint: 'Shows the screen saver in use straight away, to see how it looks. Any button on the remote ends it.' });
+  }
   r.push(head('A firmware update puts LG’s own back'));
   return r;
 }
@@ -1231,6 +1239,8 @@ function activate() {
       return send({ action: 'refresherCancel' }, 'Refresher cancelled');
     case 'saver':
       return send({ action: 'screensaverMode', value: r.key });
+    case 'saverStart':
+      return send({ action: 'screensaver' });
     case 'quickBoot':
       return send({ action: 'quickBoot', value: !r.on }, r.on ? 'Quick Boot turned off' : 'Quick Boot turned on');
     case 'standbyLight':
