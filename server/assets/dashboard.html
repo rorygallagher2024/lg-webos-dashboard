@@ -427,6 +427,18 @@ function saverRows(d) {
                ? 'LG’s own screen saver.'
                : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
   });
+  // Brightness only for the screen savers drawn here, as in the browser
+  // dashboard: LG's own is not ours to dim. The mode goes with it, since both
+  // are staged into the same file.
+  if (d.writable && d.current && d.current !== 'stock') {
+    var bright = d.level === 'bright';
+    r.push(head('How it looks'));
+    r.push({ label: 'Brightness', value: bright ? 'Bright' : 'Dim', cls: 'act', act: 'saverLevel',
+             key: d.current, next: bright ? 'dim' : 'bright',
+             press: 'Press OK for ' + (bright ? 'Dim' : 'Bright'),
+             hint: 'Dim suits a dark room and is kinder to the panel; bright suits a lit one.' });
+  }
+
   // The same action as the browser dashboard's Start screen saver. From the
   // dashboard it starts over this app; the server refuses only HDMI and live TV.
   if (d.writable) {
@@ -1234,6 +1246,9 @@ function activate() {
       return send({ action: 'refresherCancel' }, 'Refresher cancelled');
     case 'saver':
       return send({ action: 'screensaverMode', value: r.key });
+    case 'saverLevel':
+      return send({ action: 'screensaverMode', value: { mode: r.key, level: r.next } },
+                  r.next === 'bright' ? 'Bright' : 'Dim');
     case 'saverStart':
       return startSaverAfterRelease();
     case 'quickBoot':
