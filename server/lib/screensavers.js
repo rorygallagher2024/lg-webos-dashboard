@@ -37,6 +37,11 @@ var SCREENSAVERS = {
     description: 'Bursts of colour on black, a few seconds apart.',
     qml: 'screensavers/fireworks.qml'
   },
+  bokeh: {
+    label: 'Bokeh',
+    description: 'Soft circles of light drifting in and out on black.',
+    qml: 'screensavers/bokeh.qml'
+  },
   vitals: {
     label: 'Panel vitals',
     description: "The TV's own readings - panel hours, pixel refresher countdown, temperature.",
