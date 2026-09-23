@@ -27,8 +27,8 @@ HBC = os.path.join(ROOT, 'hbc')
 DIST = os.path.join(ROOT, 'dist')
 
 APP_ID = 'io.github.rorygallagher2024.lg-webos-dashboard'
-TITLE = 'TV Dashboard'
-DESCRIPTION = 'Dashboard, controls and Home Assistant bridge for rooted LG TVs'
+TITLE = 'Glasshouse'
+DESCRIPTION = 'Own the glass. Dashboard, privacy controls and Home Assistant bridge for rooted LG TVs'
 REPO = 'https://github.com/rorygallagher2024/lg-webos-dashboard'
 ICON_URI = ('https://raw.githubusercontent.com/rorygallagher2024/lg-webos-dashboard/'
             'main/server/assets/dashboard-app/assets/icon130.png')

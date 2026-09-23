@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1920,initial-scale=1">
-<title>TV Dashboard setup</title>
+<title>Glasshouse setup</title>
 <style>
 /* First-run setup on the TV, and the Home Assistant screen the dashboard's
    Settings tab reuses. Same type and palette as the dashboard. */
@@ -116,7 +116,7 @@ body{font-family:'Manrope',sans-serif}
     if (poll) { clearInterval(poll); poll = null; }
 
     if (name === 'welcome') {
-      render('<div class="step">TV Dashboard</div><div class="title" style="margin-top:16vh">Your TV, on your terms</div>' +
+      render('<div class="step">Glasshouse</div><div class="title" style="margin-top:16vh">Own the glass.</div>' +
         '<div class="sub">Readings, controls and privacy settings for this TV, right here with the remote. ' +
         'Two quick choices first, and you can change both later.</div><div class="btn">Get started</div>' + dots(1));
     } else if (name === 'network') {
