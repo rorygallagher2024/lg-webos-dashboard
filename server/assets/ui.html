@@ -1017,7 +1017,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="sub" id="adblock-detail" style="margin-top:12px">&mdash;</div>
       <div class="pv-note"><b>Everything</b> also blocks the servers the Content Store installs
         from and LG delivers firmware through, so on that setting <b>the app store and updates
-        may stop working</b>.</div>
+        may stop working</b>. To stop only system updates, use <b>Block TV software updates</b>
+        in the Server tab.</div>
     </div>
 
     <div>
@@ -1182,6 +1183,14 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
           <div class="prot-desc">Looks for a new release once a day.</div>
         </div>
         <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
+      </div>
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title">Block TV software updates</div>
+          <div class="prot-desc">Stops the TV installing LG's system updates, which can take away the access
+            Glasshouse runs with. Apps and Glasshouse's own updates are unaffected.</div>
+        </div>
+        <div class="prot-status"><button type="button" class="pill idle" id="upd-tvblock" onclick="toggleTvUpdates()">&mdash;</button></div>
       </div>
       <div class="prot-row" id="tvapp-row" hidden>
         <div class="prot-main">
@@ -1809,6 +1818,15 @@ function renderUpdate(d) {
   auto.dataset.on = d.autoCheck ? '1' : '';
   auto.disabled = !d.writable;
 
+  // Answers from actions that predate the setting leave it as it was.
+  if (typeof d.tvUpdatesBlocked === 'boolean') {
+    const tb = q('upd-tvblock');
+    tb.className = 'pill ' + (d.tvUpdatesBlocked ? 'good' : 'idle');
+    tb.textContent = d.tvUpdatesBlocked ? 'Blocked' : 'Allowed';
+    tb.dataset.on = d.tvUpdatesBlocked ? '1' : '';
+    tb.disabled = !d.writable;
+  }
+
   msg.textContent = (d.state === 'error' || d.state === 'offline') ? (d.error || 'the check failed')
     : d.state === 'installed' ? 'Installed. The server is restarting - this page reconnects on its own.'
     : updArrival;
@@ -2005,6 +2023,13 @@ async function installUpdate() {
   updProg.show(false);
   await loadUpdate();
   q('upd-msg').textContent = r.ok ? (r.note || 'Nothing newer to install.') : (r.error || 'The update failed.');
+}
+
+async function toggleTvUpdates() {
+  const b = q('upd-tvblock');
+  b.disabled = true;
+  const r = await c('blockTvUpdates', !b.dataset.on);
+  if (r && r.ok) renderUpdate(r); else loadUpdate();
 }
 
 async function toggleAutoCheck() {

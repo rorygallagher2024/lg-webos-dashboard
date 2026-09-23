@@ -241,10 +241,12 @@ function adBlockPlatform() {
 }
 
 function adBlockList(mode) {
+  if (mode === 'off') return [];
   return mode === 'full' ? adBlockAds().concat(adBlockPlatform()) : adBlockAds();
 }
 
-function isAdBlockActive() {
+// Whether this server's table is over /etc/hosts, for ads, updates or both.
+function isTableMounted() {
   var now = Date.now();
   if (cachedAdBlockActive !== null && (now - lastAdBlockCheck < 30000)) {
     return cachedAdBlockActive;
@@ -259,10 +261,21 @@ function isAdBlockActive() {
   }
 }
 
-function adBlockMode() {
-  if (!isAdBlockActive()) return 'off';
+function flagMode() {
   var flag = rd(ADBLOCK_FLAG_FILE);
-  return flag === 'ads' ? 'ads' : 'full';
+  return !flag ? 'off' : flag === 'ads' ? 'ads' : 'full';
+}
+
+function adBlockMode() {
+  return isTableMounted() ? flagMode() : 'off';
+}
+
+function isAdBlockActive() {
+  return adBlockMode() !== 'off';
+}
+
+function tvUpdatesBlocked() {
+  return fs.existsSync(HBC_BLOCK_UPDATES_FLAG);
 }
 
 // Both families for every name. A sinkhole with no AAAA record leaves the
@@ -285,44 +298,67 @@ function adBlockHostsTable(mode) {
     ADBLOCK_MARKER
   ];
   for (var i = 0; i < list.length; i++) sinkhole(lines, list[i]);
-  if (fs.existsSync(HBC_BLOCK_UPDATES_FLAG)) {
-    lines.push('', '# Blocked by the Homebrew Channel; kept so this table does not undo it');
+  if (tvUpdatesBlocked()) {
+    lines.push('', '# TV software updates, blocked by the flag the Homebrew Channel also uses');
     for (var u = 0; u < HBC_UPDATE_HOSTS.length; u++) sinkhole(lines, HBC_UPDATE_HOSTS[u]);
   }
   lines.push('');
   return lines.join('\n');
 }
 
-function setAdBlock(mode, cb) {
-  var active = isAdBlockActive();
-  if (mode !== 'off') {
+/*
+ * One table carries both the ad block and the update block, so it stays
+ * mounted while either is on. The Homebrew Channel mounts its own update block
+ * at boot, under this one; with updates unblocked and nothing of ours to
+ * mount, that layer is lifted too, or it would block until the next reboot.
+ */
+function applyHostsTable(cb) {
+  var mode = flagMode();
+  var mounted = isTableMounted();
+  var done = function () { clearCache(); cb(null); };
+  if (mode !== 'off' || tvUpdatesBlocked()) {
     try {
       fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(mode), 'utf8');
-      fs.writeFileSync(ADBLOCK_FLAG_FILE, mode, 'utf8');
     } catch (e) {
-      if (cb) cb({ ok: false, error: 'could not write adblock hosts: ' + e.message });
-      return;
+      return cb('could not write the hosts table: ' + e.message);
     }
-    if (active) {
-      clearCache();
-      if (cb) cb({ ok: true, enabled: true, mode: mode });
-      return;
-    }
-    execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 }, function (err) {
-      clearCache();
-      if (cb) cb({ ok: !err, enabled: isAdBlockActive(), mode: adBlockMode() });
-    });
-  } else if (mode === 'off' && active) {
-    try {
-      if (fs.existsSync(ADBLOCK_FLAG_FILE)) fs.unlinkSync(ADBLOCK_FLAG_FILE);
-    } catch (e) {}
-    execFile('/bin/umount', ['/etc/hosts'], { timeout: 3000 }, function (err) {
-      clearCache();
-      if (cb) cb({ ok: !err, enabled: isAdBlockActive(), mode: adBlockMode() });
-    });
-  } else {
-    if (cb) cb({ ok: true, enabled: active, mode: adBlockMode() });
+    if (mounted) return done();
+    return execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 },
+      function (err) { clearCache(); cb(err ? 'could not mount the hosts table' : null); });
   }
+  var liftHbc = function () {
+    var hosts = rd('/etc/hosts') || '';
+    if (hosts.indexOf('webosbrew startup script') === -1) return done();
+    execFile('/bin/umount', ['/etc/hosts'], { timeout: 3000 }, function () { done(); });
+  };
+  if (!mounted) return liftHbc();
+  execFile('/bin/umount', ['/etc/hosts'], { timeout: 3000 }, function () { clearCache(); liftHbc(); });
+}
+
+function setAdBlock(mode, cb) {
+  try {
+    if (mode === 'off') { if (fs.existsSync(ADBLOCK_FLAG_FILE)) fs.unlinkSync(ADBLOCK_FLAG_FILE); }
+    else fs.writeFileSync(ADBLOCK_FLAG_FILE, mode, 'utf8');
+  } catch (e) {
+    if (cb) cb({ ok: false, error: 'could not save the ad block setting: ' + e.message });
+    return;
+  }
+  applyHostsTable(function (err) {
+    if (cb) cb({ ok: !err, error: err || undefined, enabled: isAdBlockActive(), mode: adBlockMode() });
+  });
+}
+
+function setTvUpdatesBlocked(on, cb) {
+  try {
+    if (on) fs.writeFileSync(HBC_BLOCK_UPDATES_FLAG, '', 'utf8');
+    else if (fs.existsSync(HBC_BLOCK_UPDATES_FLAG)) fs.unlinkSync(HBC_BLOCK_UPDATES_FLAG);
+  } catch (e) {
+    if (cb) cb({ ok: false, error: 'could not save the update setting: ' + e.message });
+    return;
+  }
+  applyHostsTable(function (err) {
+    if (cb) cb({ ok: !err, error: err || undefined, tvUpdatesBlocked: tvUpdatesBlocked() });
+  });
 }
 
 function checkBootAdBlock(cliMode) {
@@ -330,9 +366,9 @@ function checkBootAdBlock(cliMode) {
   try {
     // Rebuilt from the list in this version, so an update that adds names
     // takes effect without the mode being switched off and on.
-    var flag = rd(ADBLOCK_FLAG_FILE);
-    if (flag) fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(flag === 'ads' ? 'ads' : 'full'), 'utf8');
-    if (flag && !isAdBlockActive() && fs.existsSync(ADBLOCK_HOSTS_FILE)) {
+    var need = flagMode() !== 'off' || tvUpdatesBlocked();
+    if (need) fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(flagMode()), 'utf8');
+    if (need && !isTableMounted()) {
       execFile('/bin/mount', ['--bind', ADBLOCK_HOSTS_FILE, '/etc/hosts'], { timeout: 3000 }, function (err) {
         clearCache();
         if (!err) console.log('adblock: restored /etc/hosts bind-mount from previous boot');
@@ -733,10 +769,7 @@ function learnCountry() {
     if (!/^[a-z]{2}$/.test(cc) || cc === (rd(COUNTRY_FILE) || '').toLowerCase()) return;
     try {
       fs.writeFileSync(COUNTRY_FILE, cc, 'utf8');
-      var flag = rd(ADBLOCK_FLAG_FILE);
-      if (flag && isAdBlockActive()) {
-        fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(flag === 'ads' ? 'ads' : 'full'), 'utf8');
-      }
+      if (isTableMounted()) fs.writeFileSync(ADBLOCK_HOSTS_FILE, adBlockHostsTable(flagMode()), 'utf8');
     } catch (e) {}
   });
 }
@@ -748,6 +781,8 @@ module.exports = {
   adBlockPlatform: adBlockPlatform,
   adBlockList: adBlockList,
   setAdBlock: setAdBlock,
+  tvUpdatesBlocked: tvUpdatesBlocked,
+  setTvUpdatesBlocked: setTvUpdatesBlocked,
   checkBootAdBlock: checkBootAdBlock,
   resetAdId: resetAdId,
   setLimitTracking: setLimitTracking,

@@ -835,6 +835,17 @@ function updateRows(d) {
     });
   }
 
+  if (typeof d.tvUpdatesBlocked === 'boolean') {
+    r.push(head('TV software'));
+    r.push({ label: 'Block TV software updates',
+             value: d.tvUpdatesBlocked ? 'Blocked' : 'Allowed',
+             cls: d.tvUpdatesBlocked ? 'on' : 'off',
+             act: d.writable ? 'tvupd' : null, on: d.tvUpdatesBlocked,
+             press: d.tvUpdatesBlocked ? 'Press OK to allow updates' : 'Press OK to block updates',
+             hint: 'Stops the TV installing LG’s system updates, which can take away the access ' +
+                   'Glasshouse runs with. Apps and Glasshouse’s own updates are unaffected.' });
+  }
+
   if (d.rollbackTo && d.writable) {
     r.push(head('Rollback'));
     r.push({
@@ -1266,6 +1277,8 @@ function activate() {
       return send({ action: 'resetAdId' }, 'Advertising ID reset');
     case 'lmt':
       return send({ action: 'limitAdTracking', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
+    case 'tvupd':
+      return send({ action: 'blockTvUpdates', value: !r.on }, r.on ? 'Updates allowed' : 'Updates blocked');
     case 'lock':
       return send({ action: 'serviceMenuLock', value: { locked: !r.on } });
     case 'menu':

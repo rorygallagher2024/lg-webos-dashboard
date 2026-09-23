@@ -28,6 +28,11 @@ test('every blocked host is answered on both families', function () {
   });
 });
 
+test('with the ad blocker off the table carries no ad hosts', function () {
+  assert.deepEqual(privacy.adBlockList('off'), []);
+  assert.ok(!sinkholed(privacy.adBlockHostsTable('off'), 'ad.lgsmartad.com'));
+});
+
 test('the table still carries the marker the mount is detected by', function () {
   assert.ok(privacy.adBlockHostsTable('ads').indexOf('lg-webos-dashboard') !== -1);
 });

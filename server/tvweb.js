@@ -825,6 +825,11 @@ function doControl(action, value, cb) {
         cb(r);
       });
 
+    case 'blockTvUpdates':
+      return privacy.setTvUpdatesBlocked(value === true || value === 'on' || value === 'true', function (r) {
+        cb(r.ok ? updateSummary() : r);
+      });
+
     case 'updateAutoCheck':
       return updater.setAutoCheck(value === true || value === 'on' || value === 'true', cb);
 
@@ -1251,6 +1256,13 @@ var MIME = {
 };
 
 // ---------------------------------------------------------------- server
+// The TV's own software updates sit beside Glasshouse's in both dashboards.
+function updateSummary() {
+  var s = updater.updateSummary();
+  s.tvUpdatesBlocked = privacy.tvUpdatesBlocked();
+  return s;
+}
+
 function send(res, code, body, type) {
   /*
    * No Access-Control-Allow-Origin. The telemetry includes what is currently
@@ -1720,7 +1732,7 @@ var server = http.createServer(function (req, res) {
   /* Reports what is known, and never checks on its own: the dashboard polls
      this, and a poll that reached GitHub would be a request per viewer. */
   if (pathname === '/api/update') {
-    return send(res, 200, JSON.stringify(updater.updateSummary()));
+    return send(res, 200, JSON.stringify(updateSummary()));
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
