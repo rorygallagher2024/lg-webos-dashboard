@@ -1024,19 +1024,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
   <div class="lbl">Apps &amp; Home Screen Launcher</div>
 
-  <details class="pv-d" id="disc-saved-pages" open>
-    <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
-    <div class="pv-sub">Web pages on the TV's home screen, each opening in its browser. A page saved
-      from the browser takes its whole title as its name, so a long one can be given a shorter name
-      here, or removed.</div>
-    <div class="prot-table" id="apps-pages-list"></div>
-    <form class="toast-form page-add" id="page-add" onsubmit="event.preventDefault();addPage();">
-      <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" maxlength="2048"
-        autocomplete="off" spellcheck="false">
-      <input type="text" id="page-add-name" placeholder="Name (optional)" maxlength="60" autocomplete="off">
-      <button type="submit" id="page-add-btn">Add to home screen</button>
-    </form>
-  </details>
 
   <details class="pv-d" id="disc-installed-apps" open>
     <summary>Uninstall applications <span class="cur" id="apps-installed-summary"></span></summary>
@@ -1066,6 +1053,20 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <div class="prot-table" id="apps-services-list">
       <div class="sub" style="padding:16px 0">Loading background services&hellip;</div>
     </div>
+  </details>
+
+  <details class="pv-d" id="disc-saved-pages" open>
+    <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
+    <div class="pv-sub">Web pages on the TV's home screen, each opening in its browser. A page saved
+      from the browser takes its whole title as its name, so a long one can be given a shorter name
+      here, or removed.</div>
+    <div class="prot-table" id="apps-pages-list"></div>
+    <form class="toast-form page-add" id="page-add" onsubmit="event.preventDefault();addPage();">
+      <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" maxlength="2048"
+        autocomplete="off" spellcheck="false">
+      <input type="text" id="page-add-name" placeholder="Name (optional)" maxlength="60" autocomplete="off">
+      <button type="submit" id="page-add-btn">Add to home screen</button>
+    </form>
   </details>
 </section>
 
