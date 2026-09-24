@@ -736,6 +736,28 @@ function renameSavedPage(launchPointId, title, cb) {
  * Takes the tile off the home screen, as the TV's own remove does: the browser
  * and anything else installed are untouched, and no app is opened or closed.
  */
+/*
+ * The same tile the browser makes when a page is saved from it. Only http(s)
+ * addresses: anything else would be handed to the browser as written, and the
+ * dashboard is reachable by everyone on the network.
+ */
+function addSavedPage(address, title, cb) {
+  if (!configObj || !configObj.allowControl) {
+    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+  }
+  var url = String(address || '').trim();
+  if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
+  var m = /^https?:\/\/([^\/?#:\s]+)[^\s]*$/i.exec(url);
+  if (!m) return cb({ ok: false, error: 'enter a web address, such as bbc.co.uk' });
+  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim() || m[1].replace(/^www\./i, '');
+  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
+  lunaFn('com.webos.applicationManager/addLaunchPoint',
+         { id: BROWSER_ID, title: name, params: { target: url } }, function (r) {
+    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not add it' });
+    cb({ ok: true, launchPointId: r.launchPointId, title: name });
+  });
+}
+
 function removeSavedPage(launchPointId, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
@@ -827,6 +849,7 @@ module.exports = {
   uninstallApp: uninstallApp,
   renameSavedPage: renameSavedPage,
   removeSavedPage: removeSavedPage,
+  addSavedPage: addSavedPage,
   restartSam: restartSam,
   readHiddenAppsList: readHiddenAppsList,
   writeHiddenAppsList: writeHiddenAppsList,

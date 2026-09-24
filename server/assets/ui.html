@@ -634,6 +634,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 .page-edit input{font-size:13px;padding:10px 12px;min-height:38px}
 .page-edit button{min-height:38px;padding:0 16px}
 .page-acts{display:flex;gap:8px}
+.page-add{margin-top:16px;flex-wrap:wrap}
+.page-add #page-add-url{flex:2 1 260px}
+.page-add #page-add-name{flex:1 1 160px}
 </style>
 </head>
 <body>
@@ -1021,11 +1024,18 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
   <div class="lbl">Apps &amp; Home Screen Launcher</div>
 
-  <details class="pv-d" id="disc-saved-pages" open hidden>
+  <details class="pv-d" id="disc-saved-pages" open>
     <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
-    <div class="pv-sub">Pages added to the home screen from the TV's web browser. A saved page takes
-      its whole title as its name, so a long one can be given a shorter name here, or removed.</div>
+    <div class="pv-sub">Web pages on the TV's home screen, each opening in its browser. A page saved
+      from the browser takes its whole title as its name, so a long one can be given a shorter name
+      here, or removed.</div>
     <div class="prot-table" id="apps-pages-list"></div>
+    <form class="toast-form page-add" id="page-add" onsubmit="event.preventDefault();addPage();">
+      <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" maxlength="2048"
+        autocomplete="off" spellcheck="false">
+      <input type="text" id="page-add-name" placeholder="Name (optional)" maxlength="60" autocomplete="off">
+      <button type="submit" id="page-add-btn">Add to home screen</button>
+    </form>
   </details>
 
   <details class="pv-d" id="disc-installed-apps" open>
@@ -2746,8 +2756,8 @@ function pageHost(url) {
 
 function renderSavedPages(d) {
   const pages = d.savedPages || [];
-  q('disc-saved-pages').hidden = !pages.length;
-  q('apps-pages-summary').textContent = pages.length === 1 ? '1 page' : pages.length + ' pages';
+  q('apps-pages-summary').textContent = !pages.length ? 'None yet' : pages.length === 1 ? '1 page' : pages.length + ' pages';
+  q('page-add').hidden = !d.writable;
   q('apps-pages-list').innerHTML = pages.map(p => {
     const id = esc(p.launchPointId);
     const where = pageHost(p.address);
@@ -2778,6 +2788,23 @@ function editPage(lpId) {
   const inp = q('page-name-' + lpId);
   inp.focus();
   inp.select();
+}
+
+async function addPage() {
+  const url = q('page-add-url'), name = q('page-add-name'), btn = q('page-add-btn');
+  if (!url.value.trim()) return url.focus();
+  btn.disabled = true;
+  try {
+    const r = await fetch(api('/api/apps/add-page'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: url.value, title: name.value })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) showErr(j.error || 'Could not add it');
+    else { url.value = ''; name.value = ''; }
+  } catch (e) { showErr(e.message); }
+  btn.disabled = false;
+  loadApps();
 }
 
 async function removePage(lpId) {

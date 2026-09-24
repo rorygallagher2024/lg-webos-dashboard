@@ -1758,6 +1758,14 @@ var server = http.createServer(function (req, res) {
     });
   }
 
+  if (pathname === '/api/apps/add-page' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.addSavedPage(body && body.address, body && body.title, function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
   if (pathname === '/api/apps/remove-page' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
       appsModule.removeSavedPage(body && body.launchPointId, function (r) {
