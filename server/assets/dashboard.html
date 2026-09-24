@@ -354,7 +354,7 @@ function optionRows(d) {
         'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.'));
     if (d.alwaysReady !== undefined)
       r.push(toggle('Stay connected when off', d.alwaysReady, 'alwaysReady',
-        'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2. LG calls this Always Ready.'));
+        'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2.'));
     // Only while it is on: with it off, the TV sleeps every night anyway.
     if (d.alwaysReady && d.alwaysReadyOff)
       r.push({ label: 'Nightly power-down', value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,

@@ -46,7 +46,7 @@ body{font-family:'Manrope',sans-serif}
 /*
  * Four screens - welcome, network, Home Assistant, summary - plus the phone
  * handoff, and a fifth for staying connected when off on TVs that have LG's
- * Always Ready. Opened with #ha from the dashboard's Settings tab, only the handoff
+ * Always-on. Opened with #ha from the dashboard's Settings tab, only the handoff
  * runs, and it returns there when done.
  */
 (function () {
@@ -84,7 +84,7 @@ body{font-family:'Manrope',sans-serif}
     });
   }
 
-  // Whether this TV has Always Ready; the server leaves the field out if not.
+  // Whether this TV has LG's Always-on; the server leaves the field out if not.
   function hasAR() { return !!state && state.alwaysReady !== undefined; }
   function steps() { return hasAR() ? 3 : 2; }
 
@@ -158,7 +158,7 @@ body{font-family:'Manrope',sans-serif}
         { id: 'on', label: 'Yes, keep it connected',
           hint: 'When the TV is switched off, it stays on your network with the screen dark, so this dashboard and ' +
             'Home Assistant keep working and can switch it back on. It uses about 12 W while off. For five hours each ' +
-            'night it sleeps fully and is offline; the dashboard can move those hours. LG calls this Always Ready.' },
+            'night it sleeps fully and is offline; the dashboard can move those hours.' },
         { id: 'off', label: 'No, let it sleep',
           hint: 'Switched off, the TV sleeps as normal and uses almost no power. The dashboard and Home Assistant ' +
             'wait until it is switched back on.' }

@@ -1083,7 +1083,7 @@ function collectStats(cb) {
     var uei = ue && ue.returnValue !== false && ue.settings && ue.settings.ueiEnable;
     if (uei !== undefined && uei !== null && uei !== false) out.deviceDetection = uei === 'on' || uei === true;
 
-  // LG's Always Ready: holds the TV in Active Standby when switched off, so
+  // LG's Always-on: holds the TV in Active Standby when switched off, so
   // this server stays reachable. A C2 on webOS 9.2 has it; a B8 on 4.4 does not.
   // It is suspended for five hours a night, when a switched-off TV sleeps fully.
   lunaCachedFn('com.webos.service.settings/getSystemSettings',

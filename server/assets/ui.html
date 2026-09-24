@@ -1035,7 +1035,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         <div class="prot-title">Stay connected when off</div>
         <div class="prot-desc">Keeps the TV on the network while it is switched off, apart from five hours each
           night, so this dashboard and Home Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG
-          C2, against almost nothing in normal standby. LG calls this Always Ready.</div>
+          C2, against almost nothing in normal standby.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_ar" onclick="toggleAlwaysReady()">&mdash;</button></div>
     </div>
@@ -2322,7 +2322,7 @@ function toggleLgLogo() { c('lgLogo', flip('btn_lglogo')); }
 function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 function toggleDeviceDetection() { c('deviceDetection', flip('btn_devdetect')); }
 function toggleAlwaysReady() { c('alwaysReady', flip('btn_ar')); }
-// Shown only while Always Ready is on: with it off, the TV sleeps every night anyway.
+// Shown only while Always-on is on: with it off, the TV sleeps every night anyway.
 function arOffRow(win) {
   const row = q('row-aroff'), sel = q('sel_aroff');
   if (!row || !sel) return;

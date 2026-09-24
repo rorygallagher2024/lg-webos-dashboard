@@ -754,10 +754,11 @@ function doControl(action, value, cb) {
                   function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     /*
-     * LG's Always Ready (general/alwaysOn). Switched off, a C2 then stays in
-     * Active Standby with the screen dark and this server running, where it
-     * otherwise sleeps within ~2 minutes. Measured on an OLED42C24LA: 12.5W,
-     * against about 0W in plain standby.
+     * LG's Always-on (general/alwaysOn), not its Always Ready, which is
+     * lifeOnScreenMode. Switched off, a C2 then stays in Active Standby with
+     * the screen dark and this server running, where it otherwise sleeps
+     * within ~2 minutes. Measured on an OLED42C24LA: 12.5W, against about 0W
+     * in plain standby.
      */
     case 'alwaysReady':
       var arOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
@@ -766,7 +767,7 @@ function doControl(action, value, cb) {
                   function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
     /*
-     * The five nightly hours when LG suspends Always Ready, and a switched-off
+     * The five nightly hours when LG suspends Always-on, and a switched-off
      * TV sleeps fully. LG's own menu moves only the start and keeps the end five
      * hours later, "to keep your TV in the optimal condition"; so does this.
      */
@@ -872,9 +873,9 @@ function doControl(action, value, cb) {
 
     /*
      * Only reachable while the TV is in Active Standby (finishing panel
-     * compensation, or held there by Always Ready); in plain standby the B8
+     * compensation, or held there by Always-on); in plain standby the B8
      * drops off the network within 5s and nothing here runs. power/powerOn
-     * with a reason is what brings a C2 (webOS 9.2) back from Always Ready;
+     * with a reason is what brings a C2 (webOS 9.2) back from Always-on;
      * cancelPowerOff only reverses a power-off still in progress, and
      * turnOnScreen only undoes screenOff. Those two remain for firmware
      * without powerOn.
@@ -1669,7 +1670,7 @@ var server = http.createServer(function (req, res) {
     if (!fromTV(req)) return send(res, 403, JSON.stringify({ ok: false, error: 'only from the TV itself' }));
     if (req.method === 'GET') {
       /*
-       * Setup offers Always Ready only on a TV that has it (a C2 on webOS 9.2
+       * Setup offers Always-on only on a TV that has it (a C2 on webOS 9.2
        * does, a B8 on 4.4 does not), so the TV is asked here; a TV without the
        * setting answers with an error, and the step is left out.
        */
@@ -2282,7 +2283,7 @@ function setupHomeAssistant() {
 
   /*
    * Switched off is a state of the TV, not a loss of it. While the TV is off
-   * but still up (Active Standby, for Always Ready or panel compensation) the
+   * but still up (Active Standby, for Always-on or panel compensation) the
    * status reads "off"; once it sleeps the broker publishes the will,
    * "asleep". Readings stay available through both and show a switched-off
    * TV. Controls stay available while "off", since the server can still act,

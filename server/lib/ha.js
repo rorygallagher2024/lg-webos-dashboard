@@ -1100,7 +1100,7 @@ function buildEntities(opts) {
 /*
  * What each entity shows while the TV is switched off (telemetry's tvOff).
  * A reading of what is on screen says Off, asleep or not. Live measurements
- * keep reporting while the TV is off but still up (Always Ready, panel
+ * keep reporting while the TV is off but still up (Always-on, panel
  * compensation), since the server can still take them, and go unavailable
  * once it sleeps, when the last one sent would be stale: see AWAKE_ONLY.
  * Settings and facts that stay true while the TV is off - picture mode,
