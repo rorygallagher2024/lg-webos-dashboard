@@ -732,6 +732,34 @@ function renameSavedPage(launchPointId, title, cb) {
   });
 }
 
+/*
+ * Takes the tile off the home screen, as the TV's own remove does: the browser
+ * and anything else installed are untouched, and no app is opened or closed.
+ */
+function removeSavedPage(launchPointId, cb) {
+  if (!configObj || !configObj.allowControl) {
+    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+  }
+  var lpId = String(launchPointId || '');
+  if (!lpId) return cb({ ok: false, error: 'missing page' });
+  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
+    var lps = (r && r.launchPoints) || [], found = false;
+    for (var i = 0; i < lps.length; i++) {
+      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id === BROWSER_ID) found = true;
+    }
+    if (!found) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+    lunaFn('com.webos.applicationManager/removeLaunchPoint', { launchPointId: lpId }, function (x) {
+      if (!x || x.returnValue !== true) return cb({ ok: false, error: 'the TV would not remove it' });
+      var originals = readPageTitles();
+      if (originals.hasOwnProperty(lpId)) {
+        delete originals[lpId];
+        try { fs.writeFileSync(PAGE_TITLES_FILE, JSON.stringify(originals), 'utf8'); } catch (e) {}
+      }
+      cb({ ok: true });
+    });
+  });
+}
+
 function uninstallApp(appId, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
@@ -798,6 +826,7 @@ module.exports = {
   unhideAllTiles: unhideAllTiles,
   uninstallApp: uninstallApp,
   renameSavedPage: renameSavedPage,
+  removeSavedPage: removeSavedPage,
   restartSam: restartSam,
   readHiddenAppsList: readHiddenAppsList,
   writeHiddenAppsList: writeHiddenAppsList,

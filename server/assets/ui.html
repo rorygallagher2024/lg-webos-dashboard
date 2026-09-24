@@ -633,6 +633,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 .page-edit{display:flex;gap:8px;margin:0}
 .page-edit input{font-size:13px;padding:10px 12px;min-height:38px}
 .page-edit button{min-height:38px;padding:0 16px}
+.page-acts{display:flex;gap:8px}
 </style>
 </head>
 <body>
@@ -1023,7 +1024,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <details class="pv-d" id="disc-saved-pages" open hidden>
     <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
     <div class="pv-sub">Pages added to the home screen from the TV's web browser. A saved page takes
-      its whole title as its name, so a long one can be given a shorter name here.</div>
+      its whole title as its name, so a long one can be given a shorter name here, or removed.</div>
     <div class="prot-table" id="apps-pages-list"></div>
   </details>
 
@@ -2755,8 +2756,9 @@ function renderSavedPages(d) {
         <div class="prot-title">${esc(p.title)}</div>
         <div class="prot-desc">${esc(where || 'Saved page')}${p.renamed ? ' &middot; renamed' : ''}</div>
       </div>
-      <div class="prot-status">
+      <div class="prot-status page-acts">
         <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>Rename</button>
+        <button type="button" class="pill bad" onclick="removePage('${id}')" ${d.writable ? '' : 'disabled'}>Remove</button>
       </div>
     </div>`;
   }).join('');
@@ -2776,6 +2778,20 @@ function editPage(lpId) {
   const inp = q('page-name-' + lpId);
   inp.focus();
   inp.select();
+}
+
+async function removePage(lpId) {
+  const p = ((appsData && appsData.savedPages) || []).find(x => x.launchPointId === lpId);
+  if (!p || !confirm('Remove "' + p.title + '" from the home screen?')) return;
+  try {
+    const r = await fetch(api('/api/apps/remove-page'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ launchPointId: lpId })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) showErr(j.error || 'Could not remove it');
+  } catch (e) { showErr(e.message); }
+  loadApps();
 }
 
 async function savePage(lpId) {
