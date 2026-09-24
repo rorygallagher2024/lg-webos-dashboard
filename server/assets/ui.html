@@ -629,6 +629,10 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   max-width:62ch;
 }
 .prot-status{flex-shrink:0}
+/* Renaming a saved page happens in its own row: the name becomes the field. */
+.page-edit{display:flex;gap:8px;margin:0}
+.page-edit input{font-size:13px;padding:10px 12px;min-height:38px}
+.page-edit button{min-height:38px;padding:0 16px}
 </style>
 </head>
 <body>
@@ -1015,6 +1019,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
   <div class="lbl">Apps &amp; Home Screen Launcher</div>
+
+  <details class="pv-d" id="disc-saved-pages" open hidden>
+    <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
+    <div class="pv-sub">Pages added to the home screen from the TV's web browser. A saved page takes
+      its whole title as its name, so a long one can be given a shorter name here.</div>
+    <div class="prot-table" id="apps-pages-list"></div>
+  </details>
 
   <details class="pv-d" id="disc-installed-apps" open>
     <summary>Uninstall applications <span class="cur" id="apps-installed-summary"></span></summary>
@@ -2727,6 +2738,61 @@ async function loadApps() {
   }
 }
 
+// The address without its scheme, as a reminder of which page a tile opens.
+function pageHost(url) {
+  try { return new URL(url).host.replace(/^www\./, ''); } catch (e) { return url || ''; }
+}
+
+function renderSavedPages(d) {
+  const pages = d.savedPages || [];
+  q('disc-saved-pages').hidden = !pages.length;
+  q('apps-pages-summary').textContent = pages.length === 1 ? '1 page' : pages.length + ' pages';
+  q('apps-pages-list').innerHTML = pages.map(p => {
+    const id = esc(p.launchPointId);
+    const where = pageHost(p.address);
+    return `<div class="prot-row" id="page-${id}">
+      <div class="prot-main">
+        <div class="prot-title">${esc(p.title)}</div>
+        <div class="prot-desc">${esc(where || 'Saved page')}${p.renamed ? ' &middot; renamed' : ''}</div>
+      </div>
+      <div class="prot-status">
+        <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>Rename</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editPage(lpId) {
+  const p = ((appsData && appsData.savedPages) || []).find(x => x.launchPointId === lpId);
+  const row = q('page-' + lpId);
+  if (!p || !row) return;
+  row.innerHTML = `<form class="toast-form page-edit prot-main" onsubmit="event.preventDefault();savePage('${esc(lpId)}')">
+      <input type="text" id="page-name-${esc(lpId)}" maxlength="60" autocomplete="off" spellcheck="false"
+        placeholder="${p.renamed ? 'Empty puts back its own title' : 'New name'}" value="${esc(p.title)}"
+        onkeydown="if(event.key==='Escape')renderSavedPages(appsData)">
+      <button type="submit">Save</button>
+      <button type="button" onclick="renderSavedPages(appsData)">Cancel</button>
+    </form>`;
+  const inp = q('page-name-' + lpId);
+  inp.focus();
+  inp.select();
+}
+
+async function savePage(lpId) {
+  const inp = q('page-name-' + lpId);
+  if (!inp) return;
+  inp.disabled = true;
+  try {
+    const r = await fetch(api('/api/apps/rename'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ launchPointId: lpId, title: inp.value })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) showErr(j.error || 'Could not rename it');
+  } catch (e) { showErr(e.message); }
+  loadApps();
+}
+
 /* Not renderApps: that one draws the launcher grid in the control tab, and a
    second declaration of the same name in this scope silently replaces it. */
 function renderAppsPanel() {
@@ -2762,6 +2828,8 @@ function renderAppsPanel() {
       }).join('');
     }
   }
+
+  renderSavedPages(d);
 
   // Render System Tiles
   const tileHidingEnabled = !!d.tileHidingEnabled;

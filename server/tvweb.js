@@ -1758,6 +1758,14 @@ var server = http.createServer(function (req, res) {
     });
   }
 
+  if (pathname === '/api/apps/rename' && req.method === 'POST') {
+    return readJsonBody(req, res, function (body) {
+      appsModule.renameSavedPage(body && body.launchPointId, body && body.title, function (r) {
+        send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
+      });
+    });
+  }
+
   if (pathname === '/api/apps/uninstall' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
       appsModule.uninstallApp(body.id, function (r) {

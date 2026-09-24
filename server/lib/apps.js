@@ -16,6 +16,9 @@ var execFile = require('child_process').execFile;
 
 var OVERRIDE_DIR = '/var/lib/tvweb/appinfo-overrides';
 var HIDDEN_APPS_FILE = '/var/lib/tvweb/hidden_apps';
+// A saved web page's title as the browser set it, kept on its first rename so
+// clearing the name can put it back.
+var PAGE_TITLES_FILE = '/var/lib/tvweb/saved_page_titles.json';
 var TILE_HIDING_FLAG_FILE = '/var/lib/tvweb/tile_hiding_enabled';
 
 var APP_BASES = [
@@ -423,8 +426,27 @@ function getApps(cb) {
 
       // Merge / supplement with listLaunchPoints
       var lpMap = {};
+      /** @type {any[]} */
+      var savedPages = [];
+      var originals = readPageTitles();
       for (i = 0; i < rawLps.length; i++) {
         a = rawLps[i];
+        /*
+         * A web page saved to the home screen is a bookmark tile of the
+         * browser's. Merged by app id it would rename the browser after the
+         * page and hide every page but one, so each is listed on its own.
+         * AirPlay's only tile is also a bookmark, and stays with its app.
+         */
+        if (a && a.id && a.lptype === 'bookmark' && a.id !== 'airplay') {
+          savedPages.push({
+            launchPointId: a.launchPointId,
+            title: a.title || '',
+            appId: a.id,
+            address: (a.params && (a.params.target || a.params.url)) || '',
+            renamed: originals.hasOwnProperty(a.launchPointId)
+          });
+          continue;
+        }
         if (a && a.id) {
           lpMap[a.id] = true;
           if (!appMap[a.id]) {
@@ -524,6 +546,7 @@ function getApps(cb) {
         ok: true,
         installed: installed,
         systemTiles: systemTiles,
+        savedPages: savedPages,
         hiddenCount: Object.keys(hiddenMap).length,
         tileHidingEnabled: isTileHidingEnabled(),
         writable: !!(configObj && configObj.allowControl)
@@ -667,6 +690,46 @@ function unhideAllTiles(cb) {
 /**
  * Uninstalls a removable user or store app via Luna appInstallService.
  */
+function readPageTitles() {
+  try { return JSON.parse(fs.readFileSync(PAGE_TITLES_FILE, 'utf8')) || {}; } catch (e) { return {}; }
+}
+
+/*
+ * Only the name on the tile changes: the page, its address and the tile's id
+ * stay as they were. An empty name puts back the title the browser gave it.
+ */
+function renameSavedPage(launchPointId, title, cb) {
+  if (!configObj || !configObj.allowControl) {
+    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+  }
+  var lpId = String(launchPointId || '');
+  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
+  if (!lpId) return cb({ ok: false, error: 'missing page' });
+  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
+
+  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
+    var lp = null, lps = (r && r.launchPoints) || [];
+    for (var i = 0; i < lps.length; i++) {
+      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id !== 'airplay') lp = lps[i];
+    }
+    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+
+    var originals = readPageTitles();
+    if (!name) {
+      if (!originals.hasOwnProperty(lpId)) return cb({ ok: true, title: lp.title });
+      name = originals[lpId];
+      delete originals[lpId];
+    } else if (!originals.hasOwnProperty(lpId)) {
+      originals[lpId] = lp.title;
+    }
+    lunaFn('com.webos.applicationManager/updateLaunchPoint', { launchPointId: lpId, title: name }, function (u) {
+      if (!u || u.returnValue !== true) return cb({ ok: false, error: 'the TV would not rename it' });
+      try { fs.writeFileSync(PAGE_TITLES_FILE, JSON.stringify(originals), 'utf8'); } catch (e) {}
+      cb({ ok: true, title: name });
+    });
+  });
+}
+
 function uninstallApp(appId, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
@@ -732,6 +795,7 @@ module.exports = {
   unhideTile: unhideTile,
   unhideAllTiles: unhideAllTiles,
   uninstallApp: uninstallApp,
+  renameSavedPage: renameSavedPage,
   restartSam: restartSam,
   readHiddenAppsList: readHiddenAppsList,
   writeHiddenAppsList: writeHiddenAppsList,
