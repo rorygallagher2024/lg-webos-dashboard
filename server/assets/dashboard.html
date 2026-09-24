@@ -104,6 +104,7 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 .val.st.good,.row.sel .val.st.good{color:#1ec15f}
 .val.st.hold,.row.sel .val.st.hold{color:#ff9800}
 .val.st.note,.row.sel .val.st.note{color:rgba(255,255,255,.55)}
+.val.st.bad,.row.sel .val.st.bad{color:#e65050}
 
 /* The mark that separates a row you can press from one you can only read. It
    sits in a gutter every row reserves, so nothing shifts as the eye moves down
@@ -164,6 +165,7 @@ body.light .val.warn{color:#b45309}
 body.light .val.st.good{color:#15803d}
 body.light .val.st.hold{color:#b45309}
 body.light .val.st.note{color:rgba(0,0,0,.55)}
+body.light .val.st.bad{color:#b91c1c}
 body.light .val.act{color:rgba(0,0,0,.52)}
 body.light .row.sel .val.act{color:#15803d}
 body.light .row.sel .val.bad{color:#dc2626}
@@ -841,6 +843,7 @@ function updateRows(d) {
       label: 'Latest release',
       value: 'v' + d.latest,
       cls: 'on',
+      plain: true,
       hint: 'A newer release is available (v' + d.latest + ').'
     });
     if (d.viaHomebrewChannel) {
@@ -865,6 +868,7 @@ function updateRows(d) {
       label: 'Latest release',
       value: 'v' + d.latest + ' (Up to date)',
       cls: 'off',
+      plain: true,
       hint: 'You are running the latest release.'
     });
   } else if (d.error) {
@@ -962,11 +966,25 @@ function render() {
     if (r.head) return '<div class="row head"><span class="lbl">' + esc(r.label) + '</span></div>';
     return '<div class="row' + (i === sel ? ' sel' : '') + (r.act ? ' doable' : '') + '" onclick="pickRow(' + i + ')">' +
              '<span class="lbl">' + esc(r.label) + '</span>' +
-             '<span class="val' + (r.cls ? ' ' + r.cls : '') + '">' + esc(r.value) + '</span>' +
+             '<span class="val' + valClass(r) + '">' + esc(r.value) + '</span>' +
            '</div>';
   }).join('');
   position();
   renderHint();
+}
+
+/*
+ * A row that cannot be pressed but reports a coloured state is a read-out, so
+ * it takes the status label rather than the coloured value the toggles use:
+ * otherwise "Capture: Stopped" looks exactly like a switch set to Stopped.
+ */
+var STATUS_OF = { on: 'good', warn: 'hold', bad: 'bad', off: 'note' };
+
+function valClass(r) {
+  if (!r.cls) return '';
+  // A version number is a reading, and would not survive the capitals.
+  if (!r.act && !r.plain && STATUS_OF[r.cls]) return ' st ' + STATUS_OF[r.cls];
+  return ' ' + r.cls;
 }
 
 /*
