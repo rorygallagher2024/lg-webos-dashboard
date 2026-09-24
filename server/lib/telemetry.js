@@ -1057,7 +1057,7 @@ function collectStats(cb) {
     var wol = nw && nw.settings && nw.settings.wolwowlOnOff;
     if (wol !== undefined) out.wakeOnLan = wol === true || wol === 'true';
 
-  // Absent before webOS 22 (a B8 on 4.4 has no such key), so the switch is
+  // A C2 on webOS 9.2 has this key and a B8 on 4.4 does not, so the switch is
   // offered only where the TV reports one.
   lunaCachedFn('com.webos.service.settings/getSystemSettings',
        { category: 'other', keys: ['lgLogoDisplay'] }, 60000, function (ot) {

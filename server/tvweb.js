@@ -744,7 +744,7 @@ function doControl(action, value, cb) {
     /*
      * LG's "LG Logo Display": the logo shown as the TV switches on and off.
      * tvpowerd subscribes to the key, so writing it is all LG's menu does.
-     * Only on firmware that has it (webOS 22 and later).
+     * Only on firmware that has it: a C2 on webOS 9.2 does, a B8 on 4.4 does not.
      */
     case 'lgLogo':
       var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
