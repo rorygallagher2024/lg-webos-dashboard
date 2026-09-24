@@ -1027,6 +1027,15 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_quickboot" onclick="toggleQuickBoot()">&mdash;</button></div>
     </div>
+    <div class="prot-row" id="row-ar" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Stay connected when off</div>
+        <div class="prot-desc">Keeps the TV on the network while it is switched off, so this dashboard and Home
+          Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG
+          C2, against almost nothing in normal standby. LG calls this Always Ready.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="btn_ar" onclick="toggleAlwaysReady()">&mdash;</button></div>
+    </div>
     <div class="prot-row" id="row-wol" hidden>
       <div class="prot-main">
         <div class="prot-title">Wake-on-LAN</div>
@@ -1639,6 +1648,7 @@ async function tick() {
       const lights = d.lights || {};
       // Each setting shows only where the TV has it; Display only when it has any.
       advPill('quickboot', 'btn_quickboot', d.quickBoot);
+      advPill('ar', 'btn_ar', d.alwaysReady);
       advPill('wol', 'btn_wol', d.wakeOnLan);
       advPill('lglogo', 'btn_lglogo', d.lgLogo);
       advPill('standby', 'lt_standby', lights.standby);
@@ -2297,6 +2307,7 @@ function toggleQuickBoot() { c('quickBoot', flip('btn_quickboot')); }
 function toggleLgLogo() { c('lgLogo', flip('btn_lglogo')); }
 function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 function toggleDeviceDetection() { c('deviceDetection', flip('btn_devdetect')); }
+function toggleAlwaysReady() { c('alwaysReady', flip('btn_ar')); }
 
 function toggleMute() { c('mute', !muted); }
 async function sendToast() {

@@ -753,6 +753,18 @@ function doControl(action, value, cb) {
                   { category: 'other', settings: { ueiEnable: ddOn ? 'on' : 'off' } },
                   function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
+    /*
+     * LG's Always Ready (general/alwaysOn). Switched off, a C2 then stays in
+     * Active Standby with the screen dark and this server running, where it
+     * otherwise sleeps within ~2 minutes. Measured on an OLED42C24LA: 12.5W,
+     * against about 0W in plain standby.
+     */
+    case 'alwaysReady':
+      var arOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
+      return luna('com.webos.service.settings/setSystemSettings',
+                  { category: 'general', settings: { alwaysOn: arOn ? 'on' : 'off' } },
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
+
     case 'lgLogo':
       var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings',

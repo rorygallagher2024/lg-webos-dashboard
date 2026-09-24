@@ -347,11 +347,14 @@ function optionRows(d) {
     return { label: label, value: on ? (onWord || 'On') : (offWord || 'Off'), cls: 'act', act: act, on: !!on,
              press: 'Press OK to turn ' + (on ? 'off' : 'on'), hint: hint };
   }
-  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined) {
+  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.alwaysReady !== undefined) {
     r.push(head('Power'));
     if (d.quickBoot !== undefined)
       r.push(toggle('Quick Boot', d.quickBoot, 'quickBoot',
         'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.'));
+    if (d.alwaysReady !== undefined)
+      r.push(toggle('Stay connected when off', d.alwaysReady, 'alwaysReady',
+        'Keeps the TV on the network while it is switched off, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2. LG calls this Always Ready.'));
     if (d.wakeOnLan !== undefined)
       r.push(toggle('Wake-on-LAN', d.wakeOnLan, 'wakeOnLan',
         'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'));
@@ -1354,6 +1357,8 @@ function activate() {
       return send({ action: 'quickBoot', value: !r.on }, r.on ? 'Quick Boot turned off' : 'Quick Boot turned on');
     case 'deviceDetection':
       return send({ action: 'deviceDetection', value: !r.on }, r.on ? 'Device detection turned off' : 'Device detection turned on');
+    case 'alwaysReady':
+      return send({ action: 'alwaysReady', value: !r.on }, r.on ? 'Will sleep when off' : 'Will stay connected when off');
     case 'lgLogo':
       return send({ action: 'lgLogo', value: !r.on }, r.on ? 'LG logo hidden' : 'LG logo shown');
     case 'wakeOnLan':
