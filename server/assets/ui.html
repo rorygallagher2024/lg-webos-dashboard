@@ -635,6 +635,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 .page-edit button{min-height:38px;padding:0 16px}
 .page-acts{display:flex;gap:8px}
 .page-add{margin-top:16px;flex-wrap:wrap}
+.page-add-msg{margin-top:10px;color:var(--red)}
+.page-add-msg:empty{display:none}
 .page-add #page-add-url{flex:2 1 260px}
 .page-add #page-add-name{flex:1 1 160px}
 </style>
@@ -1067,6 +1069,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <input type="text" id="page-add-name" placeholder="Name (optional)" maxlength="60" autocomplete="off">
       <button type="submit" id="page-add-btn">Add to home screen</button>
     </form>
+    <div class="sub page-add-msg" id="page-add-msg" role="alert"></div>
   </details>
 </section>
 
@@ -2792,7 +2795,8 @@ function editPage(lpId) {
 }
 
 async function addPage() {
-  const url = q('page-add-url'), name = q('page-add-name'), btn = q('page-add-btn');
+  const url = q('page-add-url'), name = q('page-add-name'), btn = q('page-add-btn'), msg = q('page-add-msg');
+  msg.textContent = '';
   if (!url.value.trim()) return url.focus();
   btn.disabled = true;
   try {
@@ -2801,9 +2805,14 @@ async function addPage() {
       body: JSON.stringify({ address: url.value, title: name.value })
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) showErr(j.error || 'Could not add it');
-    else { url.value = ''; name.value = ''; }
-  } catch (e) { showErr(e.message); }
+    // Beside the field it is about, and in a sentence's case: the server's
+    // messages are written to follow "Could not add it:" elsewhere.
+    if (!r.ok || !j.ok) {
+      const e = j.error || 'Could not add it';
+      msg.textContent = e.charAt(0).toUpperCase() + e.slice(1) + '.';
+      url.focus();
+    } else { url.value = ''; name.value = ''; }
+  } catch (e) { msg.textContent = e.message; }
   btn.disabled = false;
   loadApps();
 }

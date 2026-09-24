@@ -741,14 +741,27 @@ function renameSavedPage(launchPointId, title, cb) {
  * addresses: anything else would be handed to the browser as written, and the
  * dashboard is reachable by everyone on the network.
  */
+/*
+ * A name the browser could reach: a domain ending in letters (bbc.co.uk), an
+ * IPv4 address (a device on the network) or localhost. "12345" parses as a
+ * host but is none of these.
+ */
+function isWebHost(host) {
+  var h = String(host).toLowerCase();
+  if (h === 'localhost') return true;
+  var ip = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (ip) return ip.slice(1).every(function (n) { return +n <= 255; });
+  return /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(h);
+}
+
 function addSavedPage(address, title, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
   }
   var url = String(address || '').trim();
   if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
-  var m = /^https?:\/\/([^\/?#:\s]+)[^\s]*$/i.exec(url);
-  if (!m) return cb({ ok: false, error: 'enter a web address, such as bbc.co.uk' });
+  var m = /^https?:\/\/([^\/?#:\s]+)(:\d{1,5})?([\/?#][^\s]*)?$/i.exec(url);
+  if (!m || !isWebHost(m[1])) return cb({ ok: false, error: 'enter a web address, such as bbc.co.uk' });
   var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim() || m[1].replace(/^www\./i, '');
   if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
   lunaFn('com.webos.applicationManager/addLaunchPoint',
@@ -850,6 +863,7 @@ module.exports = {
   renameSavedPage: renameSavedPage,
   removeSavedPage: removeSavedPage,
   addSavedPage: addSavedPage,
+  isWebHost: isWebHost,
   restartSam: restartSam,
   readHiddenAppsList: readHiddenAppsList,
   writeHiddenAppsList: writeHiddenAppsList,
