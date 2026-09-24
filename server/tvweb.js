@@ -1653,7 +1653,20 @@ var server = http.createServer(function (req, res) {
   // First-run setup and the TV's own settings. The TV only: see fromTV.
   if (pathname === '/api/setup') {
     if (!fromTV(req)) return send(res, 403, JSON.stringify({ ok: false, error: 'only from the TV itself' }));
-    if (req.method === 'GET') return send(res, 200, JSON.stringify(setupState()));
+    if (req.method === 'GET') {
+      /*
+       * Setup offers Always Ready only on a TV that has it (a C2 on webOS 9.2
+       * does, a B8 on 4.4 does not), so the TV is asked here; a TV without the
+       * setting answers with an error, and the step is left out.
+       */
+      return luna('com.webos.service.settings/getSystemSettings',
+                  { category: 'general', keys: ['alwaysOn'] }, function (r) {
+        var st = setupState();
+        var ar = r && r.returnValue !== false && r.settings && r.settings.alwaysOn;
+        if (ar !== undefined && ar !== null) st.alwaysReady = ar === 'on' || ar === true;
+        send(res, 200, JSON.stringify(st));
+      });
+    }
     if (req.method !== 'POST') return send(res, 405, JSON.stringify({ ok: false, error: 'GET or POST' }));
     if (String(req.headers['content-type'] || '').toLowerCase().indexOf('application/json') !== 0) {
       return send(res, 415, JSON.stringify({ ok: false, error: 'Content-Type must be application/json' }));
@@ -1676,6 +1689,11 @@ var server = http.createServer(function (req, res) {
           console.log('setup: dashboard ' + (open ? 'opened to the network' : 'closed to this TV') + ', restarting');
           send(res, 200, JSON.stringify({ ok: true, restarting: true }));
           setTimeout(function () { restartSelf(); }, 250);
+        });
+      }
+      if (a.action === 'alwaysReady') {
+        return doControl('alwaysReady', !!a.on, function (r) {
+          send(res, r && r.ok ? 200 : 500, JSON.stringify(r && r.ok ? { ok: true } : { ok: false, error: 'the TV would not change it' }));
         });
       }
       if (a.action === 'handoff') {

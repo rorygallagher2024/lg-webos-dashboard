@@ -119,7 +119,7 @@ From a browser you can navigate the TV, change inputs, control playback and volu
 * Screen blanking, sleep timer, on-screen notifications, and power and restart.
 * Opening a web page on the TV: type an address and the TV's browser takes it.
 
-The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, the LG logo shown at power on and off, auto device detection, and the front lights. Auto device detection finds devices the TV can show on its Home Dashboard and control, from a set-top box to smart lights, plugs and switches; on newer TVs it does so by looking up every address on the home network each time the TV switches on, and switching it off stops those lookups. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
+The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, staying connected when off, the LG logo shown at power on and off, auto device detection, and the front lights. Auto device detection finds devices the TV can show on its Home Dashboard and control, from a set-top box to smart lights, plugs and switches; on newer TVs it does so by looking up every address on the home network each time the TV switches on, and switching it off stops those lookups. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
 
 ### Telemetry and diagnostics
 
@@ -261,6 +261,14 @@ The **MQTT** tab, `/?tab=mqtt`, publishes the TV to an MQTT broker, where it arr
 The tab holds the broker address, credentials, topic prefix and device identity, with the bridge's connection state and last publish time beside them.
 
 [Home Assistant & MQTT](#home-assistant--mqtt) covers the setup.
+
+### Staying connected while the TV is off
+
+Switched off, an LG TV sleeps within a couple of minutes, and the dashboard and the Home Assistant bridge sleep with it. On TVs that have LG's Always Ready setting, **Stay connected when off** keeps the TV on the network with the screen dark instead: the dashboard keeps answering, Home Assistant keeps its readings and controls, and either can switch the TV back on.
+
+The cost is power. On an OLED42C24LA it draws 12.5 W while off, against almost nothing in normal standby.
+
+The switch is under **Advanced &rarr; Power** in the web dashboard and **System &rarr; Power** on the TV, and setup offers it as a third step. TVs without the setting, such as webOS 4 models, do not show it; Wake-on-LAN still wakes them from standby.
 
 ### Server updates
 
