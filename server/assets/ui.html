@@ -1874,6 +1874,7 @@ async function tick() {
       // Dismissing works from anywhere; only starting one needs an app.
       refuseScreensaver(q('ss-toggle'),
         !ssWritable ? 'Controls are disabled in config.json.'
+        : ssSwitching ? SS_SWITCHING
         : (ssOnInput && !ssOn) ? SS_ONLY_IN_APPS : '');
     }
 
@@ -3470,7 +3471,11 @@ document.addEventListener('click', async ev => {
 
 let ssCurrent = 'stock';
 let ssWritable = true;
+let ssSwitching = false;
+let ssSwitchPoll = null;
 
+const SS_SWITCHING =
+  'The TV is switching screen savers. The screen may stay dark for up to a minute, then it comes back on its own.';
 const SS_ONLY_IN_APPS =
   'The screen saver can only be started while a webOS app is running, not from an HDMI input or Live TV.';
 
@@ -3516,10 +3521,12 @@ async function loadScreensavers() {
   } catch (e) { showErr(e.message); return; }
   if (!d || !d.ok) { showErr((d && d.error) || 'Could not read the screen savers'); return; }
   ssCurrent = d.current;
+  ssSwitching = !!d.switching;
+  const locked = !d.writable || ssSwitching;
 
   box.innerHTML = d.modes.map(m => `
     <button class="ss-card${m.active ? ' on' : ''}" data-ss="${esc(m.id)}"
-            ${(!m.available || !d.writable) ? 'disabled' : ''}>
+            ${(!m.available || locked) ? 'disabled' : ''}>
       <div class="ss-name"><span>${esc(m.label)}</span>${m.active ? '<span class="ss-tag">In use</span>' : ''}</div>
       <div class="ss-desc">${esc(m.description)}</div>
     </button>`).join('');
@@ -3531,13 +3538,23 @@ async function loadScreensavers() {
   if (ours) {
     q('ss-level').innerHTML = [['dim', 'Dim'], ['bright', 'Bright']].map(([id, label]) =>
       `<button class="ss-lvl${d.level === id ? ' on' : ''}" data-level="${id}"
-               ${d.writable ? '' : 'disabled'}>${label}</button>`).join('');
+               ${locked ? 'disabled' : ''}>${label}</button>`).join('');
   }
 
-  q('ss-note').textContent = d.writable
-    ? 'Note: if a firmware update is applied, the screen saver will be restored to the LG default.'
-    : 'Controls are disabled in config.json, so the screen saver cannot be changed from here.';
+  /* Where LG's screen saver is built differently from ours, the TV has to
+     restart its app manager to move between them, and nothing answers until it
+     is back. Say so before, and hold the controls while it happens. */
+  q('ss-note').textContent = !d.writable
+    ? 'Controls are disabled in config.json, so the screen saver cannot be changed from here.'
+    : ssSwitching ? SS_SWITCHING
+    : (d.slowSwitch ? 'On this TV, switching to or from the LG default takes about a minute, and the screen goes dark while it does. ' : '')
+      + 'Note: if a firmware update is applied, the screen saver will be restored to the LG default.';
   ssWritable = d.writable;
+  // The status poll sets it from here on; this just saves waiting for it.
+  if (ssSwitching) refuseScreensaver(q('ss-toggle'), SS_SWITCHING);
+
+  clearTimeout(ssSwitchPoll);
+  if (ssSwitching) ssSwitchPoll = setTimeout(() => { if (activeTab === 'screensaver') loadScreensavers(); }, 4000);
 }
 
 document.addEventListener('click', async ev => {

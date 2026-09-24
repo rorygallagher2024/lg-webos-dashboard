@@ -454,10 +454,23 @@ function oledRows(d) {
 function saverRows(d) {
   if (!d || !d.ok || !d.modes) return [];
   var r = [head('Screen saver')];
+  var busy = !!d.switching;
+  if (busy) {
+    r.push({ label: 'Switching screen savers', value: '…',
+             hint: 'The screen may stay dark for up to a minute, then it comes back on its own.' });
+  }
+  // Where LG's screen saver is built differently from ours, moving to or from
+  // it makes the TV go dark for about a minute - this app included.
+  var slow = d.slowSwitch && d.current === 'stock' ? function (m) { return m.id !== 'stock'; }
+           : d.slowSwitch ? function (m) { return m.id === 'stock'; }
+           : function () { return false; };
   d.modes.filter(function (m) { return m.available; }).forEach(function (m) {
     r.push({ label: m.label, value: m.active ? 'In use' : '', cls: m.active ? 'on' : '',
-             act: d.writable ? 'saver' : null, key: m.id,
-             press: m.active ? 'Already in use' : 'Press OK to use this one',
+             act: d.writable && !busy ? 'saver' : null, key: m.id,
+             press: m.active ? 'Already in use'
+               : busy ? 'Wait for the switch to finish'
+               : slow(m) ? 'Press OK to use this one. The screen goes dark for about a minute'
+               : 'Press OK to use this one',
              hint: m.id === 'stock'
                ? 'LG’s own screen saver.'
                : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
@@ -465,7 +478,7 @@ function saverRows(d) {
   // Brightness only for the screen savers drawn here, as in the browser
   // dashboard: LG's own is not ours to dim. The mode goes with it, since both
   // are staged into the same file.
-  if (d.writable && d.current && d.current !== 'stock') {
+  if (d.writable && !busy && d.current && d.current !== 'stock') {
     var bright = d.level === 'bright';
     r.push(head('How it looks'));
     r.push({ label: 'Brightness', value: bright ? 'Bright' : 'Dim', cls: 'act', act: 'saverLevel',
@@ -476,7 +489,7 @@ function saverRows(d) {
 
   // The same action as the browser dashboard's Start screen saver. From the
   // dashboard it starts over this app; the server refuses only HDMI and live TV.
-  if (d.writable) {
+  if (d.writable && !busy) {
     r.push(head('Show it now'));
     r.push({ label: 'Start screen saver', value: '→', cls: 'act', act: 'saverStart',
              press: 'Press OK to start it',

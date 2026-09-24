@@ -16,6 +16,16 @@ var SCREENSAVER_APP_DIR = '/usr/palm/applications/com.webos.app.screensaver';
 var SCREENSAVER_DIR = '/var/lib/tvweb/screensaver';
 var SCREENSAVER_MARKER = '.tvweb-screensaver';
 var SCREENSAVER_LEVEL_MARKER = '.tvweb-brightness';
+// Outside the staged directory, which is bind-mounted over the app and so hides
+// the stock manifest whenever one of ours is in use.
+var STOCK_TYPE_FILE = '/var/lib/tvweb/screensaver-stock-type';
+
+// sam takes most of a minute to stop and come back (OLED55G42LW, webOS 10.3.1),
+// and the screen stays dark meanwhile. Give up waiting well after that.
+var SWITCH_POLL_MS = 3000;
+var SWITCH_SETTLE_MS = 5000;
+var SWITCH_TIMEOUT_MS = 150000;
+var SWITCHING_ERROR = 'The TV is still switching screen savers. Try again in a minute.';
 
 var SCREENSAVERS = {
   stock: {
@@ -56,6 +66,7 @@ var injectKeyFn = null;
 var keyBackVal = null;
 var mapPowerStateFn = null;
 var isScreenSaverFn = null;
+var switchingSince = 0;
 
 function clearStagedScreensaver() {
   try {
@@ -108,7 +119,58 @@ function init(opts) {
   // re-mount a stale screensaver on the next cold reboot.
   if (screensaverMode() === 'stock') {
     clearStagedScreensaver();
+    rememberStockType();
   }
+}
+
+function manifestType(json) {
+  try { return JSON.parse(json).type || null; } catch (e) { return null; }
+}
+
+// Only valid while the stock app is showing, i.e. nothing is mounted over it.
+function rememberStockType(json) {
+  try {
+    if (json === undefined) json = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8');
+    var type = manifestType(json);
+    if (type) fs.writeFileSync(STOCK_TYPE_FILE, type);
+  } catch (e) {}
+}
+
+// True where LG's screen saver runs on another runner than ours (Flutter on
+// webOS 10), so going to or from it restarts sam. Unknown until the stock
+// manifest has been seen once.
+function slowSwitch() {
+  try {
+    var t = fs.readFileSync(STOCK_TYPE_FILE, 'utf8').trim();
+    return !!t && t !== 'qml';
+  } catch (e) {}
+  return false;
+}
+
+function switching() {
+  if (switchingSince && Date.now() - switchingSince > SWITCH_TIMEOUT_MS) switchingSince = 0;
+  return !!switchingSince;
+}
+
+// sam answers again once it is back; until then luna calls to it time out.
+function waitForRunner(type) {
+  switchingSince = Date.now();
+  var since = switchingSince;
+  (function poll() {
+    setTimeout(function () {
+      if (switchingSince !== since) return;
+      if (!switching()) return;
+      lunaFn('com.webos.applicationManager/getAppInfo', { id: 'com.webos.app.screensaver' }, function (r) {
+        if (switchingSince !== since) return;
+        if (r && r.appInfo && r.appInfo.type === type) {
+          return setTimeout(function () {
+            if (switchingSince === since) switchingSince = 0;
+          }, SWITCH_SETTLE_MS);
+        }
+        poll();
+      });
+    }, SWITCH_POLL_MS);
+  })();
 }
 
 function mkdirp(dir) {
@@ -150,12 +212,15 @@ function screensaverList() {
     current: cur,
     level: screensaverLevel(),
     modes: out,
-    writable: !!(configObj && configObj.allowControl)
+    writable: !!(configObj && configObj.allowControl),
+    slowSwitch: slowSwitch(),
+    switching: switching()
   };
 }
 
 function stageScreensaverAppinfo() {
   var stock = fs.readFileSync(path.join(SCREENSAVER_APP_DIR, 'appinfo.json'), 'utf8');
+  rememberStockType(stock);
   var out = stock;
   try {
     var info = JSON.parse(stock);
@@ -185,6 +250,7 @@ function ensureScreensaverRunner(cb) {
                 + staged + '" - restarting sam so it reads the manifest again');
     execFile('/bin/systemctl', ['restart', '--no-block', 'sam'], { timeout: 10000 }, function (e) {
       if (e) console.error('screensaver: could not restart sam: ' + e.message);
+      else waitForRunner(staged);
       cb(!e);
     });
   });
@@ -223,13 +289,15 @@ function writeScreensaverQml(src, level) {
 
 function setScreensaver(mode, level, cb) {
   if (!SCREENSAVERS[mode]) return cb({ ok: false, error: 'unknown screen saver: ' + mode });
+  if (switching()) return cb({ ok: false, error: SWITCHING_ERROR });
   level = (level === 'bright') ? 'bright' : 'dim';
 
   unmountScreensaver(function () {
     if (mode === 'stock') {
       clearStagedScreensaver();
       return settleScreensaverApp(function () {
-        cb({ ok: screensaverMode() === 'stock', current: screensaverMode(), level: screensaverLevel() });
+        cb({ ok: screensaverMode() === 'stock', current: screensaverMode(), level: screensaverLevel(),
+             switching: switching() });
       });
     }
 
@@ -252,6 +320,7 @@ function setScreensaver(mode, level, cb) {
           ok: !err && now === mode,
           current: now,
           level: screensaverLevel(),
+          switching: switching(),
           error: (!err && now === mode) ? undefined : 'the mount did not take'
         });
       });
@@ -301,6 +370,9 @@ function restartScreensaverApp(cb) {
 
 function trigger(cb) {
   if (!lunaFn) return cb({ ok: false, error: 'luna bus not available' });
+  // Asking tvpower for a screen saver while sam is down can park it at
+  // "Screen Saver Ready" until a reboot.
+  if (switching()) return cb({ ok: false, error: SWITCHING_ERROR });
   lunaFn('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
     var isSS = isScreenSaverFn && mapPowerStateFn && isScreenSaverFn(mapPowerStateFn(pw && pw.state));
     if (isSS) {
@@ -340,6 +412,7 @@ module.exports = {
   screensaverLevel: screensaverLevel,
   screensaverMode: screensaverMode,
   screensaverList: screensaverList,
+  switching: switching,
   setScreensaver: setScreensaver,
   restageScreensaver: restageScreensaver,
   trigger: trigger
