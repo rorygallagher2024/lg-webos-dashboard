@@ -268,6 +268,8 @@ Switched off, an LG TV sleeps within a couple of minutes, and the dashboard and 
 
 The cost is power. On an OLED42C24LA it draws 12.5 W while off, against almost nothing in normal standby.
 
+It does not hold all night. For five hours every night, 01:00 to 06:00 unless changed, LG suspends Always Ready to keep the TV in good condition, and a TV switched off during those hours sleeps fully. It is offline until they end or it is switched on: the dashboard does not answer, and Home Assistant shows it asleep. LG fixes the length at five hours; **Nightly power-down**, next to the switch, moves them to hours the TV is not used.
+
 The switch is under **Advanced &rarr; Power** in the web dashboard and **System &rarr; Power** on the TV, and setup offers it as a third step. TVs without the setting, such as webOS 4 models, do not show it; Wake-on-LAN still wakes them from standby.
 
 ### Server updates

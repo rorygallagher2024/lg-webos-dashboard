@@ -765,6 +765,20 @@ function doControl(action, value, cb) {
                   { category: 'general', settings: { alwaysOn: arOn ? 'on' : 'off' } },
                   function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
 
+    /*
+     * The five nightly hours when LG suspends Always Ready, and a switched-off
+     * TV sleeps fully. LG's own menu moves only the start and keeps the end five
+     * hours later, "to keep your TV in the optimal condition"; so does this.
+     */
+    case 'alwaysReadyOffStart':
+      var offHour = parseInt(String(value).split(':')[0], 10);
+      if (!(offHour >= 0 && offHour <= 23)) return cb({ ok: false, error: 'the start must be an hour from 0 to 23' });
+      return luna('com.webos.service.settings/setSystemSettings',
+                  { category: 'general', settings: {
+                    alwaysOnDisableStartHour: String(offHour), alwaysOnDisableStartMinute: '0',
+                    alwaysOnDisableEndHour: String((offHour + 5) % 24), alwaysOnDisableEndMinute: '0' } },
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
+
     case 'lgLogo':
       var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings',

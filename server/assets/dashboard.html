@@ -354,7 +354,13 @@ function optionRows(d) {
         'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.'));
     if (d.alwaysReady !== undefined)
       r.push(toggle('Stay connected when off', d.alwaysReady, 'alwaysReady',
-        'Keeps the TV on the network while it is switched off, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2. LG calls this Always Ready.'));
+        'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2. LG calls this Always Ready.'));
+    // Only while it is on: with it off, the TV sleeps every night anyway.
+    if (d.alwaysReady && d.alwaysReadyOff)
+      r.push({ label: 'Nightly power-down', value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,
+               cls: 'act', act: 'arOff', start: d.alwaysReadyOff.start,
+               press: 'Press OK to move it an hour later',
+               hint: 'For five hours every night, LG lets a switched-off TV sleep fully to keep it in good condition. It is offline then, so Glasshouse and Home Assistant cannot reach it. LG fixes the length; choose hours when the TV is not used.' });
     if (d.wakeOnLan !== undefined)
       r.push(toggle('Wake-on-LAN', d.wakeOnLan, 'wakeOnLan',
         'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'));
@@ -1338,6 +1344,10 @@ function activate() {
                   r.on ? 'Switched off' : 'Switched on');
     case 'shift':
       return send({ action: 'screenShift', value: r.on ? 'off' : 'on' });
+    case 'arOff':
+      var nextHour = (parseInt(r.start, 10) + 1) % 24;
+      return send({ action: 'alwaysReadyOffStart', value: nextHour },
+                  (nextHour < 10 ? '0' : '') + nextHour + ':00 to ' + ((nextHour + 5) % 24 < 10 ? '0' : '') + (nextHour + 5) % 24 + ':00');
     case 'logo':
       // off -> light -> strong -> off
       var next = r.cur === 'off' ? 'light' : (r.cur === 'light' ? 'strong' : 'off');

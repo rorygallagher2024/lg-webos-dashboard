@@ -464,6 +464,9 @@ button.pill{min-height:0;color:inherit}
 .pill.warn{color:var(--cand);border-color:var(--cand)}
 .pill.bad{color:var(--red);border-color:var(--red)}
 .pill.idle{color:var(--w60);border-color:var(--edge)}
+.pill-sel{font:500 11px 'Manrope';letter-spacing:.1em;height:28px;min-width:112px;padding:0 8px;
+          color:var(--w100);background:transparent;border:1px solid var(--edge);border-radius:2px;cursor:pointer}
+.pill-sel option{color:initial}
 /* A settable flag keeps the pill vocabulary of the read-only rows: the row
    should read the same, it just answers to a click. */
 button.pill{background:transparent;font-family:'Manrope';cursor:pointer}
@@ -1030,11 +1033,21 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <div class="prot-row" id="row-ar" hidden>
       <div class="prot-main">
         <div class="prot-title">Stay connected when off</div>
-        <div class="prot-desc">Keeps the TV on the network while it is switched off, so this dashboard and Home
-          Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG
+        <div class="prot-desc">Keeps the TV on the network while it is switched off, apart from five hours each
+          night, so this dashboard and Home Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG
           C2, against almost nothing in normal standby. LG calls this Always Ready.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_ar" onclick="toggleAlwaysReady()">&mdash;</button></div>
+    </div>
+    <div class="prot-row" id="row-aroff" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Nightly power-down</div>
+        <div class="prot-desc">For five hours every night, LG lets a switched-off TV sleep fully to keep it in
+          good condition. It is offline then: this dashboard and Home Assistant can't reach it until the hours
+          end or it is switched on. LG fixes the length; choose hours when the TV isn't used.</div>
+      </div>
+      <div class="prot-status"><select class="pill-sel" id="sel_aroff" aria-label="Nightly power-down hours"
+        onchange="c('alwaysReadyOffStart', this.value)"></select></div>
     </div>
     <div class="prot-row" id="row-wol" hidden>
       <div class="prot-main">
@@ -1649,6 +1662,7 @@ async function tick() {
       // Each setting shows only where the TV has it; Display only when it has any.
       advPill('quickboot', 'btn_quickboot', d.quickBoot);
       advPill('ar', 'btn_ar', d.alwaysReady);
+      arOffRow(d.alwaysReady ? d.alwaysReadyOff : undefined);
       advPill('wol', 'btn_wol', d.wakeOnLan);
       advPill('lglogo', 'btn_lglogo', d.lgLogo);
       advPill('standby', 'lt_standby', lights.standby);
@@ -2308,6 +2322,28 @@ function toggleLgLogo() { c('lgLogo', flip('btn_lglogo')); }
 function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 function toggleDeviceDetection() { c('deviceDetection', flip('btn_devdetect')); }
 function toggleAlwaysReady() { c('alwaysReady', flip('btn_ar')); }
+// Shown only while Always Ready is on: with it off, the TV sleeps every night anyway.
+function arOffRow(win) {
+  const row = q('row-aroff'), sel = q('sel_aroff');
+  if (!row || !sel) return;
+  row.hidden = !win;
+  if (!win || document.activeElement === sel) return;
+  const pad = h => String(h).padStart(2, '0') + ':00';
+  if (!sel.options.length) {
+    for (let h = 0; h < 24; h++) sel.add(new Option(pad(h) + ' – ' + pad((h + 5) % 24), String(h)));
+  }
+  const start = parseInt(win.start, 10);
+  // LG's menu can set minutes; show such a window as it is rather than round it.
+  let custom = sel.querySelector('option[data-custom]');
+  if (win.start.slice(3) !== '00') {
+    if (!custom) { custom = new Option('', ''); custom.dataset.custom = '1'; custom.disabled = true; sel.add(custom, 0); }
+    custom.textContent = win.start + ' – ' + win.end;
+    sel.value = '';
+  } else {
+    if (custom) custom.remove();
+    sel.value = String(start);
+  }
+}
 
 function toggleMute() { c('mute', !muted); }
 async function sendToast() {

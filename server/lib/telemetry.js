@@ -873,6 +873,12 @@ function detectFrontLights(cb) {
   });
 }
 
+// LG stores the hour and minute as separate strings, "1" and "0" for 01:00.
+function clockTime(h, m) {
+  function two(v) { v = parseInt(v, 10) || 0; return (v < 10 ? '0' : '') + v; }
+  return two(h) + ':' + two(m);
+}
+
 function pushTemp(t) {
   if (typeof t !== 'number' || isNaN(t) || t <= 0) return;
   tempHistory.push(t);
@@ -1079,10 +1085,19 @@ function collectStats(cb) {
 
   // LG's Always Ready: holds the TV in Active Standby when switched off, so
   // this server stays reachable. A C2 on webOS 9.2 has it; a B8 on 4.4 does not.
+  // It is suspended for five hours a night, when a switched-off TV sleeps fully.
   lunaCachedFn('com.webos.service.settings/getSystemSettings',
-       { category: 'general', keys: ['alwaysOn'] }, 60000, function (gn) {
-    var ar = gn && gn.settings && gn.settings.alwaysOn;
+       { category: 'general', keys: ['alwaysOn', 'alwaysOnDisableStartHour', 'alwaysOnDisableStartMinute',
+                                     'alwaysOnDisableEndHour', 'alwaysOnDisableEndMinute'] }, 60000, function (gn) {
+    var gs = (gn && gn.settings) || {};
+    var ar = gs.alwaysOn;
     if (ar !== undefined) out.alwaysReady = ar === 'on' || ar === true;
+    if (ar !== undefined && gs.alwaysOnDisableStartHour !== undefined && gs.alwaysOnDisableEndHour !== undefined) {
+      out.alwaysReadyOff = {
+        start: clockTime(gs.alwaysOnDisableStartHour, gs.alwaysOnDisableStartMinute),
+        end: clockTime(gs.alwaysOnDisableEndHour, gs.alwaysOnDisableEndMinute)
+      };
+    }
 
   lunaCachedFn('com.palm.connectionmanager/getStatus', {}, 60000, function (cm) {
     var w = cm && cm.wifi;
