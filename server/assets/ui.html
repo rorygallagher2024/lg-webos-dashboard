@@ -38,6 +38,10 @@
   --w60:rgba(var(--fg),.60); --w70:rgba(var(--fg),.70);
   --w80:rgba(var(--fg),.80);
   --w90:rgba(var(--fg),.90); --w100:rgba(var(--fg),1);
+  /* The edge of anything that can be pressed or typed in. WCAG 2.2 (1.4.11)
+     asks 3:1 for it; w25 gave 2.0:1 on black and 1.8:1 on the light theme.
+     .40 is 3.5:1 here, and the light theme sets its own. */
+  --edge:rgba(var(--fg),.40);
   /* Contrast on black: w25 is 2.0:1, w35 is 3.0:1, w50 is 5.3:1, w60 is 7.4:1.
      w50 is 5.3:1 and the floor for large text; w60 is the floor for small text
      (anything under ~14px), since 5.3:1 at 11-12px is technically AA but
@@ -61,6 +65,7 @@
    Accent hues darken slightly for legibility on a light surface. */
 [data-theme="light"]{
   --bg:#f5f5f5; --fg:0,0,0;
+  --edge:rgba(var(--fg),.45);
   --cool:#3a6fcf; --warm:#b8860b; --cand:#c27a1e;
   --red:#d42020; --blue:#2050cc; --green:#1a9e44; --purple:#6b20cc;
   --purple-t:#6b20cc;
@@ -106,7 +111,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .foot-end{display:inline-flex;align-items:center;flex-wrap:wrap}
 .theme-toggle{
   display:inline-flex;align-items:center;justify-content:center;
-  width:26px;height:26px;border:1px solid var(--w12);border-radius:50%;
+  width:26px;height:26px;border:1px solid var(--edge);border-radius:50%;
   background:transparent;color:var(--w60);font-size:13px;
   cursor:pointer;transition:color .2s,border-color .2s;
   padding:0;min-height:0;letter-spacing:0;text-transform:none;
@@ -296,28 +301,28 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 }
 .sub-btn{
   font-family:'Manrope';font-weight:500;font-size:11px;letter-spacing:.10em;text-transform:uppercase;
-  color:var(--w60);background:transparent;border:1px dashed var(--w25);
+  color:var(--w60);background:transparent;border:1px dashed var(--edge);
   padding:10px 12px;min-height:38px;width:100%;cursor:pointer;transition:.16s ease;
 }
-.sub-btn:hover{color:var(--w100);border-color:var(--w40)}
+.sub-btn:hover{color:var(--w100);border-color:var(--w70)}
 .toast-form{display:flex;gap:8px;margin-top:11px}
 .toast-form input{
   flex:1;min-width:0;
   font-family:'Manrope';font-weight:400;font-size:13px;letter-spacing:.03em;
   color:var(--w100);background:transparent;
-  border:1px solid var(--w25);padding:14px 12px;
+  border:1px solid var(--edge);padding:14px 12px;
   min-height:48px;border-radius:0;outline:none;
   box-sizing:border-box;transition:border-color .16s ease;
 }
-.toast-form input:focus{border-color:var(--w60)}
-.toast-form input::placeholder{color:var(--w35)}
+.toast-form input:focus{border-color:var(--w100)}
+.toast-form input::placeholder{color:var(--w60)}
 .toast-form button{flex-shrink:0;padding:0 22px;min-height:48px}
 button{
   font-family:'Manrope';font-weight:500;font-size:13px;letter-spacing:.10em;text-transform:uppercase;
-  color:var(--w80);background:transparent;border:1px solid var(--w25);
+  color:var(--w80);background:transparent;border:1px solid var(--edge);
   padding:16px 10px;min-height:48px;cursor:pointer;transition:.16s ease;
 }
-button:hover{color:var(--w100);border-color:var(--w35)}
+button:hover{color:var(--w100);border-color:var(--w70)}
 button:active{background:var(--w10)}
 /* Selected, not "good". Green means healthy headroom elsewhere in this UI, so
    selection is shown by inversion instead of by borrowing that meaning. */
@@ -444,7 +449,7 @@ button.pill{min-height:0;color:inherit}
 .pill.good{color:var(--green);border-color:var(--green)}
 .pill.warn{color:var(--cand);border-color:var(--cand)}
 .pill.bad{color:var(--red);border-color:var(--red)}
-.pill.idle{color:var(--w50);border-color:var(--w25)}
+.pill.idle{color:var(--w60);border-color:var(--edge)}
 /* A settable flag keeps the pill vocabulary of the read-only rows: the row
    should read the same, it just answers to a click. */
 button.pill{background:transparent;font-family:'Manrope';cursor:pointer}
@@ -515,12 +520,12 @@ button.pill[disabled]{cursor:default;opacity:.45}
 .cfg-f input{
   font-family:'Manrope';font-weight:400;font-size:13px;letter-spacing:.03em;
   color:var(--w100);background:transparent;
-  border:1px solid var(--w25);padding:14px 12px;
+  border:1px solid var(--edge);padding:14px 12px;
   min-height:48px;border-radius:0;outline:none;
   box-sizing:border-box;transition:border-color .16s ease;
 }
-.cfg-f input:focus{border-color:var(--w60)}
-.cfg-f input::placeholder{color:var(--w35)}
+.cfg-f input:focus{border-color:var(--w100)}
+.cfg-f input::placeholder{color:var(--w60)}
 .cfg-f .hint{font-size:12px;color:var(--w35);line-height:1.4}
 .cfg-toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));
   gap:8px;max-width:840px;margin-top:14px}
