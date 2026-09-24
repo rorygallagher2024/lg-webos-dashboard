@@ -19,6 +19,7 @@ var HIDDEN_APPS_FILE = '/var/lib/tvweb/hidden_apps';
 // A saved web page's title as the browser set it, kept on its first rename so
 // clearing the name can put it back.
 var PAGE_TITLES_FILE = '/var/lib/tvweb/saved_page_titles.json';
+var BROWSER_ID = 'com.webos.app.browser';
 var TILE_HIDING_FLAG_FILE = '/var/lib/tvweb/tile_hiding_enabled';
 
 var APP_BASES = [
@@ -435,9 +436,10 @@ function getApps(cb) {
          * A web page saved to the home screen is a bookmark tile of the
          * browser's. Merged by app id it would rename the browser after the
          * page and hide every page but one, so each is listed on its own.
-         * AirPlay's only tile is also a bookmark, and stays with its app.
+         * Other apps have bookmark tiles too (AirPlay's only tile, an HDMI
+         * input given a name) and stay with their app.
          */
-        if (a && a.id && a.lptype === 'bookmark' && a.id !== 'airplay') {
+        if (a && a.id === BROWSER_ID && a.lptype === 'bookmark') {
           savedPages.push({
             launchPointId: a.launchPointId,
             title: a.title || '',
@@ -710,7 +712,7 @@ function renameSavedPage(launchPointId, title, cb) {
   lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
     var lp = null, lps = (r && r.launchPoints) || [];
     for (var i = 0; i < lps.length; i++) {
-      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id !== 'airplay') lp = lps[i];
+      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id === BROWSER_ID) lp = lps[i];
     }
     if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
 
