@@ -2179,7 +2179,7 @@ function setupHomeAssistant() {
       conf.unique_id = devId + '_' + item.id;
       conf.device = devInfo;
       conf.availability_topic = statusTopic;
-      conf.availability_template = CONTROL_TYPES[item.type]
+      conf.availability_template = CONTROL_TYPES[item.type] || ha.AWAKE_ONLY[item.id]
         ? "{{ 'online' if value in ['online', 'off'] else 'offline' }}"
         : "{{ 'offline' if value == 'offline' else 'online' }}";
       conf.payload_available = 'online';
@@ -2255,8 +2255,21 @@ function setupHomeAssistant() {
     if (ev.group === 'power' && ev.key === 'systemOn' && typeof ev.value === 'boolean') setTvOff(!ev.value);
   });
 
+  /*
+   * While the TV is off but still up, readings change little and nothing is
+   * watching them closely, so they go out once a minute rather than every
+   * telemetryIntervalMs. Switching on or off still publishes at once.
+   */
+  var OFF_INTERVAL_MS = 60000;
+  var lastPublish = 0;
+  function tickTelemetry() {
+    if (tvOff && Date.now() - lastPublish < OFF_INTERVAL_MS) return;
+    publishTelemetry();
+  }
+
   function publishTelemetry() {
     if (!mqttClient.connected) return;
+    lastPublish = Date.now();
     mqttClient.publish(statusTopic, statusPayload(), true);
     telemetry.collectStats(function(s) {
       liveState.reconcile(s);
@@ -2462,7 +2475,7 @@ function setupHomeAssistant() {
   });
 
   var intervalMs = CONFIG.mqtt.telemetryIntervalMs || 10000;
-  setInterval(publishTelemetry, intervalMs);
+  setInterval(tickTelemetry, intervalMs);
 
   liveState.start();
   notificationState.start();

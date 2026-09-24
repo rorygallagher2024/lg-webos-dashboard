@@ -1099,24 +1099,24 @@ function buildEntities(opts) {
 
 /*
  * What each entity shows while the TV is switched off (telemetry's tvOff).
- * A reading of what is on screen says Off; a live measurement has none, which
- * is Home Assistant's own way of showing no reading (and leaves a gap in a
- * graph rather than a flat line); network traffic is zero. Settings and facts
- * that stay true while the TV is off - picture mode, volume, panel hours,
- * model - are left showing their last value.
+ * A reading of what is on screen says Off, asleep or not. Live measurements
+ * keep reporting while the TV is off but still up (Always Ready, panel
+ * compensation), since the server can still take them, and go unavailable
+ * once it sleeps, when the last one sent would be stale: see AWAKE_ONLY.
+ * Settings and facts that stay true while the TV is off - picture mode,
+ * volume, panel hours, model - keep their last value.
  */
 var OFF_TEXT = ['active_app', 'play_state', 'dynamic_range', 'video_signal', 'hdmi_link_mode',
                 'hdmi_chroma', 'hdmi_hdcp', 'video_colorimetry', 'panel_dimming'];
-var OFF_NONE = ['soc_temperature', 'cpu_load', 'memory_usage', 'swap_usage', 'wifi_signal', 'gpu_clock',
-                'ambient_light', 'soc_current', 'hdmi_cable_errors'];
-var OFF_ZERO = ['download_rate', 'upload_rate'];
 var OFF_BINARY = ['hdmi_allm', 'hdmi_vrr', 'screen_saver_active', 'oled_asbl_dimmer'];
+var AWAKE_ONLY = {
+  soc_temperature: 1, cpu_load: 1, memory_usage: 1, swap_usage: 1, wifi_signal: 1, gpu_clock: 1,
+  ambient_light: 1, soc_current: 1, hdmi_cable_errors: 1, download_rate: 1, upload_rate: 1
+};
 
 function withOffStates(entities) {
   var when = {};
   OFF_TEXT.forEach(function (id) { when[id] = '"Off"'; });
-  OFF_NONE.forEach(function (id) { when[id] = 'none'; });
-  OFF_ZERO.forEach(function (id) { when[id] = '0'; });
   OFF_BINARY.forEach(function (id) { when[id] = '"OFF"'; });
   entities.forEach(function (e) {
     var t = e.payload && e.payload.value_template;
@@ -1220,6 +1220,7 @@ module.exports = {
   INPUTS: INPUTS,
   SOUND_OUTPUT_MAP: SOUND_OUTPUT_MAP,
   PIC_MODE_MAP: PIC_MODE_MAP,
+  AWAKE_ONLY: AWAKE_ONLY,
   HA_CATEGORIES: HA_CATEGORIES,
   HA_ENTITIES: HA_ENTITIES,
   ENTITY_CATEGORIES: ENTITY_CATEGORIES,
