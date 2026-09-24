@@ -331,7 +331,8 @@ function sysRows(d) {
     r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
   if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
 
-  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || (d.lights && d.lights.standby !== undefined)) {
+  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.lgLogo !== undefined ||
+      (d.lights && d.lights.standby !== undefined)) {
     r.push(head('Power'));
     if (d.quickBoot !== undefined) {
       r.push({
@@ -342,6 +343,17 @@ function sysRows(d) {
         on: !!d.quickBoot,
         press: 'Press OK to turn ' + (d.quickBoot ? 'off' : 'on'),
         hint: 'Quick Start+ puts the TV into instant standby so it wakes in <2s instead of performing a ~25s cold boot.'
+      });
+    }
+    if (d.lgLogo !== undefined) {
+      r.push({
+        label: 'LG logo',
+        value: d.lgLogo ? 'Shown' : 'Hidden',
+        cls: 'act',
+        act: 'lgLogo',
+        on: !!d.lgLogo,
+        press: 'Press OK to ' + (d.lgLogo ? 'hide' : 'show') + ' it',
+        hint: 'Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.'
       });
     }
     if (d.wakeOnLan !== undefined) {
@@ -1330,6 +1342,8 @@ function activate() {
       return startSaverAfterRelease();
     case 'quickBoot':
       return send({ action: 'quickBoot', value: !r.on }, r.on ? 'Quick Boot turned off' : 'Quick Boot turned on');
+    case 'lgLogo':
+      return send({ action: 'lgLogo', value: !r.on }, r.on ? 'LG logo hidden' : 'LG logo shown');
     case 'wakeOnLan':
       return send({ action: 'wakeOnLan', value: !r.on }, r.on ? 'Wake-on-LAN turned off' : 'Wake-on-LAN turned on');
     case 'standbyLight':

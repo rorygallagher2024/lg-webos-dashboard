@@ -1057,6 +1057,13 @@ function collectStats(cb) {
     var wol = nw && nw.settings && nw.settings.wolwowlOnOff;
     if (wol !== undefined) out.wakeOnLan = wol === true || wol === 'true';
 
+  // Absent before webOS 22 (a B8 on 4.4 has no such key), so the switch is
+  // offered only where the TV reports one.
+  lunaCachedFn('com.webos.service.settings/getSystemSettings',
+       { category: 'other', keys: ['lgLogoDisplay'] }, 60000, function (ot) {
+    var logo = ot && ot.settings && ot.settings.lgLogoDisplay;
+    if (logo !== undefined) out.lgLogo = logo === 'on' || logo === true;
+
   lunaCachedFn('com.palm.connectionmanager/getStatus', {}, 60000, function (cm) {
     var w = cm && cm.wifi;
     out.ssid = (w && w.ssid) ? w.ssid : null;
@@ -1177,6 +1184,7 @@ function collectStats(cb) {
         });
       }
     );
+  });
   });
   });
   });

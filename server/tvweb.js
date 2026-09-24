@@ -741,6 +741,17 @@ function doControl(action, value, cb) {
      * keeps it as WOLWOWLMode in /var/lib/connman/settings for the power
      * daemon to read at standby, so writing the setting is all LG's menu does.
      */
+    /*
+     * LG's "LG Logo Display": the logo shown as the TV switches on and off.
+     * tvpowerd subscribes to the key, so writing it is all LG's menu does.
+     * Only on firmware that has it (webOS 22 and later).
+     */
+    case 'lgLogo':
+      var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
+      return luna('com.webos.service.settings/setSystemSettings',
+                  { category: 'other', settings: { lgLogoDisplay: logoOn ? 'on' : 'off' } },
+                  function (r) { telemetry.clearCache(); cb({ ok: !!(r && r.returnValue) }); });
+
     case 'wakeOnLan':
       var wolOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings',

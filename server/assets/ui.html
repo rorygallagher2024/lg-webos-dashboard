@@ -914,6 +914,12 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         </div>
         <div class="sub">Wakes in &lt;2s via instant standby instead of a full ~25s cold boot.</div>
       </div>
+      <div class="set" id="row-lglogo" hidden><div class="lbl">LG logo</div>
+        <div class="btns">
+          <button id="btn_lglogo" onclick="toggleLgLogo()">LG logo</button>
+        </div>
+        <div class="sub">Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.</div>
+      </div>
       <div class="set" id="row-wol" hidden><div class="lbl">Wake-on-LAN</div>
         <div class="btns">
           <button id="btn_wol" onclick="toggleWol()">Wake-on-LAN</button>
@@ -1533,11 +1539,14 @@ async function tick() {
       }
       if (q('row-quickboot')) q('row-quickboot').hidden = d.quickBoot === undefined;
       if (q('btn_quickboot')) q('btn_quickboot').classList.toggle('on', !!d.quickBoot);
+      if (q('row-lglogo')) q('row-lglogo').hidden = d.lgLogo === undefined;
+      if (q('btn_lglogo')) q('btn_lglogo').classList.toggle('on', !!d.lgLogo);
       if (q('row-wol')) q('row-wol').hidden = d.wakeOnLan === undefined;
       if (q('btn_wol')) q('btn_wol').classList.toggle('on', !!d.wakeOnLan);
       if (q('adv-cur')) {
         const advParts = [];
         if (d.quickBoot !== undefined) advParts.push(d.quickBoot ? 'Quick Boot on' : 'Quick Boot off');
+        if (d.lgLogo !== undefined) advParts.push(d.lgLogo ? 'LG logo shown' : 'LG logo hidden');
         if (d.wakeOnLan !== undefined) advParts.push(d.wakeOnLan ? 'Wake-on-LAN on' : 'Wake-on-LAN off');
         if (lights.standby !== undefined) advParts.push(lights.standby ? 'Standby LED on' : 'Standby LED off');
         q('adv-cur').textContent = advParts.join(', ');
@@ -2184,6 +2193,11 @@ function toggleLight(which) {
 function toggleQuickBoot() {
   const el = q('btn_quickboot');
   c('quickBoot', el && el.classList.contains('on') ? 'off' : 'on');
+}
+
+function toggleLgLogo() {
+  const el = q('btn_lglogo');
+  c('lgLogo', el && el.classList.contains('on') ? 'off' : 'on');
 }
 
 function toggleWol() {
