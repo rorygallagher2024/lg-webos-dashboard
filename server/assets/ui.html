@@ -631,7 +631,10 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 .prot-status{flex-shrink:0}
 /* Renaming a saved page happens in its own row: the name becomes the field. */
 .page-edit{display:flex;gap:8px;margin:0}
+.page-edit{flex-wrap:wrap}
 .page-edit input{font-size:13px;padding:10px 12px;min-height:38px}
+.page-edit input[id^="page-url-"]{flex:2 1 240px}
+.page-edit input[id^="page-name-"]{flex:1 1 150px}
 .page-edit button{min-height:38px;padding:0 16px}
 .page-acts{display:flex;gap:8px}
 .page-add{margin-top:16px;flex-wrap:wrap}
@@ -1061,7 +1064,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
     <div class="pv-sub">Web pages on the TV's home screen, each opening in its browser. A page saved
       from the browser takes its whole title as its name, so a long one can be given a shorter name
-      here, or removed.</div>
+      here. Pages can also be added, pointed at a new address, or removed.</div>
     <div class="prot-table" id="apps-pages-list"></div>
     <form class="toast-form page-add" id="page-add" onsubmit="event.preventDefault();addPage();">
       <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" maxlength="2048"
@@ -2771,7 +2774,7 @@ function renderSavedPages(d) {
         <div class="prot-desc">${esc(where || 'Saved page')}${p.renamed ? ' &middot; renamed' : ''}</div>
       </div>
       <div class="prot-status page-acts">
-        <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>Rename</button>
+        <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>Edit</button>
         <button type="button" class="pill bad" onclick="removePage('${id}')" ${d.writable ? '' : 'disabled'}>Remove</button>
       </div>
     </div>`;
@@ -2782,13 +2785,20 @@ function editPage(lpId) {
   const p = ((appsData && appsData.savedPages) || []).find(x => x.launchPointId === lpId);
   const row = q('page-' + lpId);
   if (!p || !row) return;
-  row.innerHTML = `<form class="toast-form page-edit prot-main" onsubmit="event.preventDefault();savePage('${esc(lpId)}')">
-      <input type="text" id="page-name-${esc(lpId)}" maxlength="60" autocomplete="off" spellcheck="false"
-        placeholder="${p.renamed ? 'Empty puts back its own title' : 'New name'}" value="${esc(p.title)}"
-        onkeydown="if(event.key==='Escape')renderSavedPages(appsData)">
-      <button type="submit">Save</button>
-      <button type="button" onclick="renderSavedPages(appsData)">Cancel</button>
-    </form>`;
+  const id = esc(lpId);
+  const cancel = `onkeydown="if(event.key==='Escape')renderSavedPages(appsData)"`;
+  row.innerHTML = `<div class="prot-main">
+      <form class="toast-form page-edit" onsubmit="event.preventDefault();savePage('${id}')">
+        <input type="text" id="page-url-${id}" maxlength="2048" autocomplete="off" spellcheck="false"
+          placeholder="Web address" value="${esc(p.address)}" aria-label="Web address" ${cancel}>
+        <input type="text" id="page-name-${id}" maxlength="60" autocomplete="off" spellcheck="false"
+          placeholder="${p.renamed ? 'Empty puts back its own title' : 'Name'}" value="${esc(p.title)}"
+          aria-label="Name" ${cancel}>
+        <button type="submit">Save</button>
+        <button type="button" onclick="renderSavedPages(appsData)">Cancel</button>
+      </form>
+      <div class="sub page-add-msg" id="page-msg-${id}" role="alert"></div>
+    </div>`;
   const inp = q('page-name-' + lpId);
   inp.focus();
   inp.select();
@@ -2832,17 +2842,22 @@ async function removePage(lpId) {
 }
 
 async function savePage(lpId) {
-  const inp = q('page-name-' + lpId);
-  if (!inp) return;
-  inp.disabled = true;
+  const name = q('page-name-' + lpId), url = q('page-url-' + lpId), msg = q('page-msg-' + lpId);
+  if (!name || !url) return;
+  msg.textContent = '';
   try {
-    const r = await fetch(api('/api/apps/rename'), {
+    const r = await fetch(api('/api/apps/edit-page'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ launchPointId: lpId, title: inp.value })
+      body: JSON.stringify({ launchPointId: lpId, title: name.value, address: url.value })
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) showErr(j.error || 'Could not rename it');
-  } catch (e) { showErr(e.message); }
+    // A refused edit stays open with the reason, so nothing typed is lost.
+    if (!r.ok || !j.ok) {
+      const e = j.error || 'Could not save it';
+      msg.textContent = e.charAt(0).toUpperCase() + e.slice(1) + '.';
+      return;
+    }
+  } catch (e) { msg.textContent = e.message; return; }
   loadApps();
 }
 

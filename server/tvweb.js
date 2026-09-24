@@ -1774,9 +1774,10 @@ var server = http.createServer(function (req, res) {
     });
   }
 
-  if (pathname === '/api/apps/rename' && req.method === 'POST') {
+  // /api/apps/rename is the name it had in 0.55.0, when only the title changed.
+  if ((pathname === '/api/apps/edit-page' || pathname === '/api/apps/rename') && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      appsModule.renameSavedPage(body && body.launchPointId, body && body.title, function (r) {
+      appsModule.editSavedPage(body && body.launchPointId, body && body.title, body && body.address, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
     });

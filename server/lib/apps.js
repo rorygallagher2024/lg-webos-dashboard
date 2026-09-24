@@ -697,51 +697,6 @@ function readPageTitles() {
 }
 
 /*
- * Only the name on the tile changes: the page, its address and the tile's id
- * stay as they were. An empty name puts back the title the browser gave it.
- */
-function renameSavedPage(launchPointId, title, cb) {
-  if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
-  }
-  var lpId = String(launchPointId || '');
-  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
-  if (!lpId) return cb({ ok: false, error: 'missing page' });
-  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
-
-  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
-    var lp = null, lps = (r && r.launchPoints) || [];
-    for (var i = 0; i < lps.length; i++) {
-      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id === BROWSER_ID) lp = lps[i];
-    }
-    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
-
-    var originals = readPageTitles();
-    if (!name) {
-      if (!originals.hasOwnProperty(lpId)) return cb({ ok: true, title: lp.title });
-      name = originals[lpId];
-      delete originals[lpId];
-    } else if (!originals.hasOwnProperty(lpId)) {
-      originals[lpId] = lp.title;
-    }
-    lunaFn('com.webos.applicationManager/updateLaunchPoint', { launchPointId: lpId, title: name }, function (u) {
-      if (!u || u.returnValue !== true) return cb({ ok: false, error: 'the TV would not rename it' });
-      try { fs.writeFileSync(PAGE_TITLES_FILE, JSON.stringify(originals), 'utf8'); } catch (e) {}
-      cb({ ok: true, title: name });
-    });
-  });
-}
-
-/*
- * Takes the tile off the home screen, as the TV's own remove does: the browser
- * and anything else installed are untouched, and no app is opened or closed.
- */
-/*
- * The same tile the browser makes when a page is saved from it. Only http(s)
- * addresses: anything else would be handed to the browser as written, and the
- * dashboard is reachable by everyone on the network.
- */
-/*
  * A name the browser could reach: a domain ending in letters (bbc.co.uk), an
  * IPv4 address (a device on the network) or localhost. "12345" parses as a
  * host but is none of these.
@@ -754,35 +709,104 @@ function isWebHost(host) {
   return /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(h);
 }
 
+/*
+ * The address a saved page opens, with https:// assumed when none is given.
+ * Only http(s): anything else would be handed to the browser as written, and
+ * the dashboard is reachable by everyone on the network.
+ */
+function pageUrl(address) {
+  var url = String(address || '').trim();
+  if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
+  var m = /^https?:\/\/([^\/?#:\s]+)(:\d{1,5})?([\/?#][^\s]*)?$/i.exec(url);
+  if (!m || !isWebHost(m[1])) return null;
+  return { url: url, host: m[1].replace(/^www\./i, '') };
+}
+
+var BAD_ADDRESS = 'enter a web address, such as bbc.co.uk';
+
+function findSavedPage(lpId, cb) {
+  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
+    var lps = (r && r.launchPoints) || [];
+    for (var i = 0; i < lps.length; i++) {
+      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id === BROWSER_ID) return cb(lps[i]);
+    }
+    cb(null);
+  });
+}
+
+/*
+ * The tile keeps its id and its place on the home screen: updateLaunchPoint
+ * takes a new title and a new address alike. An empty name puts back the title
+ * the browser gave the page. An address left out is kept as it is.
+ */
+function editSavedPage(launchPointId, title, address, cb) {
+  if (!configObj || !configObj.allowControl) {
+    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+  }
+  var lpId = String(launchPointId || '');
+  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
+  if (!lpId) return cb({ ok: false, error: 'missing page' });
+  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
+  var target = null;
+  if (address != null && String(address).trim()) {
+    target = pageUrl(address);
+    if (!target) return cb({ ok: false, error: BAD_ADDRESS });
+  }
+
+  findSavedPage(lpId, function (lp) {
+    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+    var originals = readPageTitles();
+    if (!name) {
+      name = originals.hasOwnProperty(lpId) ? originals[lpId] : lp.title;
+      delete originals[lpId];
+    } else if (name !== lp.title && !originals.hasOwnProperty(lpId)) {
+      originals[lpId] = lp.title;
+    }
+    var change = { launchPointId: lpId, title: name };
+    if (target) {
+      var params = {};
+      for (var k in (lp.params || {})) params[k] = lp.params[k];
+      params.target = target.url;
+      change.params = params;
+    }
+    lunaFn('com.webos.applicationManager/updateLaunchPoint', change, function (u) {
+      if (!u || u.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
+      try { fs.writeFileSync(PAGE_TITLES_FILE, JSON.stringify(originals), 'utf8'); } catch (e) {}
+      cb({ ok: true, title: name, address: target ? target.url : undefined });
+    });
+  });
+}
+
+/*
+ * The same tile the browser makes when a page is saved from it.
+ */
 function addSavedPage(address, title, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
   }
-  var url = String(address || '').trim();
-  if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
-  var m = /^https?:\/\/([^\/?#:\s]+)(:\d{1,5})?([\/?#][^\s]*)?$/i.exec(url);
-  if (!m || !isWebHost(m[1])) return cb({ ok: false, error: 'enter a web address, such as bbc.co.uk' });
-  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim() || m[1].replace(/^www\./i, '');
+  var target = pageUrl(address);
+  if (!target) return cb({ ok: false, error: BAD_ADDRESS });
+  var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim() || target.host;
   if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
   lunaFn('com.webos.applicationManager/addLaunchPoint',
-         { id: BROWSER_ID, title: name, params: { target: url } }, function (r) {
+         { id: BROWSER_ID, title: name, params: { target: target.url } }, function (r) {
     if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not add it' });
     cb({ ok: true, launchPointId: r.launchPointId, title: name });
   });
 }
 
+/*
+ * Takes the tile off the home screen, as the TV's own remove does: the browser
+ * and anything else installed are untouched, and no app is opened or closed.
+ */
 function removeSavedPage(launchPointId, cb) {
   if (!configObj || !configObj.allowControl) {
     return cb({ ok: false, error: 'Control is disabled in server configuration' });
   }
   var lpId = String(launchPointId || '');
   if (!lpId) return cb({ ok: false, error: 'missing page' });
-  lunaFn('com.webos.applicationManager/listLaunchPoints', {}, function (r) {
-    var lps = (r && r.launchPoints) || [], found = false;
-    for (var i = 0; i < lps.length; i++) {
-      if (lps[i].launchPointId === lpId && lps[i].lptype === 'bookmark' && lps[i].id === BROWSER_ID) found = true;
-    }
-    if (!found) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+  findSavedPage(lpId, function (lp) {
+    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
     lunaFn('com.webos.applicationManager/removeLaunchPoint', { launchPointId: lpId }, function (x) {
       if (!x || x.returnValue !== true) return cb({ ok: false, error: 'the TV would not remove it' });
       var originals = readPageTitles();
@@ -860,7 +884,7 @@ module.exports = {
   unhideTile: unhideTile,
   unhideAllTiles: unhideAllTiles,
   uninstallApp: uninstallApp,
-  renameSavedPage: renameSavedPage,
+  editSavedPage: editSavedPage,
   removeSavedPage: removeSavedPage,
   addSavedPage: addSavedPage,
   isWebHost: isWebHost,
