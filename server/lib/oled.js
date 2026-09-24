@@ -45,7 +45,7 @@ function detectOled(cb) {
   if (!luna) return cb(false);
 
   luna('com.webos.service.tv.systemproperty/getSystemProperties',
-    { keys: ['panelUsageTime', 'modelName'] },
+    { keys: ['modelName'] },
     function (res) {
       var model = (res && res.modelName) || (config.device && config.device.model) || '';
       if (model) {
@@ -54,23 +54,18 @@ function detectOled(cb) {
                     ' (model ' + model + ')');
         return cb(isOled);
       }
-      if (res && res.panelUsageTime) {
-        isOled = true;
-        console.log('panel: OLED (detected via systemproperty panelUsageTime)');
-        return cb(true);
-      }
+      // Pixel refresher records exist only on OLED. Panel usage time is no
+      // evidence either way: an LCD 50UP81006LR (webOS 6.5.0) reports it too.
       if (fs.existsSync('/mnt/lg/cmn_data/pnwash/autoOffRsLastTime') ||
           fs.existsSync('/mnt/lg/cmn_data/pnwash/autoOffRsTime')) {
         isOled = true;
         console.log('panel: OLED (detected via pnwash records)');
         return cb(true);
       }
-      luna('com.webos.service.panelcontroller/getPanelUsageTime', { subscribe: false }, function (pcRes) {
-        isOled = !!(pcRes && pcRes.panelUsageTime);
-        console.log('panel: fallback to panelcontroller -> ' +
-                    (isOled ? 'OLED' : 'not OLED - panel features disabled'));
-        cb(isOled);
-      });
+      isOled = false;
+      console.log('panel: model unknown and no OLED records - panel features disabled' +
+                  ' (set "panel" in config.json to override)');
+      cb(false);
     });
 }
 
