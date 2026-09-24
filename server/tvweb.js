@@ -2261,7 +2261,15 @@ function setupHomeAssistant() {
    * telemetryIntervalMs. Switching on or off still publishes at once.
    */
   var OFF_INTERVAL_MS = 60000;
+  // Kept on disk as well, so a server started while the TV is off, after a
+  // deploy or a reboot into standby, still knows what was last on screen.
+  var LAST_APP_FILE = '/var/lib/tvweb/last_app.json';
   var lastApp = null, lastAppId = null;
+  try {
+    var la = JSON.parse(fs.readFileSync(LAST_APP_FILE, 'utf8'));
+    lastApp = la.app || null;
+    lastAppId = la.app_id || null;
+  } catch (e) {}
   var lastPublish = 0;
   function tickTelemetry() {
     if (tvOff && Date.now() - lastPublish < OFF_INTERVAL_MS) return;
@@ -2282,8 +2290,13 @@ function setupHomeAssistant() {
        * published copy is filled in: the state cache above stays as reported.
        */
       if (!tvOff) {
-        if (s.app) lastApp = s.app;
-        if (s.app_id) lastAppId = s.app_id;
+        if ((s.app && s.app !== lastApp) || (s.app_id && s.app_id !== lastAppId)) {
+          lastApp = s.app || lastApp;
+          lastAppId = s.app_id || lastAppId;
+          try {
+            fs.writeFileSync(LAST_APP_FILE, JSON.stringify({ app: lastApp, app_id: lastAppId }), 'utf8');
+          } catch (e) {}
+        }
       } else {
         if (!s.app && lastApp) s.app = lastApp;
         if (!s.app_id && lastAppId) s.app_id = lastAppId;
