@@ -788,6 +788,26 @@ function doControl(action, value, cb) {
         cb(r);
       });
 
+    /*
+     * Only reachable while the TV is in Active Standby, finishing panel
+     * compensation or similar after being switched off; in plain standby the
+     * B8 drops off the network within 5s and nothing here runs. Active Standby
+     * is a power-off still in progress, and cancelPowerOff is how LG's own
+     * phone-remote gateway reverses one. It does nothing when the TV is on.
+     */
+    case 'powerOn':
+      if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
+      return luna('com.webos.service.tv.power/cancelPowerOff', {}, function () {
+        setTimeout(function () {
+          luna('com.webos.service.tvpower/power/getPowerState', {}, function (st) {
+            if (st && st.state === 'Active') return cb({ ok: true });
+            luna('com.webos.service.tvpower/power/turnOnScreen', {}, function (r) {
+              cb({ ok: !!(r && r.returnValue), error: r && r.returnValue ? undefined : 'the TV stayed in standby' });
+            });
+          });
+        }, 1500);
+      });
+
     case 'powerOff':
       if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
       return luna('com.webos.service.tvpower/power/powerOff', { reason: 'remoteKey' },
@@ -2203,6 +2223,13 @@ function setupHomeAssistant() {
     if (action === 'powerOff') {
       doControl('powerOff', null, function (r) {
         console.log('mqtt: powerOff executed, result: ' + JSON.stringify(r));
+      });
+      return;
+    }
+
+    if (action === 'powerOn') {
+      doControl('powerOn', null, function (r) {
+        console.log('mqtt: powerOn executed, result: ' + JSON.stringify(r));
       });
       return;
     }

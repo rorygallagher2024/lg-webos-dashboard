@@ -46,6 +46,7 @@ Categories:
 | `text` | `text.lg_tv_screen_notification` | Screen Notification | Send custom toast messages to TV screen |
 | `button` | `button.lg_tv_restart` | Restart TV | Reboots the TV (requires `allowPower: true`) |
 | `button` | `button.lg_tv_power_off` | Power Off TV | Powers off the TV (requires `allowPower: true`) |
+| `button` | `button.lg_tv_power_on` | Power On TV | Turns the TV back on from Active Standby, while it is still finishing panel compensation; in plain standby the bridge is offline (requires `allowPower: true`) |
 
 Playback reaches an HDMI source over CEC, where the TV has only one key for both halves of play/pause. Pause and Play / Pause behave as expected there; Play toggles rather than only resuming. On the built-in apps all four are exact.
 

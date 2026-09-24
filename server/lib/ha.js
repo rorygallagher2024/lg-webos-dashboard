@@ -85,6 +85,7 @@ var HA_ENTITIES = [
   { id: 'screensaver_mode', type: 'select', name: 'Screen Saver Mode', cat: 'controls' },
   { id: 'restart', type: 'button', name: 'Restart', cat: 'controls' },
   { id: 'power_off', type: 'button', name: 'Power Off', cat: 'controls' },
+  { id: 'power_on', type: 'button', name: 'Power On', cat: 'controls' },
 
   // OLED Care
   { id: 'oled_panel_hours', type: 'sensor', name: 'OLED Panel Hours', cat: 'oled' },
@@ -1067,6 +1068,16 @@ function buildEntities(opts) {
         payload: {
           name: 'Power Off TV',
           command_topic: pfx + '/command/powerOff',
+          icon: 'mdi:power'
+        }
+      });
+      // Only works while the TV is in Active Standby and still on the
+      // network; in plain standby the bridge is offline with it.
+      entities.push({
+        type: 'button', id: 'power_on',
+        payload: {
+          name: 'Power On TV',
+          command_topic: pfx + '/command/powerOn',
           icon: 'mdi:power'
         }
       });

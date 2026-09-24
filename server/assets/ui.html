@@ -906,7 +906,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
     <div class="set"><div class="lbl">Power</div>
       <div class="btns">
-        <button id="poff" onclick="pw('powerOff')">Power off</button>
+        <button id="poff" onclick="pw(pwStandby ? 'powerOn' : 'powerOff')">Power off</button>
         <button id="prb" onclick="pw('reboot')">Reboot</button>
       </div>
       <div class="sub" id="pwnote"></div>
@@ -1437,6 +1437,8 @@ async function tick() {
     // something were being displayed.
     const ps = d.powerState || {};
     const o = d.oled || {};
+    pwStandby = ps.raw === 'Active Standby';
+    if (q('poff')) q('poff').textContent = pwStandby ? 'Power on' : 'Power off';
     const isComp = !!(o.comp_status === 'Running' || (ps.raw === 'Active Standby' && o.hours_until_comp === 0));
     const stEl = q('state');
     stEl.classList.toggle('comp', isComp);
@@ -2172,7 +2174,12 @@ async function openUrl() {
     if (btn) btn.disabled = false;
   }
 }
+// True while the TV is in Active Standby: switched off but still up, finishing
+// panel compensation. The power button then turns it back on instead.
+let pwStandby = false;
+
 function pw(a) {
+  if (a === 'powerOn') return c(a);
   const msg = a === 'reboot'
     ? 'Reboot the TV now? It will be unavailable for about a minute.'
     : 'Power off the TV now?';
