@@ -66,8 +66,10 @@
 [data-theme="light"]{
   --bg:#f5f5f5; --fg:0,0,0;
   --edge:rgba(var(--fg),.45);
-  --cool:#3a6fcf; --warm:#b8860b; --cand:#c27a1e;
-  --red:#d42020; --blue:#2050cc; --green:#1a9e44; --purple:#6b20cc;
+  /* Green and amber are also small text (pills, statuses): #1a9e44 and #c27a1e
+     were 3.2:1 on #f5f5f5, under the 4.5:1 AA needs; these are 4.7 and 4.6. */
+  --cool:#3a6fcf; --warm:#b8860b; --cand:#9c6218;
+  --red:#d42020; --blue:#2050cc; --green:#157f37; --purple:#6b20cc;
   --purple-t:#6b20cc;
   --btn-on-fg:#fff;
 }
@@ -352,9 +354,9 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .oled-row:last-child{border-bottom:0}
 .oled-main{max-width:56ch}
 .oled-name{font-size:15px}
-.oled-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--w35);
+.oled-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--w60);
           margin-left:8px}
-.oled-desc{font-size:13px;color:var(--w50);margin-top:7px;line-height:1.5}
+.oled-desc{font-size:13px;color:var(--w60);margin-top:7px;line-height:1.5}
 .oled-ctl{flex:0 0 auto;display:flex;gap:8px;align-items:center}
 .oled-ctl .pill{min-width:96px}
 /* The service-menu ones are set apart: they are the reason the warning below
@@ -368,12 +370,13 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
-.oc-cycles{margin-top:26px;font-size:13px;color:var(--w50);line-height:1.8}
+.oc-cycles{margin-top:26px;font-size:13px;color:var(--w60);line-height:1.8}
 .oc-cycles span{color:var(--w80)}
-.oled-none{font-size:12px;letter-spacing:.06em;color:var(--w35);white-space:nowrap}
-/* A protection this set will not talk about is still worth describing, but it
-   should not compete with the ones that answer. */
-.oled-row.silent .oled-name,.oled-row.silent .oled-desc{color:var(--w35)}
+.oled-none{font-size:12px;letter-spacing:.06em;color:var(--w60);white-space:nowrap}
+/* A protection this TV will not talk about is still worth describing, but it
+   should not compete with the ones that answer: its name steps down to the
+   description's shade, the dimmest that still reads at AA. */
+.oled-row.silent .oled-name,.oled-row.silent .oled-desc{color:var(--w60)}
 
 
 /* ---- privacy pane ---- */
@@ -517,7 +520,7 @@ button.pill[disabled]{cursor:default;opacity:.45}
    descriptions): the shared 13/12px of .prot-row read small here, where the
    descriptions carry the substance. */
 #advpane .prot-table,#serverpane .prot-table{display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));column-gap:clamp(30px,4vw,52px)}
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));column-gap:clamp(30px,4vw,52px)}
 #advpane .prot-row,#serverpane .prot-row{align-items:flex-start;padding:16px 0}
 #advpane .prot-title,#serverpane .prot-title{font-size:15px;font-weight:500;letter-spacing:0;color:var(--w100)}
 #advpane .prot-desc,#serverpane .prot-desc{font-size:13px;line-height:1.5;margin-top:4px;max-width:none}
@@ -539,7 +542,7 @@ button.pill[disabled]{cursor:default;opacity:.45}
 }
 .cfg-f input:focus{border-color:var(--w100)}
 .cfg-f input::placeholder{color:var(--w60)}
-.cfg-f .hint{font-size:12px;color:var(--w35);line-height:1.4}
+.cfg-f .hint{font-size:13px;color:var(--w60);line-height:1.45}
 .cfg-toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));
   gap:8px;max-width:840px;margin-top:14px}
 /* State and switch to one side, the form it describes to the other. The left
