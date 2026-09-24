@@ -103,8 +103,8 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .mark-name{font-family:'Outfit';font-weight:200;font-size:clamp(28px,3.8vw,40px);line-height:.95;
   letter-spacing:-.02em;color:var(--w100)}
 .mark-kind{color:var(--w40);white-space:nowrap}
-.mark-tv{display:flex;align-items:center;gap:12px;font-family:'Manrope';font-weight:500;font-size:11px;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--w50)}
+.mark-tv{display:flex;align-items:center;gap:12px;font-family:'Manrope';font-weight:500;font-size:13px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--w60)}
 .mark-tv i{width:22px;height:1px;background:var(--w25)}
 .mark-tv #model{color:var(--w80);letter-spacing:.14em}
 
@@ -181,7 +181,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .r{display:grid;grid-template-columns:clamp(118px,15%,176px) 1fr 84px;gap:14px;align-items:center;
    padding:15px 0;border-bottom:1px solid var(--w06)}
 .r .v{font-family:'Outfit';font-weight:200;font-size:26px;color:var(--w100);text-align:right;line-height:1}
-.r .v small{font-size:13px;color:var(--w50);margin-left:4px;font-family:'Manrope';font-weight:400}
+.r .v small{font-size:13px;color:var(--w60);margin-left:4px;font-family:'Manrope';font-weight:400}
 .track{height:2px;background:var(--w06);position:relative;overflow:hidden}
 .track b{position:absolute;inset:0 auto 0 0;background:var(--w60);transition:width .45s cubic-bezier(.4,0,.2,1),background .5s ease}
 
@@ -293,7 +293,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 .disc>summary::after{content:'+';font-size:17px;line-height:1;color:var(--w60)}
 .disc[open]>summary::after{content:'\2212'}
 .disc>summary:hover{color:var(--w80)}
-.disc>summary .cur{font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--w60);margin-left:auto;margin-right:12px}
+.disc>summary .cur{font-size:13px;font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--w60);margin-left:auto;margin-right:12px}
 .disc .set{margin-top:12px}
 .playback-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:11px}
 .app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:7px;margin-top:11px}
@@ -409,7 +409,7 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
          border-color:var(--green);cursor:default;opacity:1}
 .ss-name{font-size:15px;letter-spacing:.02em;display:flex;align-items:center;
          justify-content:space-between;gap:12px}
-.ss-desc{font-size:13px;color:var(--w50);margin-top:7px;max-width:46ch}
+.ss-desc{font-size:13px;color:var(--w60);margin-top:7px;max-width:46ch}
 .ss-card.on .ss-name{color:var(--green)}
 .ss-tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--green)}
 .ss-level-row{margin-top:22px;max-width:760px}
@@ -460,12 +460,14 @@ button.pill:hover:not([disabled]){background:rgba(var(--fg),.08)}
 button.pill[disabled]{cursor:default;opacity:.45}
 /* A flag the panel will not write keeps its colour - the value still matters -
    but has to read as inert next to 19 rows that respond to a click. */
-.pill.fixed{opacity:.45}
+/* Read-only: a dashed edge says it cannot be pressed. It was 45% opacity,
+   which took an amber pill to 2.9:1 on black and 1.8:1 on the light theme. */
+.pill.fixed{border-style:dashed}
 .pv-g{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--w60);
       margin:22px 0 2px;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .pv-g:first-child{margin-top:4px}
-.pv-g .c{letter-spacing:0;text-transform:none;color:var(--w35);font-size:12px;white-space:nowrap}
-.pv-gn{font-size:13px;color:var(--w50);max-width:58ch;margin:4px 0 2px}
+.pv-g .c{letter-spacing:0;text-transform:none;color:var(--w60);font-size:12px;white-space:nowrap}
+.pv-gn{font-size:13px;color:var(--w60);max-width:58ch;margin:4px 0 2px}
 /* The raw flag name, kept visible on rows that now show a friendlier one: it is
    what the API, the TV and the issue tracker all call it. */
 .pv-row .k{color:var(--w35)}
@@ -646,7 +648,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 }
 .prot-title .prot-sub{font-weight:400;color:var(--w60);font-size:12px}
 .prot-desc{
-  font-size:12px;color:var(--w60);margin-top:3px;line-height:1.45;
+  font-size:13px;color:var(--w60);margin-top:3px;line-height:1.45;
   max-width:62ch;
 }
 .prot-status{flex-shrink:0}
