@@ -304,6 +304,7 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED55G42LW | 24           | 33.31.68 | OLED  | Rooted with slopbro, not the Homebrew Channel                  |
 | 50UT81006LA | 25 (10.2.1)  | 33.22.56 | LCD   | Partial: blocking works; some settings reported not to apply   |
 | OLED65CSPSA | 25 (10.3.0)  | 33.31.20 | OLED  | Reported working                                               |
+| OLED65C4PSA | 25 (10.3.1)  | 33.31.6  | OLED  |                                                                |
 | OLED48C55LA | 25 (10.3.1)  | 33.31.68 | OLED  | Installed over telnet; in-app update to 0.37.2 confirmed       |
 | OLED77C57LA | 25 (10.3.1)  | 33.31.68 | OLED  | MQTT, privacy, screen saver and web dashboard confirmed        |
 
