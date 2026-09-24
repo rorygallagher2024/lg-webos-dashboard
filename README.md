@@ -315,20 +315,20 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 
 The web dashboard, ad and telemetry blocking and the Home Assistant bridge do not depend on the webOS version. The features below depend on the TV, and the dashboard shows each one only where the TV has it. A tick names the TVs it has been confirmed on, a cross the TVs known to lack it; a blank cell means no report either way yet.
 
-| Feature                                 | webOS 3          | webOS 4 | webOS 5–6  | webOS 22–24  | webOS 25           |
-| :-------------------------------------- | :--------------- | :------ | :--------- | :----------- | :----------------- |
-| OLED Care panel readings                |                  | ✓ B8    | ✓ CX       | ✓ C2, G4     |                    |
-| Screen shift and logo dimming           |                  | ✓ B8    |            | ✓ C2         |                    |
-| GSR and TPC panel protection            |                  | ✗ B8    | ✓ CX       | ✓ C2         |                    |
-| SoC temperature                         | ✗ UH610V, B7     | ✓ B8    | ✓ CX       | ✓ QNED82, C2 |                    |
-| Storage wear                            | ✗ UH610V, B7     | ✓ B8    | ✓ CX       | ✓ C2, G4     |                    |
-| HDMI 2.1 diagnostics                    |                  | ✗ B8    | ✓ CX, C1   | ✓ C2         |                    |
-| Remote battery level                    |                  | ✗ B8    | ✓ C1       | ✓ C2         |                    |
-| Quick Boot and Wake-on-LAN              |                  |         |            | ✓ C2         |                    |
-| LG logo at power on and off             |                  |         |            | ✓ C2         |                    |
-| Auto device detection                   |                  |         |            | ✓ C2         |                    |
-| Custom screen savers                    |                  | ✓ B8    |            | ✓ C2         | ✓ C3, C5           |
-| Switching to or from LG's screen saver  |                  |         |            | Quick        | About a minute, C3 |
+| Feature                                | webOS 3 (3.x) | webOS 4 (4.x) | webOS 5–6 (5.x–6.x) | webOS 22–24 (7.x–9.x) | webOS 25 (10.x)    |
+| :------------------------------------- | :------------ | :------------ | :------------------ | :-------------------- | :----------------- |
+| OLED Care panel readings               |               | ✓ B8          | ✓ CX                | ✓ C2, G4              |                    |
+| Screen shift and logo dimming          |               | ✓ B8          |                     | ✓ C2                  |                    |
+| GSR and TPC panel protection           |               | ✗ B8          | ✓ CX                | ✓ C2                  |                    |
+| SoC temperature                        | ✗ UH610V, B7  | ✓ B8          | ✓ CX                | ✓ QNED82, C2          |                    |
+| Storage wear                           | ✗ UH610V, B7  | ✓ B8          | ✓ CX                | ✓ C2, G4              |                    |
+| HDMI 2.1 diagnostics                   |               | ✗ B8          | ✓ CX, C1            | ✓ C2                  |                    |
+| Remote battery level                   |               | ✗ B8          | ✓ C1                | ✓ C2                  |                    |
+| Quick Boot and Wake-on-LAN             |               |               |                     | ✓ C2                  |                    |
+| LG logo at power on and off            |               |               |                     | ✓ C2                  |                    |
+| Auto device detection                  |               |               |                     | ✓ C2                  |                    |
+| Custom screen savers                   |               | ✓ B8          |                     | ✓ C2                  | ✓ C3, C5           |
+| Switching to or from LG's screen saver |               |               |                     | Quick, C2             | About a minute, C3 |
 
 The OLED rows need an OLED panel. The logo light control appears only on models with an illuminated logo; every model reported so far has a standby LED only. Hiding app tiles depends on the install rather than the TV, and is not offered on a Homebrew Channel install.
 
