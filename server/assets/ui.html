@@ -415,6 +415,15 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .ss-card.on .ss-name{color:var(--green)}
 .ss-tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--green)}
 .ss-level-row{margin-top:22px;max-width:760px}
+/* The choice on the left, and what to do with it - brightness, starting it,
+   the firmware note - beside it on a wide screen rather than below the list. */
+@media(min-width:1020px){
+  .ss-split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:clamp(36px,4vw,56px);
+            align-items:start}
+  .ss-split .ss-list{max-width:none}
+  .ss-side{margin-top:22px;display:flex;flex-direction:column;gap:22px}
+  #sspane .ss-side>*{margin-top:0}
+}
 .ss-level-lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--w60);
               margin-bottom:8px}
 .ss-level-row .btns{display:flex;gap:10px;max-width:340px}
@@ -1074,7 +1083,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 </section>
 
 <section class="priv panel" id="sspane" role="tabpanel" hidden>
+  <div class="ss-split">
   <div id="ss-list" class="ss-list"></div>
+  <div class="ss-side">
   <div class="ss-level-row" id="ss-level-row" hidden>
     <div class="ss-level-lbl">Brightness</div>
     <div class="btns" id="ss-level"></div>
@@ -1088,6 +1099,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
 
   <div class="pv-note" id="ss-note">Note: if a firmware update is applied, the screen saver will be restored to the LG default.</div>
+  </div>
+  </div>
 </section>
 
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
