@@ -838,23 +838,33 @@ function doControl(action, value, cb) {
       });
 
     /*
-     * Only reachable while the TV is in Active Standby, finishing panel
-     * compensation or similar after being switched off; in plain standby the
-     * B8 drops off the network within 5s and nothing here runs. Active Standby
-     * is a power-off still in progress, and cancelPowerOff is how LG's own
-     * phone-remote gateway reverses one. It does nothing when the TV is on.
+     * Only reachable while the TV is in Active Standby (finishing panel
+     * compensation, or held there by Always Ready); in plain standby the B8
+     * drops off the network within 5s and nothing here runs. power/powerOn
+     * with a reason is what brings a C2 (webOS 9.2) back from Always Ready;
+     * cancelPowerOff only reverses a power-off still in progress, and
+     * turnOnScreen only undoes screenOff. Those two remain for firmware
+     * without powerOn.
      */
     case 'powerOn':
       if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
-      return luna('com.webos.service.tv.power/cancelPowerOff', {}, function () {
+      var isOn = function (next) {
         setTimeout(function () {
           luna('com.webos.service.tvpower/power/getPowerState', {}, function (st) {
-            if (st && st.state === 'Active') return cb({ ok: true });
+            next(!!(st && st.state === 'Active'));
+          });
+        }, 1500);
+      };
+      return luna('com.webos.service.tvpower/power/powerOn', { reason: 'remoteKey' }, function (p) {
+        if (p && p.returnValue) return cb({ ok: true });
+        luna('com.webos.service.tv.power/cancelPowerOff', {}, function () {
+          isOn(function (on) {
+            if (on) return cb({ ok: true });
             luna('com.webos.service.tvpower/power/turnOnScreen', {}, function (r) {
               cb({ ok: !!(r && r.returnValue), error: r && r.returnValue ? undefined : 'the TV stayed in standby' });
             });
           });
-        }, 1500);
+        });
       });
 
     case 'powerOff':
