@@ -26,7 +26,7 @@ Use it for remote control, app management and removal, OLED panel care, privacy 
 * **webOS**: 3.4 through 25 confirmed; tested across 2016–2025 models. Other versions likely work as well
 * **Panels**: OLED (full panel wear telemetry and burn-in controls) and LCD (core dashboard, controls, and telemetry; OLED Care tab hides automatically)
 * **Access**: Rooted via [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel). Telnet or SSH. No external dependencies or internet access needed on the TV
-* **Tested hardware**: 19 models verified so far (UH6030, UH610V, B7, B8, C8, C9, CX, C1, QNED82, C2, B4, C4, G4, UT81, C5, CS). Other rooted models should work; [see full table](#tested-tvs)
+* **Tested hardware**: 20 models verified so far (UH6030, UH610V, B7, B8, C8, C9, CX, C1, QNED82, C2, C3, B4, C4, G4, UT81, C5, CS). Other rooted models should work; [see full table](#tested-tvs)
 
 [Quick start](#quick-start) • [What it's for](#what-its-for) • [Screenshots](#screenshots) • [Features](#features) • [Installation](#installation) • [Tested TVs](#tested-tvs) • [Home Assistant](#home-assistant--mqtt) • [Managing the server](#managing-the-server) • [Security](#security)
 
@@ -304,6 +304,7 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED55B46LA | 24 (9.24.8)  | 23.23.30 | OLED  | Installed over telnet                                          |
 | OLED55G42LW | 24           | 33.31.68 | OLED  | Rooted with slopbro, not the Homebrew Channel                  |
 | 50UT81006LA | 25 (10.2.1)  | 33.22.56 | LCD   | Partial: blocking works; some settings reported not to apply   |
+| OLED55C31LA | 25 (10.2.2)  | 33.22.80 | OLED  | Installed over SSH; in-app updates confirmed                   |
 | OLED65CSPSA | 25 (10.3.0)  | 33.31.20 | OLED  | Reported working                                               |
 | OLED65C4PSA | 25 (10.3.1)  | 33.31.6  | OLED  |                                                                |
 | OLED48C55LA | 25 (10.3.1)  | 33.31.68 | OLED  | Installed over telnet; in-app update to 0.37.2 confirmed       |
