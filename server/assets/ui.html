@@ -511,6 +511,16 @@ button.pill[disabled]{cursor:default;opacity:.45}
 .pv-sec{margin-bottom:26px}
 /* The Advanced tab's later sections sit apart from the table above them. */
 .adv-sec{margin-top:clamp(34px,4.5vw,48px)}
+/* Settings side by side in two columns where they fit, so a description sits
+   beside its switch instead of running the full width away from it. Text at
+   the Privacy tab's sizes (15px names, 13px descriptions): the shared 13/12px
+   of .prot-row read small here, where the descriptions carry the substance. */
+#advpane .prot-table{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));
+  column-gap:clamp(30px,4vw,52px)}
+#advpane .prot-row{align-items:flex-start;padding:16px 0}
+#advpane .prot-title{font-size:15px;font-weight:500;letter-spacing:0;color:var(--w100)}
+#advpane .prot-desc{font-size:13px;line-height:1.5;margin-top:4px;max-width:none}
+#advpane .prot-status{padding-top:2px}
 #pv-adv{margin-top:clamp(36px,5vw,56px)}
 #pv-adv>summary{border-top:0;min-height:0;align-items:center}
 #pv-adv[open]>summary{margin-bottom:22px}
