@@ -279,11 +279,13 @@ if ! command -v curl >/dev/null 2>&1; then
   echo "open  http://$TV:8080/"
   exit 0
 fi
-# A restart takes a few seconds, so give it twenty before calling it a failure.
-# Any reply counts: with a token set, the 401 is the server answering.
+# A restart takes a few seconds, so try for up to a minute before calling it a
+# failure. Any reply counts: with a token set, the 401 is the server answering.
+# curl fails while the server is still starting, and under set -e a failed
+# command substitution would end the script on the first try, hence || true.
 answered=""
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://$TV:8080/api/caps")
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://$TV:8080/api/caps") || true
   if [ -n "$code" ] && [ "$code" != 000 ]; then answered=1; break; fi
   sleep 2
 done
@@ -291,7 +293,7 @@ if [ -z "$answered" ]; then
   cat >&2 <<EOF
 
 The files were installed, but the dashboard at http://$TV:8080/ didn't answer
-within 20 seconds. Check that the TV is on, then run this again.
+within a minute. Check that the TV is on, then run this again.
 EOF
   exit 1
 fi
