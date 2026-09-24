@@ -360,7 +360,7 @@ function optionRows(d) {
       r.push({ label: 'Nightly power-down', value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,
                cls: 'act', act: 'arOff', start: d.alwaysReadyOff.start,
                press: 'Press OK to move it an hour later',
-               hint: 'For five hours every night, LG lets a switched-off TV sleep fully to keep it in good condition. It is offline then, so Glasshouse and Home Assistant cannot reach it. LG fixes the length; choose hours when the TV is not used.' });
+               hint: 'For five hours every night, LG lets a switched-off TV sleep fully. It is offline then, so Glasshouse and Home Assistant cannot reach it. LG fixes the length; choose hours when the TV is not used.' });
     if (d.wakeOnLan !== undefined)
       r.push(toggle('Wake-on-LAN', d.wakeOnLan, 'wakeOnLan',
         'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'));
