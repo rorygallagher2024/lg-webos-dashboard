@@ -206,12 +206,14 @@ body.light #flash{color:rgba(0,0,0,.88)}
    dashboard, so nothing here needs its own API. A section is a tab; its rows
    are built from that payload by its own builder below. */
 var TABS = [
-  { key: 'system',  label: 'System',       url: '/api/stats',       build: sysRows,  poll: 5000 },
+  // Metrics keeps the key it had as System, which the installed app opens on.
+  { key: 'system',  label: 'Metrics',      url: '/api/stats',       build: sysRows,  poll: 5000 },
   { key: 'apps',    label: 'Apps',         url: '/api/apps',        build: appsRows },
   { key: 'oled',    label: 'OLED Care',    url: '/api/oledcare',    build: oledRows },
   { key: 'saver',   label: 'Screen Saver', url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: 'Privacy',      url: '/api/privacy',     build: privacyRows },
   { key: 'service', label: 'Service Menu', url: '/api/servicemenu', build: svcRows },
+  { key: 'options', label: 'System',       url: '/api/stats',       build: optionRows, poll: 5000 },
   { key: 'update',  label: 'Updates',      url: '/api/update',      build: updateRows },
   { key: 'settings', label: 'Settings',    url: '/api/setup',       build: settingsRows }
 ];
@@ -331,55 +333,45 @@ function sysRows(d) {
     r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
   if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
 
-  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.lgLogo !== undefined ||
-      (d.lights && d.lights.standby !== undefined)) {
-    r.push(head('Power'));
-    if (d.quickBoot !== undefined) {
-      r.push({
-        label: 'Quick Boot',
-        value: d.quickBoot ? 'On' : 'Off',
-        cls: 'act',
-        act: 'quickBoot',
-        on: !!d.quickBoot,
-        press: 'Press OK to turn ' + (d.quickBoot ? 'off' : 'on'),
-        hint: 'Quick Start+ puts the TV into instant standby so it wakes in <2s instead of performing a ~25s cold boot.'
-      });
-    }
-    if (d.lgLogo !== undefined) {
-      r.push({
-        label: 'LG logo',
-        value: d.lgLogo ? 'Shown' : 'Hidden',
-        cls: 'act',
-        act: 'lgLogo',
-        on: !!d.lgLogo,
-        press: 'Press OK to ' + (d.lgLogo ? 'hide' : 'show') + ' it',
-        hint: 'Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.'
-      });
-    }
-    if (d.wakeOnLan !== undefined) {
-      r.push({
-        label: 'Wake-on-LAN',
-        value: d.wakeOnLan ? 'On' : 'Off',
-        cls: 'act',
-        act: 'wakeOnLan',
-        on: !!d.wakeOnLan,
-        press: 'Press OK to turn ' + (d.wakeOnLan ? 'off' : 'on'),
-        hint: 'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'
-      });
-    }
-    if (d.lights && d.lights.standby !== undefined) {
-      r.push({
-        label: 'Standby LED',
-        value: d.lights.standby ? 'On' : 'Off',
-        cls: 'act',
-        act: 'standbyLight',
-        on: !!d.lights.standby,
-        press: 'Press OK to turn ' + (d.lights.standby ? 'off' : 'on'),
-        hint: 'Controls whether the front standby LED stays lit when the TV is turned off.'
-      });
-    }
-  }
+  return r;
+}
 
+/*
+ * The TV's own settings, grouped as the browser dashboard's Advanced tab groups
+ * them. Each shows only where the TV reports a value for it.
+ */
+function optionRows(d) {
+  if (!d || !d.ok) return [];
+  var r = [], lights = d.lights || {};
+  function toggle(label, on, act, hint, onWord, offWord) {
+    return { label: label, value: on ? (onWord || 'On') : (offWord || 'Off'), cls: 'act', act: act, on: !!on,
+             press: 'Press OK to turn ' + (on ? 'off' : 'on'), hint: hint };
+  }
+  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined) {
+    r.push(head('Power'));
+    if (d.quickBoot !== undefined)
+      r.push(toggle('Quick Boot', d.quickBoot, 'quickBoot',
+        'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.'));
+    if (d.wakeOnLan !== undefined)
+      r.push(toggle('Wake-on-LAN', d.wakeOnLan, 'wakeOnLan',
+        'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'));
+  }
+  if (d.lgLogo !== undefined) {
+    r.push(head('Display'));
+    var logo = toggle('LG logo', d.lgLogo, 'lgLogo',
+      'Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.', 'Shown', 'Hidden');
+    logo.press = 'Press OK to ' + (d.lgLogo ? 'hide' : 'show') + ' it';
+    r.push(logo);
+  }
+  if (lights.standby !== undefined || lights.hasLogo) {
+    r.push(head('Front lights'));
+    if (lights.standby !== undefined)
+      r.push(toggle('Standby light', lights.standby, 'standbyLight',
+        'The small light on the front of the TV that shows while it is switched off.'));
+    if (lights.hasLogo)
+      r.push(toggle('Logo light', lights.logo, 'logoLight', 'The lit LG logo on the front of the TV.'));
+  }
+  if (!r.length) r.push({ label: 'Nothing to set on this TV', value: '' });
   return r;
 }
 
@@ -1347,7 +1339,9 @@ function activate() {
     case 'wakeOnLan':
       return send({ action: 'wakeOnLan', value: !r.on }, r.on ? 'Wake-on-LAN turned off' : 'Wake-on-LAN turned on');
     case 'standbyLight':
-      return send({ action: 'standbyLight', value: !r.on }, r.on ? 'Standby LED turned off' : 'Standby LED turned on');
+      return send({ action: 'standbyLight', value: !r.on }, r.on ? 'Standby light turned off' : 'Standby light turned on');
+    case 'logoLight':
+      return send({ action: 'logoLight', value: !r.on }, r.on ? 'Logo light turned off' : 'Logo light turned on');
     case 'adblock':
       return send({ action: 'setAdBlock', value: r.key });
     case 'acr':

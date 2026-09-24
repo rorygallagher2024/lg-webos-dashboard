@@ -76,9 +76,9 @@ This project is intended to give a rooted webOS TV a useful local control surfac
 ### Web dashboard
 
 <p align="center">
-  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="System tab: SoC temperature, system readouts, storage and HDMI ports, dark theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Metrics tab: SoC temperature, system readouts, storage and HDMI ports, dark theme (OLED65B8SLC)" width="440"></a>
   &nbsp;
-  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer, front lights and power, light theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer and power, light theme (OLED65B8SLC)" width="440"></a>
   <br>
   <sub>System and Control tabs, shown in dark and light themes.</sub>
 </p>
@@ -116,12 +116,14 @@ From a browser you can navigate the TV, change inputs, control playback and volu
 * A D-pad — arrows, OK, Back and Home — to navigate the TV's own interface.
 * Volume, mute, input select, and media playback — play, pause, stop, skip.
 * App launching, picture presets and sound output routing. The presets on offer are the ones the TV will accept for whatever is playing: a Dolby Vision source has its own presets.
-* Screen blanking, sleep timer, standby LED, on-screen notifications, and power and restart.
-* Opening a web page on the TV: type an address and the set's browser takes it.
+* Screen blanking, sleep timer, on-screen notifications, and power and restart.
+* Opening a web page on the TV: type an address and the TV's browser takes it.
+
+The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, the LG logo shown at power on and off, and the front lights. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
 
 ### Telemetry and diagnostics
 
-The **System** tab, `/?tab=system`, exposes information about what the TV is doing and what hardware it contains — most of which is absent from its own settings menu.
+The **Metrics** tab, `/?tab=metrics`, exposes information about what the TV is doing and what hardware it contains — most of which is absent from its own settings menu.
 
 This is useful both for monitoring and for troubleshooting. You can see whether a high-temperature condition is accompanied by CPU load, what Wi-Fi signal the TV actually has, what HDMI mode a connected device negotiated, and what software is currently running.
 
@@ -133,9 +135,9 @@ This is useful both for monitoring and for troubleshooting. You can see whether 
 * On demand: what is resident in memory, and which processes are using the processor right now.
 
 <p align="center">
-  <img width="432" alt="System tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
+  <img width="432" alt="Metrics tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
   <br>
-  <sub>System telemetry including processor, memory, swap and current draw.</sub>
+  <sub>Metrics including processor, memory, swap and current draw.</sub>
 </p>
 
 ### Apps and home screen launcher

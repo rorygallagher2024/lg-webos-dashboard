@@ -509,6 +509,8 @@ button.pill[disabled]{cursor:default;opacity:.45}
 .pv-sec,#pv-adv>summary{font-family:'Outfit';font-weight:300;font-size:clamp(20px,2.2vw,25px);
   letter-spacing:.005em;color:var(--w100);border-bottom:1px solid var(--w25);padding:0 0 12px}
 .pv-sec{margin-bottom:26px}
+/* The Advanced tab's later sections sit apart from the table above them. */
+.adv-sec{margin-top:clamp(34px,4.5vw,48px)}
 #pv-adv{margin-top:clamp(36px,5vw,56px)}
 #pv-adv>summary{border-top:0;min-height:0;align-items:center}
 #pv-adv[open]>summary{margin-bottom:22px}
@@ -679,12 +681,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" class="tabs-arrow" id="tabs-prev" hidden aria-label="Scroll tabs left" onclick="scrollTabs(-1)">&#8249;</button>
   <nav class="tabs" id="tabs" role="tablist">
   <button type="button" role="tab" data-tab="control">Control</button>
-  <button type="button" role="tab" data-tab="system">System</button>
+  <button type="button" role="tab" data-tab="metrics">Metrics</button>
   <button type="button" role="tab" data-tab="apps">Apps</button>
   <button type="button" role="tab" data-tab="privacy">Privacy</button>
   <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden>OLED Care</button>
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
   <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
+  <button type="button" role="tab" data-tab="advanced">Advanced</button>
   <button type="button" role="tab" data-tab="mqtt">MQTT</button>
   <button type="button" role="tab" data-tab="server">Server</button>
   </nav>
@@ -924,35 +927,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
     </details>
 
-    <details class="disc" id="disc-advanced">
-      <summary>Advanced <span class="cur" id="adv-cur"></span></summary>
-      <div class="set" id="row-quickboot"><div class="lbl">Boot mode</div>
-        <div class="btns">
-          <button id="btn_quickboot" onclick="toggleQuickBoot()">Quick Boot</button>
-        </div>
-        <div class="sub">Wakes in &lt;2s via instant standby instead of a full ~25s cold boot.</div>
-      </div>
-      <div class="set" id="row-lglogo" hidden><div class="lbl">LG logo</div>
-        <div class="btns">
-          <button id="btn_lglogo" onclick="toggleLgLogo()">LG logo</button>
-        </div>
-        <div class="sub">Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.</div>
-      </div>
-      <div class="set" id="row-wol" hidden><div class="lbl">Wake-on-LAN</div>
-        <div class="btns">
-          <button id="btn_wol" onclick="toggleWol()">Wake-on-LAN</button>
-        </div>
-        <div class="sub">Lets Home Assistant, a phone or another device on the network switch the TV on
-          from standby. LG calls this Mobile TV On.</div>
-      </div>
-      <div class="set"><div class="lbl">Front lights</div>
-        <div class="btns">
-          <button id="lt_standby" onclick="toggleLight('standbyLight')">Standby LED</button>
-          <button id="lt_logo" onclick="toggleLight('logoLight')" hidden>Logo light</button>
-        </div>
-      </div>
-    </details>
-
     <div class="set"><div class="lbl">Screen notification</div>
       <form class="toast-form" onsubmit="event.preventDefault();sendToast();">
         <input type="text" id="toast-input" placeholder="Message to display on TV screen..." maxlength="120" autocomplete="off">
@@ -1010,6 +984,58 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         They exist to protect the panel from burn-in, and switching them off makes
         permanent image retention more likely. Doing so may affect your warranty.
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="priv panel" id="advpane" role="tabpanel" hidden>
+  <div class="lbl">Advanced</div>
+  <div class="pv-sec">Power</div>
+  <div class="prot-table">
+    <div class="prot-row" id="row-quickboot" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Quick Boot</div>
+        <div class="prot-desc">Switching off puts the TV into a light sleep rather than shutting it down, so it
+          comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="btn_quickboot" onclick="toggleQuickBoot()">&mdash;</button></div>
+    </div>
+    <div class="prot-row" id="row-wol" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Wake-on-LAN</div>
+        <div class="prot-desc">Lets Home Assistant, a phone or another device on the network switch the TV on
+          from standby. The Home Assistant guide shows how to set it up. LG calls this Mobile TV On.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="btn_wol" onclick="toggleWol()">&mdash;</button></div>
+    </div>
+  </div>
+
+  <div class="pv-sec adv-sec" id="adv-display" hidden>Display</div>
+  <div class="prot-table">
+    <div class="prot-row" id="row-lglogo" hidden>
+      <div class="prot-main">
+        <div class="prot-title">LG logo</div>
+        <div class="prot-desc">Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="btn_lglogo" onclick="toggleLgLogo()">&mdash;</button></div>
+    </div>
+  </div>
+
+  <div class="pv-sec adv-sec">Front lights</div>
+  <div class="prot-table">
+    <div class="prot-row" id="row-standby" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Standby light</div>
+        <div class="prot-desc">The small light on the front of the TV that shows while it is switched off.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="lt_standby" onclick="toggleLight('standbyLight')">&mdash;</button></div>
+    </div>
+    <div class="prot-row" id="row-logolight" hidden>
+      <div class="prot-main">
+        <div class="prot-title">Logo light</div>
+        <div class="prot-desc">The lit LG logo on the front of the TV, on models that have one.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="lt_logo" onclick="toggleLight('logoLight')">&mdash;</button></div>
     </div>
   </div>
 </section>
@@ -1565,26 +1591,13 @@ async function tick() {
         if (b) b.classList.toggle('on', st === v);
       });
       const lights = d.lights || {};
-      if (q('lt_standby')) q('lt_standby').classList.toggle('on', !!lights.standby);
-      // Only sets that declare tv.model.logoLight actually have one.
-      if (q('lt_logo')) {
-        q('lt_logo').hidden = !lights.hasLogo;
-        q('lt_logo').classList.toggle('on', !!lights.logo);
-      }
-      if (q('row-quickboot')) q('row-quickboot').hidden = d.quickBoot === undefined;
-      if (q('btn_quickboot')) q('btn_quickboot').classList.toggle('on', !!d.quickBoot);
-      if (q('row-lglogo')) q('row-lglogo').hidden = d.lgLogo === undefined;
-      if (q('btn_lglogo')) q('btn_lglogo').classList.toggle('on', !!d.lgLogo);
-      if (q('row-wol')) q('row-wol').hidden = d.wakeOnLan === undefined;
-      if (q('btn_wol')) q('btn_wol').classList.toggle('on', !!d.wakeOnLan);
-      if (q('adv-cur')) {
-        const advParts = [];
-        if (d.quickBoot !== undefined) advParts.push(d.quickBoot ? 'Quick Boot on' : 'Quick Boot off');
-        if (d.lgLogo !== undefined) advParts.push(d.lgLogo ? 'LG logo shown' : 'LG logo hidden');
-        if (d.wakeOnLan !== undefined) advParts.push(d.wakeOnLan ? 'Wake-on-LAN on' : 'Wake-on-LAN off');
-        if (lights.standby !== undefined) advParts.push(lights.standby ? 'Standby LED on' : 'Standby LED off');
-        q('adv-cur').textContent = advParts.join(', ');
-      }
+      // Each setting shows only where the TV has it; Display only when it has any.
+      advPill('quickboot', 'btn_quickboot', d.quickBoot);
+      advPill('wol', 'btn_wol', d.wakeOnLan);
+      advPill('lglogo', 'btn_lglogo', d.lgLogo);
+      advPill('standby', 'lt_standby', lights.standby);
+      advPill('logolight', 'lt_logo', lights.hasLogo ? lights.logo : undefined);
+      if (q('adv-display')) q('adv-display').hidden = d.lgLogo === undefined;
       if (q('tl-cur')) {
         q('tl-cur').textContent = st === 'off' ? 'Off' : `${st} min`;
       }
@@ -2220,24 +2233,20 @@ async function c(action, value) {
     return j;
   } catch (e) { showErr(e.message); }
 }
-function toggleLight(which) {
-  const el = q(which === 'standbyLight' ? 'lt_standby' : 'lt_logo');
-  c(which, el && el.classList.contains('on') ? 'off' : 'on');
+// An Advanced tab setting: its row shows only once the TV reports a value.
+function advPill(row, id, on) {
+  const r = q('row-' + row), b = q(id);
+  if (r) r.hidden = on === undefined;
+  if (!b || on === undefined) return;
+  b.className = 'pill ' + (on ? 'good' : 'idle');
+  b.textContent = on ? 'On' : 'Off';
+  b.dataset.on = on ? '1' : '';
 }
-function toggleQuickBoot() {
-  const el = q('btn_quickboot');
-  c('quickBoot', el && el.classList.contains('on') ? 'off' : 'on');
-}
-
-function toggleLgLogo() {
-  const el = q('btn_lglogo');
-  c('lgLogo', el && el.classList.contains('on') ? 'off' : 'on');
-}
-
-function toggleWol() {
-  const el = q('btn_wol');
-  c('wakeOnLan', el && el.classList.contains('on') ? 'off' : 'on');
-}
+function flip(id) { const el = q(id); return el && el.dataset.on ? 'off' : 'on'; }
+function toggleLight(which) { c(which, flip(which === 'standbyLight' ? 'lt_standby' : 'lt_logo')); }
+function toggleQuickBoot() { c('quickBoot', flip('btn_quickboot')); }
+function toggleLgLogo() { c('lgLogo', flip('btn_lglogo')); }
+function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 
 function toggleMute() { c('mute', !muted); }
 async function sendToast() {
@@ -3168,22 +3177,23 @@ async function setTileHiding(enabled) {
  */
 const TABS = {
   control:     'tab-control',
-  system:      'tab-metrics',
+  metrics:     'tab-metrics',
   apps:        'appspane',
   oledcare:    'oledpane',
   servicemenu: 'svcpane',
   screensaver: 'sspane',
   privacy:     'privpane',
   mqtt:        'mqttpane',
-  server:      'serverpane'
+  server:      'serverpane',
+  advanced:    'advpane'
 };
 let activeTab = null;
 // null until the first telemetry says either way.
 let isOledSet = null;
 
 function showTab(name) {
-  // The tab was called Metrics until it grew past its numbers.
-  if (name === 'metrics') name = 'system';
+  // The tab was System for a while, and links and remembered tabs still say so.
+  if (name === 'system') name = 'metrics';
   if (!TABS[name]) name = 'control';
   /*
    * The panel is about the OLED panel, so an LCD set has no tab for it - but a
@@ -3207,7 +3217,7 @@ function showTab(name) {
   try { localStorage.setItem('tab', name); } catch (e) { /* private window */ }
   relayout(false);   // the panel just became measurable
   cfgPollStatus(name === 'mqtt');
-  if (name === 'system') loadHdmiOnce();
+  if (name === 'metrics') loadHdmiOnce();
   if (name === 'apps') loadApps();
   if (name === 'server') checkOnOpen();
   if (name === 'server') loadTvApp();
@@ -3824,7 +3834,7 @@ async function waitForServer() {
 })();
 
 const openSection = new URLSearchParams(location.search).get('open');
-if (openSection === 'system' && q('disc-hwinfo')) q('disc-hwinfo').open = true;
+if ((openSection === 'metrics' || openSection === 'system') && q('disc-hwinfo')) q('disc-hwinfo').open = true;
 
 if (openSection === 'processes' && q('disc-proc')) q('disc-proc').open = true;
 
