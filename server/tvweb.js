@@ -2261,6 +2261,7 @@ function setupHomeAssistant() {
    * telemetryIntervalMs. Switching on or off still publishes at once.
    */
   var OFF_INTERVAL_MS = 60000;
+  var lastApp = null, lastAppId = null;
   var lastPublish = 0;
   function tickTelemetry() {
     if (tvOff && Date.now() - lastPublish < OFF_INTERVAL_MS) return;
@@ -2274,6 +2275,19 @@ function setupHomeAssistant() {
     telemetry.collectStats(function(s) {
       liveState.reconcile(s);
       s.tvOff = tvOff;
+      /*
+       * Switched off, the TV has no foreground app, which left Input Source
+       * and Launch App reading unknown. They keep the last input and app
+       * instead, as the TV itself does when it comes back on. Only the
+       * published copy is filled in: the state cache above stays as reported.
+       */
+      if (!tvOff) {
+        if (s.app) lastApp = s.app;
+        if (s.app_id) lastAppId = s.app_id;
+      } else {
+        if (!s.app && lastApp) s.app = lastApp;
+        if (!s.app_id && lastAppId) s.app_id = lastAppId;
+      }
       // Retained, so Home Assistant restarting reads the TV as it last was
       // rather than every entity as unknown.
       mqttClient.publish(telemetryTopic, JSON.stringify(s), true);
