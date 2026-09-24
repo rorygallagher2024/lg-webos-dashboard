@@ -310,6 +310,30 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED48C55LA | 25 (10.3.1)  | 33.31.68 | OLED  | Installed over telnet; in-app update to 0.37.2 confirmed       |
 | OLED77C57LA | 25 (10.3.1)  | 33.31.68 | OLED  | MQTT, privacy, screen saver and web dashboard confirmed        |
 
+<details>
+<summary><b>Feature support by webOS version</b></summary>
+
+The web dashboard, ad and telemetry blocking and the Home Assistant bridge do not depend on the webOS version. The features below depend on the TV, and the dashboard shows each one only where the TV has it. A tick names the TVs it has been confirmed on, a cross the TVs known to lack it; a blank cell means no report either way yet.
+
+| Feature                                 | webOS 3          | webOS 4 | webOS 5–6  | webOS 22–24  | webOS 25           |
+| :-------------------------------------- | :--------------- | :------ | :--------- | :----------- | :----------------- |
+| OLED Care panel readings                |                  | ✓ B8    | ✓ CX       | ✓ C2, G4     |                    |
+| Screen shift and logo dimming           |                  | ✓ B8    |            | ✓ C2         |                    |
+| GSR and TPC panel protection            |                  | ✗ B8    | ✓ CX       | ✓ C2         |                    |
+| SoC temperature                         | ✗ UH610V, B7     | ✓ B8    | ✓ CX       | ✓ QNED82, C2 |                    |
+| Storage wear                            | ✗ UH610V, B7     | ✓ B8    | ✓ CX       | ✓ C2, G4     |                    |
+| HDMI 2.1 diagnostics                    |                  | ✗ B8    | ✓ CX, C1   | ✓ C2         |                    |
+| Remote battery level                    |                  | ✗ B8    | ✓ C1       | ✓ C2         |                    |
+| Quick Boot and Wake-on-LAN              |                  |         |            | ✓ C2         |                    |
+| LG logo at power on and off             |                  |         |            | ✓ C2         |                    |
+| Auto device detection                   |                  |         |            | ✓ C2         |                    |
+| Custom screen savers                    |                  | ✓ B8    |            | ✓ C2         | ✓ C3, C5           |
+| Switching to or from LG's screen saver  |                  |         |            | Quick        | About a minute, C3 |
+
+The OLED rows need an OLED panel. The logo light control appears only on models with an illuminated logo; every model reported so far has a standby LED only. Hiding app tiles depends on the install rather than the TV, and is not offered on a Homebrew Channel install.
+
+</details>
+
 **Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with your TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` — whether everything worked or something broke — and we will add a row.
 
 ### 1. Get the files
