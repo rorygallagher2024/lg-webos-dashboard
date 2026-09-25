@@ -225,7 +225,7 @@ var TABS = [
   { key: 'saver',   label: t('tv.tab.screenSaver', 'Screen Saver'), url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: t('tab.privacy', 'Privacy'),      url: '/api/privacy',     build: privacyRows },
   { key: 'service', label: t('tv.tab.serviceMenu', 'Service Menu'), url: '/api/servicemenu', build: svcRows },
-  { key: 'options', label: t('tv.tab.system', 'System'),       url: '/api/stats',       build: optionRows, poll: 5000 },
+  { key: 'options', label: t('tv.tab.system', 'System'),       url: '/api/stats?with=settings', build: optionRows, poll: 5000 },
   { key: 'update',  label: t('tv.tab.updates', 'Updates'),      url: '/api/update',      build: updateRows },
   { key: 'settings', label: t('tv.tab.settings', 'Settings'),    url: '/api/setup',       build: settingsRows }
 ];
@@ -381,6 +381,14 @@ function optionRows(d) {
       r.push(toggle(t('adv.wol', 'Wake-on-LAN'), d.wakeOnLan, 'wakeOnLan',
         t('tv.options.wol.hint', 'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.')));
   }
+  // Sound and SIMPLINK, from lgsettings.js; each shows only where the TV has it.
+  var ls = d.lgSettings || [];
+  var snd = ls.filter(function (x) { return x.section === 'sound'; });
+  var dev = ls.filter(function (x) { return x.section === 'devices'; });
+  if (snd.length) {
+    r.push(head(t('adv.sound', 'Sound')));
+    for (var si = 0; si < snd.length; si++) r.push(lgRow(snd[si]));
+  }
   if (d.lgLogo !== undefined) {
     r.push(head(t('adv.display', 'Display')));
     var logo = toggle(t('adv.lgLogo', 'LG logo'), d.lgLogo, 'lgLogo',
@@ -388,8 +396,9 @@ function optionRows(d) {
     logo.press = d.lgLogo ? t('tv.options.lgLogo.hide', 'Press OK to hide it') : t('tv.options.lgLogo.show', 'Press OK to show it');
     r.push(logo);
   }
+  if (d.deviceDetection !== undefined || dev.length) r.push(head(t('adv.devices', 'Devices')));
+  for (var di = 0; di < dev.length; di++) r.push(lgRow(dev[di]));
   if (d.deviceDetection !== undefined) {
-    r.push(head(t('adv.devices', 'Devices')));
     r.push(toggle(t('adv.deviceDetection', 'Auto device detection'), d.deviceDetection, 'deviceDetection',
       t('tv.options.deviceDetection.hint', 'Finds devices to show on the Home Dashboard and control: a set-top box, and smart lights, plugs and switches such as Philips Hue, LIFX and TP-Link Kasa. Newer TVs look up every address on your home network each time they switch on to do it. Switched off, the scans stop and the TV no longer finds devices by itself.')));
   }
@@ -426,26 +435,33 @@ function gameRows(d) {
   if (!d || !d.ok) return [];
   if (!d.available) return [{ label: t('tv.game.none', 'This TV has no Game Optimizer'), value: '' }];
   var r = [head(t('game.optimizer', 'Game Optimizer'))];
-  for (var i = 0; i < d.rows.length; i++) {
-    var g = d.rows[i];
-    if (g.type === 'choice') {
-      var at = 0;
-      for (var c = 0; c < g.choices.length; c++) if (g.choices[c].value === g.value) at = c;
-      var nx = g.choices[(at + 1) % g.choices.length];
-      r.push({ label: g.title, value: g.choices[at].label, cls: 'act', act: 'lgValue', key: g.id, next: nx.value,
-               press: t('tv.game.next', 'Press OK for {name}', { name: nx.label }), hint: g.desc });
-    } else if (g.type === 'number') {
-      var up = g.value >= g.max ? g.min : g.value + 1;
-      r.push({ label: g.title, value: String(g.value), cls: 'act', act: 'lgValue', key: g.id, next: up,
-               press: t('tv.game.next', 'Press OK for {name}', { name: String(up) }), hint: g.desc });
-    } else {
-      r.push({ label: g.title, value: g.on ? t('common.on', 'On') : t('common.off', 'Off'), cls: g.on ? 'on' : 'off',
-               act: 'lgSetting', key: g.id, on: g.on,
-               press: g.on ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
-               hint: g.desc });
-    }
-  }
+  for (var i = 0; i < d.rows.length; i++) r.push(lgRow(d.rows[i]));
   return r;
+}
+
+/*
+ * One of lgsettings.js's rows. A choice steps to its next value on OK, and a
+ * number rises by one, back to its lowest after the highest - except a wide
+ * range, such as balance's 101 steps, which is shown and left to a browser.
+ */
+function lgRow(g) {
+  if (g.type === 'choice') {
+    var at = 0;
+    for (var c = 0; c < g.choices.length; c++) if (g.choices[c].value === g.value) at = c;
+    var nx = g.choices[(at + 1) % g.choices.length];
+    return { label: g.title, value: g.choices[at].label, cls: 'act', act: 'lgValue', key: g.id, next: nx.value,
+             press: t('tv.game.next', 'Press OK for {name}', { name: nx.label }), hint: g.desc };
+  }
+  if (g.type === 'number') {
+    if (g.max - g.min > 30) return { label: g.title, value: String(g.value), hint: g.desc, web: '/?tab=advanced' };
+    var up = g.value >= g.max ? g.min : g.value + 1;
+    return { label: g.title, value: String(g.value), cls: 'act', act: 'lgValue', key: g.id, next: up,
+             press: t('tv.game.next', 'Press OK for {name}', { name: String(up) }), hint: g.desc };
+  }
+  return { label: g.title, value: g.on ? t('common.on', 'On') : t('common.off', 'Off'), cls: g.on ? 'on' : 'off',
+           act: 'lgSetting', key: g.id, on: g.on,
+           press: g.on ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+           hint: g.desc };
 }
 
 function oledRows(d) {

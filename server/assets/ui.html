@@ -379,9 +379,9 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
           font-variant-numeric:tabular-nums;white-space:nowrap}
 .game-fps em{font-size:.2em}
 .game-fps.empty{font-size:clamp(52px,9vw,90px)}
-.game-step{display:flex;align-items:center;gap:10px}
-.game-step .num{min-width:2ch;text-align:center;font-size:15px}
-.game-step button{min-width:34px;padding:4px 0}
+.lgs-step{display:flex;align-items:center;gap:10px}
+.lgs-step .num{min-width:3ch;text-align:center;font-size:15px}
+.lgs-step button{min-width:34px;padding:4px 0}
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
@@ -1074,7 +1074,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <div class="oled-controls">
       <div class="grp" data-t="game.optimizer">Game Optimizer</div>
       <div class="sub" id="gm-scope" style="margin-bottom:14px"></div>
-      <div id="game-rows"></div>
+      <div id="game-rows" data-reload="loadGame"></div>
     </div>
   </div>
 </section>
@@ -1141,8 +1141,12 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
   </div>
 
+  <div class="pv-sec adv-sec" id="adv-sound" hidden data-t="adv.sound">Sound</div>
+  <div class="prot-table" id="adv-lgs-sound" data-reload="loadAdvSettings"></div>
+
   <div class="pv-sec adv-sec" id="adv-devices" hidden data-t="adv.devices">Devices</div>
   <div class="prot-table">
+    <div id="adv-lgs-devices" data-reload="loadAdvSettings" style="display:contents"></div>
     <div class="prot-row" id="row-devdetect" hidden>
       <div class="prot-main">
         <div class="prot-title" data-t="adv.deviceDetection">Auto device detection</div>
@@ -1820,7 +1824,7 @@ async function tick() {
       advPill('logolight', 'lt_logo', lights.hasLogo ? lights.logo : undefined);
       if (q('adv-display')) q('adv-display').hidden = d.lgLogo === undefined;
       advPill('devdetect', 'btn_devdetect', d.deviceDetection);
-      if (q('adv-devices')) q('adv-devices').hidden = d.deviceDetection === undefined;
+      if (q('adv-devices')) q('adv-devices').hidden = d.deviceDetection === undefined && !advLgsDevices;
       if (q('tl-cur')) {
         q('tl-cur').textContent = st === 'off' ? t('common.off', 'Off') : t('ctl.sleep.minutes', '{n} min', { n: st });
       }
@@ -2705,40 +2709,63 @@ async function loadGame() {
   const where = d.input && d.input !== 'none' ? inputName(d.input.toLowerCase()) : '';
   q('gm-scope').textContent = (where ? t('game.scope', 'LG keeps these for each input and genre. Showing {input}.', { input: where }) : '') +
     (d.pictureMode && d.pictureMode !== 'game' ? ' ' + t('game.notGameMode', 'They apply while the picture mode is Game Optimizer.') : '');
-  q('game-rows').innerHTML = d.rows.map(r => {
-    let ctl;
-    if (r.type === 'choice') {
-      ctl = '<select class="pill-sel" data-game="' + esc(r.id) + '">' +
-        r.choices.map(c => '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
-        '</select>';
-    } else if (r.type === 'number') {
-      ctl = '<div class="game-step">' +
-        '<button class="pill" data-game="' + esc(r.id) + '" data-value="' + (r.value - 1) + '"' + (r.value <= r.min ? ' disabled' : '') + '>&minus;</button>' +
-        '<span class="num">' + esc(String(r.value)) + '</span>' +
-        '<button class="pill" data-game="' + esc(r.id) + '" data-value="' + (r.value + 1) + '"' + (r.value >= r.max ? ' disabled' : '') + '>+</button></div>';
-    } else {
-      ctl = '<button class="pill ' + (r.on ? 'good' : 'idle') + '" data-game="' + esc(r.id) + '" data-on="' + (r.on ? '0' : '1') + '">' +
-        esc(r.on ? t('common.on', 'On') : t('common.off', 'Off')) + '</button>';
-    }
-    return '<div class="oled-row"><div><div class="oled-name">' + esc(r.title) + '</div>' +
-      '<div class="oled-desc">' + esc(r.desc) + '</div></div><div>' + ctl + '</div></div>';
-  }).join('');
+  q('game-rows').innerHTML = d.rows.map(r =>
+    '<div class="oled-row"><div><div class="oled-name">' + esc(r.title) + '</div>' +
+    '<div class="oled-desc">' + esc(r.desc) + '</div></div><div>' + lgsControl(r) + '</div></div>').join('');
 }
 
-async function setGame(id, value) {
-  await c('lgSetting', value === true || value === false ? { id, on: value } : { id, value });
-  loadGame();
+/* ---- LG's own settings --------------------------------------------------
+   One row of lgsettings.js as a control: a pill for a switch, a list for a
+   choice, a stepper for a number. After a change, the loader named by the
+   nearest data-reload redraws the rows. */
+function lgsControl(r) {
+  const id = ' data-lgs="' + esc(r.id) + '"';
+  if (r.type === 'choice') {
+    return '<select class="pill-sel"' + id + '>' +
+      r.choices.map(c => '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
+      '</select>';
+  }
+  if (r.type === 'number') {
+    return '<div class="lgs-step">' +
+      '<button class="pill"' + id + ' data-value="' + (r.value - 1) + '"' + (r.value <= r.min ? ' disabled' : '') + '>&minus;</button>' +
+      '<span class="num">' + esc(String(r.value)) + '</span>' +
+      '<button class="pill"' + id + ' data-value="' + (r.value + 1) + '"' + (r.value >= r.max ? ' disabled' : '') + '>+</button></div>';
+  }
+  return '<button class="pill ' + (r.on ? 'good' : 'idle') + '"' + id + ' data-on="' + (r.on ? '0' : '1') + '">' +
+    esc(r.on ? t('common.on', 'On') : t('common.off', 'Off')) + '</button>';
+}
+
+async function setLgs(el, value) {
+  const box = el.closest('[data-reload]');
+  await c('lgSetting', value === true || value === false ? { id: el.dataset.lgs, on: value } : { id: el.dataset.lgs, value });
+  if (box && typeof window[box.dataset.reload] === 'function') window[box.dataset.reload]();
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('#game-rows button[data-game]');
+  const b = e.target.closest('button[data-lgs]');
   if (!b) return;
   b.disabled = true;
-  setGame(b.dataset.game, b.dataset.on !== undefined ? b.dataset.on === '1' : Number(b.dataset.value));
+  setLgs(b, b.dataset.on !== undefined ? b.dataset.on === '1' : Number(b.dataset.value));
 });
 document.addEventListener('change', e => {
-  const s = e.target.closest('#game-rows select[data-game]');
-  if (s) setGame(s.dataset.game, s.value);
+  const sel = e.target.closest('select[data-lgs]');
+  if (sel) setLgs(sel, sel.value);
 });
+
+// The Advanced tab's Sound section, and the SIMPLINK rows in Devices.
+var advLgsDevices = false;   // read by tick(), which can run before this line on the first load
+async function loadAdvSettings() {
+  let d;
+  try { d = await (await fetch(api('/api/lgsettings?section=sound,devices'), { cache: 'no-store' })).json(); } catch (e) { return; }
+  const row = r => '<div class="prot-row"><div class="prot-main"><div class="prot-title">' + esc(r.title) + '</div>' +
+    '<div class="prot-desc">' + esc(r.desc) + '</div></div><div class="prot-status">' + lgsControl(r) + '</div></div>';
+  const sound = (d.rows || []).filter(r => r.section === 'sound');
+  const devices = (d.rows || []).filter(r => r.section === 'devices');
+  q('adv-sound').hidden = !sound.length;
+  q('adv-lgs-sound').innerHTML = sound.map(row).join('');
+  advLgsDevices = devices.length > 0;
+  if (advLgsDevices) q('adv-devices').hidden = false;
+  q('adv-lgs-devices').innerHTML = devices.map(row).join('');
+}
 
 async function pollFps() {
   let d;
@@ -3612,6 +3639,7 @@ function showTab(name) {
   if (name === 'server') loadTvApp();
   if (name === 'oledcare') loadOledCare();
   gamePolling(name === 'game');
+  if (name === 'advanced') loadAdvSettings();
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();
   if (name === 'privacy') loadPrivacy();
