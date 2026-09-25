@@ -1507,6 +1507,10 @@
   "text": "Resumen",
   "from": "Overview"
  },
+ "pv.promotions": {
+  "text": "Anuncios y promociones de LG",
+  "from": "LG ads and promotions"
+ },
  "pv.recognition": {
   "text": "Reconocimiento",
   "from": "Recognition"
@@ -2262,6 +2266,58 @@
  "srv.ha.cat.video.desc": {
   "text": "Modo de imagen activo, rango dinámico, tasa de refresco, VRR, ALLM y modo de enlace.",
   "from": "Active picture mode, dynamic range, refresh rate, VRR, ALLM, and link mode."
+ },
+ "srv.lgs.aiNudge": {
+  "text": "Consejos inteligentes",
+  "from": "Smart tips"
+ },
+ "srv.lgs.aiNudge.desc": {
+  "text": "Sugerencias de funciones de la TV que aparecen mientras ves algo o usas una app. LG lo llama Smart Tips.",
+  "from": "Suggestions for TV features that pop up while watching or using an app. LG calls this Smart Tips."
+ },
+ "srv.lgs.aiSettingsNudge": {
+  "text": "Consejos inteligentes en Ajustes",
+  "from": "Smart tips in Settings"
+ },
+ "srv.lgs.aiSettingsNudge.desc": {
+  "text": "Ajustes sugeridos que aparecen en el menú de Ajustes de LG. LG lo llama Smart Tips in Settings.",
+  "from": "Suggested settings shown in LG's Settings menu. LG calls this Smart Tips in Settings."
+ },
+ "srv.lgs.contentRecommendation": {
+  "text": "Recomendaciones en Inicio",
+  "from": "Recommendations on Home"
+ },
+ "srv.lgs.contentRecommendation.desc": {
+  "text": "Filas de programas y películas recomendados en la pantalla de Inicio. LG lo llama Content Recommendation.",
+  "from": "Rows of recommended programmes and films on the Home screen. LG calls this Content Recommendation."
+ },
+ "srv.lgs.homePromotion": {
+  "text": "Mosaicos patrocinados en Inicio",
+  "from": "Sponsored tiles on Home"
+ },
+ "srv.lgs.homePromotion.desc": {
+  "text": "Anuncios marcados como patrocinados en la pantalla de Inicio. LG lo llama Home Promotion.",
+  "from": "Adverts marked Sponsored on the Home screen. LG calls this Home Promotion."
+ },
+ "srv.lgs.livePromotion": {
+  "text": "Anuncios mientras ves contenido",
+  "from": "Ads while watching"
+ },
+ "srv.lgs.livePromotion.desc": {
+  "text": "Anuncios y ofertas que aparecen sobre lo que hay en pantalla, mientras Live Plus de LG está activado. LG lo llama Live Promotion.",
+  "from": "Adverts and offers shown over what is on screen, while LG's Live Plus is on. LG calls this Live Promotion."
+ },
+ "srv.lgs.screenSaverAd": {
+  "text": "Anuncios en el salvapantallas",
+  "from": "Screen saver ads"
+ },
+ "srv.lgs.screenSaverAd.desc": {
+  "text": "Anuncios que algunas apps, como LG Channels, muestran en el salvapantallas. LG lo llama Screen Saver Promotion.",
+  "from": "Adverts that some apps, such as LG Channels, show in the screen saver. LG calls this Screen Saver Promotion."
+ },
+ "srv.lgsettings.unknown": {
+  "text": "Ajuste desconocido",
+  "from": "Unknown setting"
  },
  "srv.mqtt.dropped": {
   "text": "conexión perdida, reintentando",
