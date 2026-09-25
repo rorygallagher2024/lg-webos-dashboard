@@ -27,9 +27,30 @@ function pump() {
   }
 }
 
+/*
+ * A child killed by a signal it was not sent by the timeout died before
+ * answering. On a 50UP81006LR (webOS 6.5, node v8.12.0) children aborted with
+ * libuv's "uv_close: Assertion `!uv__is_closing(handle)' failed" at start and
+ * the model name was lost; run by hand, the same call answered. Such a child
+ * never reached luna-send, so running the call again is safe, writes included.
+ */
+function diedEarly(err) {
+  return !!(err && err.signal && !err.killed);
+}
+
 function run(job) {
   execFile('/usr/bin/luna-send', job.args, { timeout: 3500 }, function (err, stdout) {
     running--;
+    if (diedEarly(err)) {
+      var uri = job.args[job.args.length - 2];
+      console.error('luna: ' + uri + ' died (' + err.signal + ') before answering' +
+                    (job.retried ? ', giving up' : ', trying once more'));
+      if (!job.retried) {
+        job.retried = true;
+        waiting.unshift(job);
+        return pump();
+      }
+    }
     pump();
     var parsed = null;
     if (!err && stdout) {

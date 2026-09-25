@@ -27,9 +27,15 @@ function getIsOled() {
   return isOled;
 }
 
-function detectOled(cb) {
+// As telemetry's device detection: a lost answer at start should not settle
+// the panel type for the life of the process.
+var MODEL_TRIES = 3;
+var MODEL_RETRY_MS = 3000;
+
+function detectOled(cb, triesLeft) {
   cb = cb || function () {};
   if (isOled !== null) return cb(isOled);
+  if (triesLeft === undefined) triesLeft = MODEL_TRIES - 1;
 
   var forced = config.panel || (config.device && config.device.panel);
   if (forced) {
@@ -48,6 +54,11 @@ function detectOled(cb) {
     { keys: ['modelName'] },
     function (res) {
       var model = (res && res.modelName) || (config.device && config.device.model) || '';
+      // "webOS TV" is the placeholder telemetry sets when it could not read one.
+      if (model === 'webOS TV') model = '';
+      if (!model && !(res && res.returnValue) && triesLeft > 0) {
+        return setTimeout(function () { detectOled(cb, triesLeft - 1); }, MODEL_RETRY_MS);
+      }
       if (model) {
         isOled = /oled/i.test(model);
         console.log('panel: ' + (isOled ? 'OLED' : 'not OLED - panel features disabled') +

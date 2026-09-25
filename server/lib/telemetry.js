@@ -830,14 +830,25 @@ function detectHardwareInfo(sdkVersion, cb) {
   });
 }
 
-function detectDeviceInfo(cb) {
+// Tries left, and the wait between them, when the model name does not come
+// back at start: a lost answer otherwise leaves "webOS TV" until a restart.
+var DEVICE_INFO_TRIES = 3;
+var DEVICE_INFO_RETRY_MS = 3000;
+
+function detectDeviceInfo(cb, triesLeft) {
   if (!lunaFn) {
     if (cb) cb();
     return;
   }
+  if (triesLeft === undefined) triesLeft = DEVICE_INFO_TRIES - 1;
   lunaFn('com.webos.service.tv.systemproperty/getSystemProperties',
     { keys: ['modelName', 'firmwareVersion', 'boardType', 'sdkVersion'] },
     function (res) {
+      if (!(res && res.modelName) && triesLeft > 0) {
+        console.error('device: model name not read, trying again');
+        return setTimeout(function () { detectDeviceInfo(cb, triesLeft - 1); }, DEVICE_INFO_RETRY_MS);
+      }
+      if (!(res && res.modelName)) console.error('device: model name could not be read');
       if (configObj && configObj.device) {
         if (res && res.modelName) {
           if (!configObj.device.model || configObj.device.model === 'OLED65B8SLC' || configObj.device.model === 'webOS TV') {
