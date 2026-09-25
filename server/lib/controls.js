@@ -524,7 +524,10 @@ function doControl(action, value, cb) {
     // One of lgsettings.js's rows: { id, on }.
     case 'lgSetting':
       if (!value || typeof value.id !== 'string') return cb({ ok: false, error: 'lgSetting needs an id' });
-      return lgSettings.set(value.id, value.on === true, cb);
+      return lgSettings.set(value.id, value.on === true, function (r) {
+        privacy.clearCache();
+        cb(r);
+      });
 
     case 'lgLogo':
       var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');

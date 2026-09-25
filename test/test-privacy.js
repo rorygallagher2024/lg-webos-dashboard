@@ -58,6 +58,21 @@ test('the summary counts what is on, and leaves voice, LG Channels and fixed fla
   assert.deepEqual(sm.kept, ['Voice recordings', 'LG Channels']);
 });
 
+test("LG's ads on screen count, and switching all off turns off the ones that are on", function () {
+  var sm = privacy.simpleSummary({
+    consentWritable: true,
+    consent: { known: [], other: [] },
+    adblock: { mode: 'ads' },
+    lgSettings: [
+      { id: 'livePromotion', section: 'promotions', title: 'Ads while watching', on: true },
+      { id: 'homePromotion', section: 'promotions', title: 'Sponsored tiles on Home', on: false }
+    ]
+  });
+  var screen = sm.areas.filter(function (a) { return a.id === 'onScreen'; })[0];
+  assert.deepEqual(screen.items, [{ label: 'Ads while watching', action: 'lgSetting', value: { id: 'livePromotion', on: false } }]);
+  assert.strictEqual(sm.total, 1);
+});
+
 test('the table still carries the marker the mount is detected by', function () {
   assert.ok(privacy.adBlockHostsTable('ads').indexOf('lg-webos-dashboard') !== -1);
 });

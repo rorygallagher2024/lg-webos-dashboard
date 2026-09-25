@@ -314,7 +314,8 @@ function mapPowerState(raw) {
   return { raw: raw || null, label: raw || 'Unknown', systemOn: false, screenOn: false };
 }
 
-privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG });
+lgSettings.init({ luna: luna, lunaCached: lunaCached, clearLunaCache: clearLunaCache });
+privacy.init({ luna: luna, lunaCached: lunaCached, config: CONFIG, lgSettings: lgSettings });
 oled.init({ luna: luna, config: CONFIG });
 appsModule.init({ luna: luna, config: CONFIG });
 servicesModule.init({ stateDir: __dirname });
@@ -360,8 +361,6 @@ var INPUTS = ha.INPUTS;
 // Doing it later would let the tiles show after every cold boot, so installs
 // from there go without it.
 var TILE_HIDING_OFF = 'hiding home-screen tiles is not available when installed from the Homebrew Channel';
-
-lgSettings.init({ luna: luna, lunaCached: lunaCached, clearLunaCache: clearLunaCache });
 
 controls.init({
   luna: luna,
@@ -558,7 +557,6 @@ routes.init({
   telemetry: telemetry,
   oled: oled,
   privacy: privacy,
-  lgSettings: lgSettings,
   apps: appsModule,
   services: servicesModule,
   screensavers: screensavers,

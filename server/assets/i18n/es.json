@@ -1376,8 +1376,8 @@
   "from": "Every setting, one by one"
  },
  "pv.allOff": {
-  "text": "El seguimiento y los anuncios dirigidos están desactivados",
-  "from": "Tracking and targeted ads are off"
+  "text": "El seguimiento y los anuncios están desactivados",
+  "from": "Tracking and ads are off"
  },
  "pv.allOff.hint": {
   "text": "Desactivarlo todo mantiene las funciones de la TV en marcha. Se puede deshacer en Avanzado.",
@@ -2390,6 +2390,14 @@
  "srv.privacy.area.ads.detail": {
   "text": "Anunciantes que rastrean la TV entre apps para dirigirte anuncios.",
   "from": "Advertisers tracking the TV across apps, to target ads at you."
+ },
+ "srv.privacy.area.onScreen": {
+  "text": "Anuncios de LG en pantalla",
+  "from": "LG ads on screen"
+ },
+ "srv.privacy.area.onScreen.detail": {
+  "text": "Anuncios, mosaicos patrocinados y consejos que LG muestra en la TV.",
+  "from": "Adverts, sponsored tiles and tips that LG shows on the TV."
  },
  "srv.privacy.area.reports": {
   "text": "Informes de uso",

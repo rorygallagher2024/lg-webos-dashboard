@@ -609,7 +609,7 @@ function privacyRows(d) {
     var can = d.consentWritable !== false;
     r.push(head(t('tv.privacy.head.trackingAndAdsOverview', 'Tracking and ads overview')));
     r.push({ label: sm.total ? (sm.total === 1 ? t('pv.stillOn.one', '1 thing is still on') : t('pv.stillOn', '{n} things are still on', { n: sm.total }))
-                             : t('pv.allOff', 'Tracking and targeted ads are off'),
+                             : t('pv.allOff', 'Tracking and ads are off'),
              value: sm.total ? (can ? t('pv.switchAllOff', 'Switch it all off') : t('pv.areaOn', '{n} on', { n: sm.total })) : t('pv.allOffShort', 'All off'),
              cls: sm.total ? (can ? 'act' : 'off') : 'on',
              act: sm.total && can ? 'allOff' : null,

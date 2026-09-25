@@ -27,7 +27,6 @@ var controlsModule = null;
 var telemetryModule = null;
 var oledModule = null;
 var privacyModule = null;
-var lgSettingsModule = null;
 var appsModule = null;
 var servicesModule = null;
 var screensaversModule = null;
@@ -714,15 +713,7 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/privacy') {
-    return privacyModule.collectPrivacy(function (pv) {
-      // The TV dashboard reads one endpoint per page, so LG's own settings
-      // for this page come with it. Copied, since pv is privacy.js's cache.
-      lgSettingsModule.collect(function (ls) {
-        var copy = JSON.parse(JSON.stringify(pv));
-        copy.lgSettings = ls.rows;
-        send(res, 200, JSON.stringify(copy));
-      });
-    });
+    return privacyModule.collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
   }
 
   if (pathname === '/api/apps' && req.method === 'GET') {
@@ -978,7 +969,6 @@ function init(opts) {
   if (opts.telemetry) telemetryModule = opts.telemetry;
   if (opts.oled) oledModule = opts.oled;
   if (opts.privacy) privacyModule = opts.privacy;
-  if (opts.lgSettings) lgSettingsModule = opts.lgSettings;
   if (opts.apps) appsModule = opts.apps;
   if (opts.services) servicesModule = opts.services;
   if (opts.screensavers) screensaversModule = opts.screensavers;

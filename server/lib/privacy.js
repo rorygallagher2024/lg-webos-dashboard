@@ -210,6 +210,7 @@ var config = {};
 var cachedAdBlockActive = null;
 var lastAdBlockCheck = 0;
 var cachedPrivacy = null;
+var lgSettingsModule = null;
 var lastPrivacyCheck = 0;
 var consentGroups = null;
 var consentMapFound = false;
@@ -657,10 +658,13 @@ function collectPrivacy(cb) {
               adCount: adBlockAds().length,
               platform: adBlockPlatform()
             };
-            out.simple = simpleSummary(out);
-            cachedPrivacy = out;
-            lastPrivacyCheck = Date.now();
-            cb(out);
+            lgSettingsModule.collect(function (ls) {
+              out.lgSettings = ls.rows;
+              out.simple = simpleSummary(out);
+              cachedPrivacy = out;
+              lastPrivacyCheck = Date.now();
+              cb(out);
+            });
           });
         });
       });
@@ -709,10 +713,18 @@ function simpleSummary(p) {
     if (!x.onDemand && x.stoppable && x.running) reports.push({ label: msg('srv.privacy.item.running', '{name} is running', { name: x.label }), service: x.name });
   });
 
+  // LG's own ads and tips on screen, from lgsettings.js. Switching them off
+  // stops nothing the TV does.
+  var onScreen = [];
+  (p.lgSettings || []).forEach(function (r) {
+    if (r.section === 'promotions' && r.on && writable) onScreen.push({ label: r.title, action: 'lgSetting', value: { id: r.id, on: false } });
+  });
+
   var areas = [
     { id: 'watching', name: msg('srv.privacy.area.watching', 'Screen recognition'), detail: msg('srv.privacy.area.watching.detail', 'LG identifying what you watch, to target ads at you.'), items: watching },
     { id: 'ads', name: msg('srv.privacy.area.ads', 'Ad tracking'), detail: msg('srv.privacy.area.ads.detail', 'Advertisers tracking the TV across apps, to target ads at you.'), items: ads },
-    { id: 'reports', name: msg('srv.privacy.area.reports', 'Usage reports'), detail: msg('srv.privacy.area.reports.detail', 'Usage and diagnostic reports sent to LG, and data passed to other companies.'), items: reports }
+    { id: 'reports', name: msg('srv.privacy.area.reports', 'Usage reports'), detail: msg('srv.privacy.area.reports.detail', 'Usage and diagnostic reports sent to LG, and data passed to other companies.'), items: reports },
+    { id: 'onScreen', name: msg('srv.privacy.area.onScreen', 'LG ads on screen'), detail: msg('srv.privacy.area.onScreen.detail', 'Adverts, sponsored tiles and tips that LG shows on the TV.'), items: onScreen }
   ];
   var total = 0;
   areas.forEach(function (a) { total += a.items.length; });
@@ -808,6 +820,7 @@ function setConsent(ckey, cOn, cb) {
 
 function init(opts) {
   opts = opts || {};
+  if (opts.lgSettings) lgSettingsModule = opts.lgSettings;
   if (opts.luna) luna = opts.luna;
   if (opts.lunaCached) lunaCached = opts.lunaCached;
   if (opts.config) config = opts.config;
