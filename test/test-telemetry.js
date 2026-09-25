@@ -35,6 +35,7 @@ telemetry.init({
   oled: oledMock,
   privacy: privacyMock,
   screensavers: screensaversMock,
+  services: { isDisabled: function () { return false; } },
   tvwebVersion: '0.36.0',
   mapPowerState: function (raw) {
     return { raw: raw, label: 'On', systemOn: true, screenOn: true };
@@ -231,8 +232,24 @@ telemetry.refreshInstalledApps(function (apps) {
         assert.ok(Array.isArray(stats.apps) && stats.apps.length === 2);
 
         console.log('  ✓ collectStats aggregates full telemetry payload including apps');
-        console.log('ALL test-telemetry.js assertions passed!\n');
-        mockEnv.restore();
+
+        // 11. LG's Always Ready display reads as switched off, not "Active"
+        var settings = mockEnv.luna['com.webos.service.settings/getSystemSettings'].settings;
+        settings.lifeOnScreenMode = 'allEnabled';
+        mockEnv.luna['com.webos.service.tvpower/power2/getPowerState'] =
+          { returnValue: true, state: 'ACTIVE', 'sub state': 'always on display' };
+        telemetry.clearCache();
+        telemetry.collectStats(function (first) {
+          assert.strictEqual(first.alwaysReadyScreen, true);
+          telemetry.clearCache();
+          telemetry.collectStats(function (second) {
+            assert.strictEqual(second.powerState.raw, 'Always Ready');
+            delete settings.lifeOnScreenMode;
+            console.log('  ✓ the Always Ready display is reported as its own power state');
+            console.log('ALL test-telemetry.js assertions passed!\n');
+            mockEnv.restore();
+          });
+        });
       });
     });
   });

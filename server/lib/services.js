@@ -76,7 +76,7 @@ var CATALOG = [
     unit: 'alwaysready.service',
     upstart: null,
     badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '3.1' }),
-    desc: msg('srv.service.alwaysready.desc', 'Background wallpaper and ambient widget listener when the screen is in standby.')
+    desc: msg('srv.service.alwaysready.desc', 'Shows LG\'s Always Ready screen, such as a clock, when the TV is switched off. Turning it off here also stops Always Ready under Advanced.')
   },
   {
     id: 'remotelogger',
@@ -429,10 +429,15 @@ function toggleService(id, disabled, cb) {
   }
 }
 
+function isDisabled(id) {
+  return readDisabledList().indexOf(id) !== -1;
+}
+
 module.exports = {
   init: init,
   CATALOG: CATALOG,
   getServices: getServices,
   toggleService: toggleService,
+  isDisabled: isDisabled,
   startEnforcing: startEnforcing
 };

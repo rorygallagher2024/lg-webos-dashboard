@@ -279,6 +279,8 @@ var POWER_STATES = {
   'on':              [msg('srv.power.on', 'On'),          true,  true],
   'screenoff':       [msg('srv.power.screenOff', 'Screen off'),  true,  false],
   'screensaver':     [msg('srv.power.screenSaver', 'Screen Saver'),true,  true],
+  // LG's Always Ready display: switched off, showing a clock or artwork.
+  'alwaysready':     [msg('srv.power.alwaysReady', 'Always Ready'), false, false],
   'activestandby':   [msg('srv.power.standby', 'Standby'),     false, false],
   'standby':         [msg('srv.power.standby', 'Standby'),     false, false],
   'suspend':         [msg('srv.power.standby', 'Standby'),     false, false],
@@ -333,7 +335,8 @@ telemetry.init({
   screensavers: screensavers,
   tvwebVersion: TVWEB_VERSION,
   mapPowerState: mapPowerState,
-  isScreenSaver: isScreenSaver
+  isScreenSaver: isScreenSaver,
+  services: servicesModule
 });
 
 var liveState = stateModule.init({

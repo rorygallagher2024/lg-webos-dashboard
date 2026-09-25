@@ -1061,6 +1061,16 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_ar" onclick="toggleAlwaysReady()">&mdash;</button></div>
     </div>
+    <div class="prot-row" id="row-ars" hidden>
+      <div class="prot-main">
+        <div class="prot-title" data-t="adv.alwaysReady">Always Ready</div>
+        <div class="prot-desc" data-t="adv.alwaysReady.desc">Switched off with the remote, the TV shows LG's Always Ready screen, such as a
+          clock or artwork, instead of going dark, from the next time it is switched off. Uses about 30 W on an LG C2, close
+          to what it uses when on. The first time, the TV asks for OK on the remote. Home turns the TV back on from the
+          clock; the power button switches it fully off.</div>
+      </div>
+      <div class="prot-status"><button type="button" class="pill idle" id="btn_ars" onclick="toggleAlwaysReadyScreen()">&mdash;</button></div>
+    </div>
     <div class="prot-row" id="row-aroff" hidden>
       <div class="prot-main">
         <div class="prot-title" data-t="adv.nightlyOff">Nightly power-down</div>
@@ -1755,6 +1765,7 @@ async function tick() {
       // Each setting shows only where the TV has it; Display only when it has any.
       advPill('quickboot', 'btn_quickboot', d.quickBoot);
       advPill('ar', 'btn_ar', d.alwaysReady);
+      advPill('ars', 'btn_ars', d.alwaysReadyScreen);
       arOffRow(d.alwaysReady ? d.alwaysReadyOff : undefined);
       advPill('wol', 'btn_wol', d.wakeOnLan);
       advPill('lglogo', 'btn_lglogo', d.lgLogo);
@@ -2429,6 +2440,7 @@ function toggleLgLogo() { c('lgLogo', flip('btn_lglogo')); }
 function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 function toggleDeviceDetection() { c('deviceDetection', flip('btn_devdetect')); }
 function toggleAlwaysReady() { c('alwaysReady', flip('btn_ar')); }
+function toggleAlwaysReadyScreen() { c('alwaysReadyScreen', flip('btn_ars')); }
 // Shown only while Always-on is on: with it off, the TV sleeps every night anyway.
 function arOffRow(win) {
   const row = q('row-aroff'), sel = q('sel_aroff');

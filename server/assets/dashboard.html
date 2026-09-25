@@ -349,7 +349,7 @@ function optionRows(d) {
     return { label: label, value: on ? (onWord || t('common.on', 'On')) : (offWord || t('common.off', 'Off')), cls: 'act', act: act, on: !!on,
              press: on ? t('tv.press.turnOff', 'Press OK to turn off') : t('tv.press.turnOn', 'Press OK to turn on'), hint: hint };
   }
-  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.alwaysReady !== undefined) {
+  if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.alwaysReady !== undefined || d.alwaysReadyScreen !== undefined) {
     r.push(head(t('adv.power', 'Power')));
     if (d.quickBoot !== undefined)
       r.push(toggle(t('adv.quickBoot', 'Quick Boot'), d.quickBoot, 'quickBoot',
@@ -357,6 +357,9 @@ function optionRows(d) {
     if (d.alwaysReady !== undefined)
       r.push(toggle(t('adv.stayConnected', 'Stay connected when off'), d.alwaysReady, 'alwaysReady',
         t('tv.options.stayConnected.hint', 'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2.')));
+    if (d.alwaysReadyScreen !== undefined)
+      r.push(toggle(t('adv.alwaysReady', 'Always Ready'), d.alwaysReadyScreen, 'alwaysReadyScreen',
+        t('tv.options.alwaysReady.hint', 'Switched off with the remote, the TV shows LG\'s Always Ready screen, such as a clock or artwork, instead of going dark, from the next time it is switched off. Uses about 30 W on an LG C2, close to what it uses when on. Home turns the TV back on from the clock; the power button switches it fully off.')));
     // Only while it is on: with it off, the TV sleeps every night anyway.
     if (d.alwaysReady && d.alwaysReadyOff)
       r.push({ label: t('adv.nightlyOff', 'Nightly power-down'), value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,
@@ -1371,6 +1374,8 @@ function activate() {
       return send({ action: 'deviceDetection', value: !r.on }, r.on ? t('tv.flash.detectionOff', 'Device detection turned off') : t('tv.flash.detectionOn', 'Device detection turned on'));
     case 'alwaysReady':
       return send({ action: 'alwaysReady', value: !r.on }, r.on ? t('tv.flash.willSleep', 'Will sleep when off') : t('tv.flash.willStay', 'Will stay connected when off'));
+    case 'alwaysReadyScreen':
+      return send({ action: 'alwaysReadyScreen', value: !r.on }, r.on ? t('tv.flash.alwaysReadyOff', 'Always Ready turned off') : t('tv.flash.alwaysReadyOn', 'Always Ready turned on'));
     case 'lgLogo':
       return send({ action: 'lgLogo', value: !r.on }, r.on ? t('tv.flash.logoHidden', 'LG logo hidden') : t('tv.flash.logoShown', 'LG logo shown'));
     case 'wakeOnLan':

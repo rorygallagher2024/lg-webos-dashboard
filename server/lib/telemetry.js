@@ -29,6 +29,8 @@ var configObj = null;
 var oledModule = null;
 var privacyModule = null;
 var screensaversModule = null;
+var alwaysReadyScreenOn = false;
+var servicesModule = null;
 var tvwebVersionStr = '0.0.0';
 var mapPowerStateFn = null;
 var isScreenSaverFn = null;
@@ -97,6 +99,7 @@ function init(opts) {
   oledModule = opts.oled;
   privacyModule = opts.privacy;
   screensaversModule = opts.screensavers;
+  servicesModule = opts.services;
   tvwebVersionStr = opts.tvwebVersion || '0.0.0';
   mapPowerStateFn = opts.mapPowerState;
   isScreenSaverFn = opts.isScreenSaver;
@@ -1055,8 +1058,23 @@ function collectStats(cb) {
     return flushStats(out);
   }
 
+  /*
+   * In LG's Always Ready display the TV is switched off to the user, but
+   * power/getPowerState still reads "Active"; only power2 has a sub state for
+   * it. Asked only while Always Ready is on, so TVs without it make no extra
+   * call.
+   */
+  function alwaysReadyShowing(next) {
+    if (!alwaysReadyScreenOn) return next(false);
+    lunaFn('com.webos.service.tvpower/power2/getPowerState', {}, function (p2) {
+      next(!!(p2 && p2['sub state'] === 'always on display'));
+    });
+  }
+
+  alwaysReadyShowing(function (showing) {
   lunaFn('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
     var rawPower = pw ? (pw.state || pw.processing) : null;
+    if (showing && rawPower === 'Active') rawPower = 'Always Ready';
     out.powerState = mapPowerStateFn ? mapPowerStateFn(rawPower) : null;
     out.screenSaver = isScreenSaverFn ? isScreenSaverFn(out.powerState) : false;
     out.screensaverMode = screensaversModule ? screensaversModule.screensaverMode() : 'stock';
@@ -1120,6 +1138,16 @@ function collectStats(cb) {
         end: clockTime(gs.alwaysOnDisableEndHour, gs.alwaysOnDisableEndMinute)
       };
     }
+
+  // LG's Always Ready, a separate setting from Always-on: 'off', 'allEnabled'
+  // (wallpaper) or 'alwaysReady' (dark). Asked on its own so a TV without it
+  // keeps the Always-on readings above.
+  lunaCachedFn('com.webos.service.settings/getSystemSettings',
+       { category: 'general', keys: ['lifeOnScreenMode'] }, 60000, function (lo) {
+    var los = lo && lo.returnValue !== false && lo.settings && lo.settings.lifeOnScreenMode;
+    // Off as well while its service is on the Apps tab's list to keep off,
+    // since nothing is shown then.
+    if (los) out.alwaysReadyScreen = alwaysReadyScreenOn = los !== 'off' && !servicesModule.isDisabled('alwaysready');
 
   lunaCachedFn('com.palm.connectionmanager/getStatus', {}, 60000, function (cm) {
     var w = cm && cm.wifi;
@@ -1241,6 +1269,8 @@ function collectStats(cb) {
         });
       }
     );
+  });
+  });
   });
   });
   });

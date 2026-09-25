@@ -274,4 +274,23 @@ console.log('Running test-controls.js ...');
   console.log('  ✓ Tile hiding is refused with the reason tvweb.js gives');
 })();
 
+// 5. Always Ready switches LG's service back on when the Apps tab had it off
+(function testAlwaysReadyService() {
+  var calls = [];
+  controls.init({
+    config: { allowControl: true },
+    luna: function (uri, payload, cb) { calls.push(payload.settings.lifeOnScreenMode); cb({ returnValue: true }); },
+    telemetry: { clearCache: function () {} },
+    services: {
+      isDisabled: function (id) { return id === 'alwaysready'; },
+      toggleService: function (id, disabled, cb) { calls.push(id + (disabled ? ' off' : ' on')); cb({ ok: true }); }
+    }
+  });
+  controls.doControl('alwaysReadyScreen', true, function (res) {
+    assert.strictEqual(res.ok, true);
+    assert.deepEqual(calls, ['alwaysready on', 'allEnabled']);
+  });
+  console.log('  ✓ Always Ready re-enables its service before switching on');
+})();
+
 console.log('ALL test-controls.js assertions passed!\n');

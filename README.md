@@ -119,7 +119,7 @@ From a browser you can navigate the TV, change inputs, control playback and volu
 * Screen blanking, sleep timer, on-screen notifications, and power and restart.
 * Opening a web page on the TV: type an address and the TV's browser takes it.
 
-The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, staying connected when off, the LG logo shown at power on and off, auto device detection, and the front lights. Auto device detection finds devices the TV can show on its Home Dashboard and control, from a set-top box to smart lights, plugs and switches; on newer TVs it does so by looking up every address on the home network each time the TV switches on, and switching it off stops those lookups. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
+The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, staying connected when off, LG's Always Ready screen, the LG logo shown at power on and off, auto device detection, and the front lights. Auto device detection finds devices the TV can show on its Home Dashboard and control, from a set-top box to smart lights, plugs and switches; on newer TVs it does so by looking up every address on the home network each time the TV switches on, and switching it off stops those lookups. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
 
 <p align="center">
   <a href="docs/screenshots/advanced.png"><img src="docs/screenshots/advanced.png" alt="Advanced tab: Quick Boot, Stay connected when off with its nightly power-down hours, Wake-on-LAN, LG logo, auto device detection and the standby light" width="700"></a>
@@ -277,6 +277,10 @@ The cost is power. On an OLED42C24LA it draws 12.5 W while off, against almost n
 It does not hold all night. For five hours every night, 01:00 to 06:00 unless changed, LG suspends Always-on, and a TV switched off during those hours sleeps fully. It is offline until they end or it is switched on: the dashboard does not answer, and Home Assistant shows it asleep. LG fixes the length at five hours; **Nightly power-down**, next to the switch, moves them to hours the TV is not used.
 
 The switch is under **Advanced &rarr; Power** in the web dashboard and **System &rarr; Power** on the TV, and setup offers it as a third step. TVs without the setting, such as webOS 4 models, do not show it; Wake-on-LAN still wakes them from standby.
+
+### Always Ready
+
+On TVs that have LG's Always Ready, the **Always Ready** switch under **Advanced &rarr; Power** makes the TV show LG's Always Ready screen, such as a clock or artwork, when it is switched off with the remote, instead of going dark. It is close to being on: an OLED42C24LA draws 31 W showing the clock. The dashboard and Home Assistant show the TV as switched off while it is up. It takes effect the next time the TV is switched off. The first time, the TV asks for OK on the remote. Home turns the TV back on from the clock; the power button switches it fully off, as in LG's own menu.
 
 ### Server updates
 

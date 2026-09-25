@@ -479,6 +479,31 @@ function doControl(action, value, cb) {
                   });
 
     /*
+     * LG's Always Ready (general/lifeOnScreenMode): switched off with the
+     * remote, the TV shows LG's Always Ready screen, such as a clock, rather
+     * than going dark. 'allEnabled' is LG's with-wallpaper mode, the one its
+     * menu turns on; 'alwaysReady' is its without-wallpaper mode, which on a
+     * C2 holds a dark screen at 12 W, as Always-on does, so only the wallpaper
+     * mode is offered. Measured on an OLED42C24LA: 31 W with the clock.
+     */
+    case 'alwaysReadyScreen':
+      var arsOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
+      var setMode = function () {
+        luna('com.webos.service.settings/setSystemSettings',
+             { category: 'general', settings: { lifeOnScreenMode: arsOn ? 'allEnabled' : 'off' } },
+             function (r) {
+               telemetry.clearCache();
+               cb({ ok: !!(r && r.returnValue) });
+             });
+      };
+      // LG's alwaysready service draws the screen. It can be on the Apps
+      // tab's list of background services to keep off, and then nothing shows.
+      if (arsOn && servicesModule.isDisabled('alwaysready')) {
+        return servicesModule.toggleService('alwaysready', false, setMode);
+      }
+      return setMode();
+
+    /*
      * The five nightly hours when LG suspends Always-on, and a switched-off
      * TV sleeps fully. LG's own menu moves only the start and keeps the end five
      * hours later, "to keep your TV in the optimal condition"; so does this.
