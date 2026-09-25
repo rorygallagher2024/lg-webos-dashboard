@@ -2,11 +2,16 @@
 var fs = require('fs');
 var execFile = require('child_process').execFile;
 var msg = require('./say').msg;
+var zeroBuffer = require('./mqtt').zeroBuffer;
 
-var BROWSER_APP_DEFAULT = 'com.webos.app.browser';
-var TOAST_SOURCE_DEFAULT = 'com.webos.app.home';
-var TILE_HIDING_OFF_DEFAULT = 'hiding home-screen tiles is not available when installed from the Homebrew Channel';
-
+/*
+ * Measured on a B8 against the built-in player, watching playStateNow move:
+ * KEY_PAUSE pauses, KEY_PLAY resumes, and KEY_PLAYPAUSE, KEY_PAUSECD and
+ * KEY_PLAYCD do nothing at all. Pause was previously sent as KEY_PAUSECD,
+ * which is why it never worked.
+ *
+ * Over CEC to an external box, KEY_PLAY behaves as a toggle instead.
+ */
 var RCU_KEY_CODES = {
   play: 207,
   pause: 119,
@@ -44,7 +49,6 @@ var KEY_BACK = 158;
 var SLEEP_TIMER_VALUES = ['off', '10', '30', '60', '90', '120'];
 var ENERGY_SAVING_VALUES = ['auto', 'off', 'min', 'med', 'max', 'screen_off'];
 
-// What the dashboard reports
 // What the settings service accepts for logoLuminanceAdjust, per
 // getSystemSettingValues on a B8. "strong" is the strongest, not an on/off.
 var LOGO_DIMMING_VALUES = ['off', 'light', 'strong'];
@@ -63,10 +67,10 @@ var tvAppFn = null;
 var restartSelfFn = null;
 var updateSummaryFn = null;
 var fromHbcFn = null;
-var inputMap = { hdmi1: 1, hdmi2: 1, hdmi3: 1, hdmi4: 1, livetv: 1 };
-var browserAppId = BROWSER_APP_DEFAULT;
-var toastSourceId = TOAST_SOURCE_DEFAULT;
-var tileHidingOffMsg = TILE_HIDING_OFF_DEFAULT;
+var inputMap = null;
+var browserAppId = null;
+var toastSourceId = null;
+var tileHidingOffMsg = null;
 
 var rcuDevicePath = null;
 function getRcuDevicePath() {
@@ -82,13 +86,6 @@ function getRcuDevicePath() {
   } catch (e) {}
   rcuDevicePath = '/dev/input/event1';
   return rcuDevicePath;
-}
-
-function zeroBuffer(n) {
-  if (Buffer.alloc) return Buffer.alloc(n);
-  var b = new Buffer(n);
-  b.fill(0);
-  return b;
 }
 
 function injectKey(code, cb, delayMs) {
@@ -138,10 +135,6 @@ function injectKey(code, cb, delayMs) {
  * end is doing, and KEY_PLAY is a toggle over CEC, so that path just sends it.
  */
 function sendPlayPause(cb) {
-  if (!luna) {
-    if (cb) cb(false);
-    return;
-  }
   luna('com.webos.service.acb/getForegroundAppInfo', {}, function (acb) {
     var pipe = (acb && Array.isArray(acb.acbs)) ? acb.acbs[0] : null;
     var external = !pipe || pipe.playerType === 'external input';
@@ -165,26 +158,12 @@ function num(v, dflt) {
   return isNaN(n) ? dflt : n;
 }
 
-function isFromHbc() {
-  if (typeof fromHbcFn === 'function') return fromHbcFn();
-  return !!fromHbcFn;
-}
-
-function getUpdateSummary() {
-  if (typeof updateSummaryFn === 'function') return updateSummaryFn();
-  if (updater && typeof updater.updateSummary === 'function') return updater.updateSummary();
-  return { ok: true };
-}
-
-function doRestartSelf() {
-  if (typeof restartSelfFn === 'function') return restartSelfFn();
-  return false;
-}
-
-function doTvApp(action, cb) {
-  if (typeof tvAppFn === 'function') return tvAppFn(action, cb);
-  if (cb) cb({ ok: false, error: 'tvApp not configured' });
-}
+// What tvweb.js passes to init(). Called as given: a module left unwired fails
+// at the call, where it shows, rather than answering as though it had worked.
+function isFromHbc() { return fromHbcFn(); }
+function getUpdateSummary() { return updateSummaryFn(); }
+function doRestartSelf() { return restartSelfFn(); }
+function doTvApp(action, cb) { return tvAppFn(action, cb); }
 
 function doControl(action, value, cb) {
   cb = cb || function () {};
@@ -193,8 +172,8 @@ function doControl(action, value, cb) {
   var origCb = cb;
   cb = function (r) {
     if (r && r.ok) {
-      if (telemetry && telemetry.clearCache) telemetry.clearCache();
-      if (clearLunaCache) clearLunaCache();
+      telemetry.clearCache();
+      clearLunaCache();
     }
     origCb(r);
   };
@@ -246,7 +225,7 @@ function doControl(action, value, cb) {
       var appId = String(value || '').trim();
       if (!appId) return cb({ ok: false, error: 'missing app id' });
       // Home Assistant sends ids, but a name is accepted too, matched loosely.
-      var apps = (telemetry && telemetry.getInstalledApps) ? (telemetry.getInstalledApps() || []) : [];
+      var apps = telemetry.getInstalledApps() || [];
       var isId = apps.some(function (x) { return x.id === appId; });
       if (!isId) {
         var want = appId.toLowerCase();
@@ -338,12 +317,11 @@ function doControl(action, value, cb) {
     case 'toggleAdBlock':
       var abMode = String(value == null ? '' : value).toLowerCase();
       if (action === 'toggleAdBlock' || abMode === 'toggle') {
-        abMode = (privacy && privacy.isAdBlockActive && privacy.isAdBlockActive()) ? 'off' : 'full';
+        abMode = privacy.isAdBlockActive() ? 'off' : 'full';
       } else if (abMode !== 'off' && abMode !== 'ads' && abMode !== 'full') {
         abMode = (value === true || abMode === 'on' || abMode === 'true' || abMode === '1')
           ? 'full' : 'off';
       }
-      if (!privacy || !privacy.setAdBlock) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.setAdBlock(abMode, function (res) { cb(res); });
 
     /*
@@ -353,15 +331,10 @@ function doControl(action, value, cb) {
      * goes first: it takes effect at once and covers the rest while they change.
      */
     case 'privacyAllOff':
-      if (!privacy || !privacy.collectPrivacy) return cb({ ok: false, error: 'privacy module not available' });
       privacy.clearCache();
       return privacy.collectPrivacy(function (p) {
         var todo = [];
-        if (p && p.simple && Array.isArray(p.simple.areas)) {
-          p.simple.areas.forEach(function (a) {
-            if (Array.isArray(a.items)) todo = todo.concat(a.items);
-          });
-        }
+        p.simple.areas.forEach(function (a) { todo = todo.concat(a.items); });
         todo.sort(function (x, y) { return (y.action === 'setAdBlock' ? 1 : 0) - (x.action === 'setAdBlock' ? 1 : 0); });
         var failed = [];
         (function next(i) {
@@ -372,19 +345,15 @@ function doControl(action, value, cb) {
           }
           var t = todo[i];
           var after = function (r) { if (!r || !r.ok) failed.push(t.label); next(i + 1); };
-          if (t.service && servicesModule && servicesModule.toggleService) {
-            return servicesModule.toggleService(t.service, true, after);
-          }
+          if (t.service) return servicesModule.toggleService(t.service, true, after);
           doControl(t.action, t.value, after);
         })(0);
       });
 
     case 'resetAdId':
-      if (!privacy || !privacy.resetAdId) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.resetAdId(cb);
 
     case 'limitAdTracking':
-      if (!privacy || !privacy.setLimitTracking) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.setLimitTracking(value === true || value === 'on' || value === 'true', cb);
 
     case 'acr':
@@ -393,23 +362,17 @@ function doControl(action, value, cb) {
         category: 'option',
         settings: { livePlus: acrOn ? 'on' : 'off' }
       }, function (r) {
-        if (privacy && privacy.setConsent) {
-          privacy.setConsent('acrAllowed', acrOn, function () {
-            cb({ ok: !!(r && r.returnValue) });
-          });
-        } else {
+        privacy.setConsent('acrAllowed', acrOn, function () {
           cb({ ok: !!(r && r.returnValue) });
-        }
+        });
       });
 
     case 'consent':
       var ckey = (value && value.key) ? String(value.key) : '';
       var cOn = !!(value && (value.enabled === true || value.enabled === 'true'));
-      if (!privacy || !privacy.setConsent) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.setConsent(ckey, cOn, cb);
 
     case 'clearAdCookies':
-      if (!privacy || !privacy.clearAdCookies) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.clearAdCookies(cb);
 
     /*
@@ -424,7 +387,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'time', settings: { sleepTimer: st } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -441,7 +404,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'picture', settings: { screenShift: shiftOn ? 'on' : 'off' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -453,7 +416,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'picture', settings: { logoLuminanceAdjust: logoVal } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -465,7 +428,7 @@ function doControl(action, value, cb) {
       lightPayload.settings[lightKey] = lightOn ? 'on' : 'off';
       return luna('com.webos.service.settings/setSystemSettings', lightPayload,
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -474,7 +437,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'option', settings: { quickStartMode: qbOn ? 'on' : 'off' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -495,7 +458,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'other', settings: { ueiEnable: ddOn ? 'on' : 'off' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -511,7 +474,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'general', settings: { alwaysOn: arOn ? 'on' : 'off' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -528,7 +491,7 @@ function doControl(action, value, cb) {
                     alwaysOnDisableStartHour: String(offHour), alwaysOnDisableStartMinute: '0',
                     alwaysOnDisableEndHour: String((offHour + 5) % 24), alwaysOnDisableEndMinute: '0' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -537,7 +500,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'other', settings: { lgLogoDisplay: logoOn ? 'on' : 'off' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -546,21 +509,18 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'network', settings: { wolwowlOnOff: wolOn ? 'true' : 'false' } },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
     case 'serviceMenuLock':
-      if (!oled || !oled.setServiceMenuLock) return cb({ ok: false, error: 'oled module not available' });
       return oled.setServiceMenuLock(!!(value && value.locked), cb);
 
     case 'serviceMenuOpen':
-      if (!oled || !oled.openServiceMenu) return cb({ ok: false, error: 'oled module not available' });
       return oled.openServiceMenu(String((value && value.menu) || 'ezAdjust'), cb);
 
     case 'oledProtection':
       var prot = (value && typeof value === 'object') ? value : {};
-      if (!oled || !oled.setOledProtection) return cb({ ok: false, error: 'oled module not available' });
       return oled.setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
 
     case 'tvAppInstall':
@@ -579,11 +539,11 @@ function doControl(action, value, cb) {
         return luna('com.webos.applicationManager/launch', { id: 'com.webos.app.home' },
                     function (r) {
                       if (r && r.returnValue) {
-                        if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                        telemetry.clearCache();
                         return cb({ ok: true });
                       }
                       injectKey(125, function (ok) {
-                        if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                        telemetry.clearCache();
                         cb({ ok: ok });
                       }, 100);
                     });
@@ -594,7 +554,7 @@ function doControl(action, value, cb) {
       return luna('com.webos.service.networkinput/test/sendKeyCode',
                   { keyCode: RCU_KEYS[rcuName] },
                   function (r) {
-                    if (telemetry && telemetry.clearCache) telemetry.clearCache();
+                    telemetry.clearCache();
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
@@ -604,21 +564,19 @@ function doControl(action, value, cb) {
        * written into the same file, so setting one without the other would
        * quietly reset it.
        */
-      if (!screensavers || !screensavers.setScreensaver) return cb({ ok: false, error: 'screensavers module not available' });
-      var ssMode = value, ssLevel = (screensavers.screensaverLevel ? screensavers.screensaverLevel() : 'dim');
+      var ssMode = value, ssLevel = screensavers.screensaverLevel();
       if (value && typeof value === 'object') {
         ssMode = value.mode;
         if (value.level) ssLevel = value.level;
       }
       return screensavers.setScreensaver(String(ssMode || '').trim(), ssLevel, function (r) {
-        if (telemetry && telemetry.clearCache) telemetry.clearCache();
+        telemetry.clearCache();
         cb(r);
       });
 
     case 'screensaver':
-      if (!screensavers || !screensavers.trigger) return cb({ ok: false, error: 'screensavers module not available' });
       return screensavers.trigger(function (r) {
-        if (telemetry && telemetry.clearCache) telemetry.clearCache();
+        telemetry.clearCache();
         cb(r);
       });
 
@@ -632,9 +590,8 @@ function doControl(action, value, cb) {
 
     case 'tileHiding':
       if (isFromHbc()) return cb({ ok: false, error: tileHidingOffMsg });
-      if (!appsModule || !appsModule.setTileHidingEnabled) return cb({ ok: false, error: 'apps module not available' });
       return appsModule.setTileHidingEnabled(!!value, function (r) {
-        if (telemetry && telemetry.clearCache) telemetry.clearCache();
+        telemetry.clearCache();
         cb(r);
       });
 
@@ -701,24 +658,20 @@ function doControl(action, value, cb) {
       }, 400);
 
     case 'refresherSchedule':
-      if (!oled || !oled.requestClearPanelNoise) return cb({ ok: false, error: 'oled module not available' });
       return oled.requestClearPanelNoise('schedule', cb);
 
     case 'refresherCancel':
-      if (!oled || !oled.requestClearPanelNoise) return cb({ ok: false, error: 'oled module not available' });
       return oled.requestClearPanelNoise('cancel_schedule', cb);
 
     case 'updateCheck':
       // 'open' is the dashboard's Server tab being shown. Its result is kept for
       // two minutes, so switching between tabs does not reach GitHub each time.
-      if (!updater || !updater.checkForUpdate) return cb({ ok: false, error: 'updater module not available' });
       return updater.checkForUpdate(value === 'open' ? 120000 : true, function (e, summary) {
         if (e) return cb({ ok: false, error: e.message });
         cb(summary);
       });
 
     case 'update':
-      if (!updater || !updater.installUpdate) return cb({ ok: false, error: 'updater module not available' });
       return updater.installUpdate(function (r) {
         if (r && r.ok && r.updated) {
           setTimeout(function () {
@@ -729,17 +682,14 @@ function doControl(action, value, cb) {
       });
 
     case 'blockTvUpdates':
-      if (!privacy || !privacy.setTvUpdatesBlocked) return cb({ ok: false, error: 'privacy module not available' });
       return privacy.setTvUpdatesBlocked(value === true || value === 'on' || value === 'true', function (r) {
         cb((r && r.ok) ? getUpdateSummary() : r);
       });
 
     case 'updateAutoCheck':
-      if (!updater || !updater.setAutoCheck) return cb({ ok: false, error: 'updater module not available' });
       return updater.setAutoCheck(value === true || value === 'on' || value === 'true', cb);
 
     case 'updateRollback':
-      if (!updater || !updater.rollbackUpdate) return cb({ ok: false, error: 'updater module not available' });
       return updater.rollbackUpdate(function (r) {
         if (r && r.ok) setTimeout(function () { doRestartSelf(); }, 600);
         cb(r);

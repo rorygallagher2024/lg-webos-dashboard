@@ -351,6 +351,12 @@ var notificationState = notifications.init({ luna: luna });
 // ---------------------------------------------------------------- controls
 var INPUTS = ha.INPUTS;
 
+// Hiding tiles restarts the app manager at boot, the kind of step that can
+// make a boot fail, which the Homebrew Channel asks its apps not to risk.
+// Doing it later would let the tiles show after every cold boot, so installs
+// from there go without it.
+var TILE_HIDING_OFF = 'hiding home-screen tiles is not available when installed from the Homebrew Channel';
+
 controls.init({
   luna: luna,
   clearLunaCache: clearLunaCache,
@@ -424,12 +430,6 @@ var HBC_MARK = '/var/lib/tvweb/.from-homebrew-channel';
 function fromHomebrewChannel() {
   try { return fs.existsSync(HBC_MARK); } catch (e) { return false; }
 }
-
-// Hiding tiles restarts the app manager at boot, the kind of step that can
-// make a boot fail, which the Homebrew Channel asks its apps not to risk.
-// Doing it later would let the tiles show after every cold boot, so installs
-// from there go without it.
-var TILE_HIDING_OFF = 'hiding home-screen tiles is not available when installed from the Homebrew Channel';
 
 /*
  * The Homebrew Channel only replaces or removes the app; the server is ours to

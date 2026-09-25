@@ -4,6 +4,7 @@
 
 var assert = require('assert');
 var controls = require('../server/lib/controls');
+var INPUTS = require('../server/lib/ha').INPUTS;
 
 console.log('Running test-controls.js ...');
 
@@ -60,7 +61,8 @@ console.log('Running test-controls.js ...');
 // 3. Validation when controls are enabled
 (function testActionValidation() {
   controls.init({
-    config: { allowControl: true, allowPower: false }
+    config: { allowControl: true, allowPower: false },
+    inputs: INPUTS
   });
 
   // Unknown action
@@ -174,7 +176,9 @@ console.log('Running test-controls.js ...');
         return [{ id: 'netflix', title: 'Netflix' }];
       }
     },
-    clearLunaCache: function () { lunaCacheCleared++; }
+    clearLunaCache: function () { lunaCacheCleared++; },
+    inputs: INPUTS,
+    browserApp: 'com.webos.app.browser'
   });
 
   // Volume
@@ -253,6 +257,21 @@ console.log('Running test-controls.js ...');
   assert.strictEqual(lunaCacheCleared > 0, true);
 
   console.log('  ✓ Dispatches correct Luna service calls and payload arguments');
+})();
+
+// 5. Tile hiding is refused on a Homebrew Channel install, with tvweb.js's reason
+(function testTileHidingFromHbc() {
+  var reason = 'not from the Homebrew Channel';
+  controls.init({
+    config: { allowControl: true },
+    fromHomebrewChannel: function () { return true; },
+    tileHidingOff: reason
+  });
+  controls.doControl('tileHiding', true, function (res) {
+    assert.strictEqual(res.ok, false);
+    assert.strictEqual(res.error, reason);
+  });
+  console.log('  ✓ Tile hiding is refused with the reason tvweb.js gives');
 })();
 
 console.log('ALL test-controls.js assertions passed!\n');
