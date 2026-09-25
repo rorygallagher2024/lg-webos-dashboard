@@ -1,5 +1,7 @@
 // Strict ES5 - node v0.12.2 on webOS 4 (LG OLED B8) has no ES6 support.
-var msg = require('./say').msg;
+var say = require('./say');
+var msg = say.msg;
+var list = say.list;
 var fs = require('fs');
 var execFile = require('child_process').execFile;
 
@@ -465,7 +467,7 @@ function consentPeers(key, groups) {
   for (var other in groups) {
     if (!groups.hasOwnProperty(other) || other === key) continue;
     if (!CONSENT_LABELS[other]) continue;
-    if (groups[other].join(',') === mine.join(',')) names.push('"' + CONSENT_LABELS[other][0] + '"');
+    if (groups[other].join(',') === mine.join(',')) names.push(msg('srv.consent.quoted', '"{name}"', { name: CONSENT_LABELS[other][0] }));
   }
   return names;
 }
@@ -486,14 +488,14 @@ function describeUnlabelled(key, on, groups) {
   }
   if (!docs) {
     row.detail = consentMapFound
-      ? 'Tied to no agreement on this firmware.'
-      : 'This TV publishes no agreement mapping, so there is nothing to go on.';
+      ? msg('srv.consent.noAgreement', 'Tied to no agreement on this firmware.')
+      : msg('srv.consent.noMapping', 'This TV publishes no agreement mapping, so there is nothing to go on.');
     return row;
   }
   var peers = consentPeers(key, groups);
   row.detail = peers.length
-    ? 'Accepted under the same agreement as ' + peers.join(' and ') + '.'
-    : 'Filed under an agreement the TV does not name.';
+    ? msg('srv.consent.sameAgreement', 'Accepted under the same agreement as {names}.', { names: list(peers) })
+    : msg('srv.consent.unnamedAgreement', 'Filed under an agreement the TV does not name.');
   return row;
 }
 
@@ -516,9 +518,8 @@ function annotateConsent(consent, eln) {
     if (names.length) {
       row.agreements = names;
       if (!CONSENT_LABELS[row.key] && !row.described) {
-        row.detail = 'Accepted under ' + (names.length > 1
-          ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
-          : names[0]) + '.';
+        // The agreement titles come from the TV, in its own language.
+        row.detail = msg('srv.consent.acceptedUnder', 'Accepted under {agreements}.', { agreements: list(names) });
       }
     }
     if (!row.settable || !row.enabled) continue;

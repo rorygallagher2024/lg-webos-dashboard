@@ -15,7 +15,9 @@ fs.writeFileSync(path.join(dir, 'es.json'), JSON.stringify({
   'srv.update.failed': { text: 'La actualización falló: {error}', from: 'The update failed: {error}' },
   'srv.daemon.uploadd': { text: 'Cargador de diagnósticos', from: 'Diagnostics uploader' },
   'srv.privacy.running': { text: '{name} en marcha', from: '{name} is running' },
-  'srv.old': { text: 'Viejo', from: 'Old words' }
+  'srv.old': { text: 'Viejo', from: 'Old words' },
+  'srv.list': { text: '{items} y {last}', from: '{items} and {last}' },
+  'srv.consent.acceptedUnder': { text: 'Aceptado en {agreements}.', from: 'Accepted under {agreements}.' }
 }));
 
 var say = require('../server/lib/say');
@@ -65,5 +67,14 @@ console.log('  ✓ an outdated translation leaves the English');
 assert.strictEqual(say.translateBody(body, null), body);
 assert.strictEqual(say.translateBody('not json', 'es'), 'not json');
 console.log('  ✓ English and non-JSON bodies are untouched');
+
+// 6. A list's joining word is a message too; the TV's own names are left alone
+var names = say.list(['Términos', 'Privacidad', 'Anuncios']);
+assert.strictEqual(names, 'Términos, Privacidad and Anuncios');
+assert.strictEqual(say.list(['Solo']), 'Solo');
+var detail = msg('srv.consent.acceptedUnder', 'Accepted under {agreements}.', { agreements: names });
+var translated = JSON.parse(say.translateBody(JSON.stringify({ detail: detail }), 'es'));
+assert.strictEqual(translated.detail, 'Aceptado en Términos, Privacidad y Anuncios.');
+console.log('  ✓ a sentence built from a list is translated, joining word and all');
 
 console.log('ALL test-say.js assertions passed!\n');

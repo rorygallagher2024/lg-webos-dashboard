@@ -2031,6 +2031,10 @@
   "text": "el inicio debe ser una hora de 0 a 23",
   "from": "the start must be an hour from 0 to 23"
  },
+ "srv.consent.acceptedUnder": {
+  "text": "Aceptado con {agreements}.",
+  "from": "Accepted under {agreements}."
+ },
  "srv.consent.acrAdAllowed": {
   "text": "Anuncios según lo que ves",
   "from": "Ads based on what you watch"
@@ -2179,6 +2183,18 @@
   "text": "Compras en TV en directo",
   "from": "Shopping on live TV"
  },
+ "srv.consent.noAgreement": {
+  "text": "No está vinculado a ningún acuerdo en este firmware.",
+  "from": "Tied to no agreement on this firmware."
+ },
+ "srv.consent.noMapping": {
+  "text": "Esta TV no publica qué acuerdo cubre cada permiso, así que no hay nada en qué basarse.",
+  "from": "This TV publishes no agreement mapping, so there is nothing to go on."
+ },
+ "srv.consent.quoted": {
+  "text": "«{name}»",
+  "from": "\"{name}\""
+ },
  "srv.consent.readFailed": {
   "text": "no se pudieron leer los indicadores de consentimiento",
   "from": "could not read the consent flags"
@@ -2190,6 +2206,10 @@
  "srv.consent.remoteDiagAllowed.detail": {
   "text": "Permite a LG recoger y subir informes de diagnóstico de tu TV",
   "from": "Lets LG collect and upload diagnostic reports from your TV"
+ },
+ "srv.consent.sameAgreement": {
+  "text": "Aceptado con el mismo acuerdo que {names}.",
+  "from": "Accepted under the same agreement as {names}."
  },
  "srv.consent.shoppingOn.detail": {
   "text": "Lo lee el servicio que coloca anuncios y ofertas sobre la TV en directo, junto con publicidad personalizada",
@@ -2206,6 +2226,10 @@
  "srv.consent.thirdPartySharingAllowed.detail": {
   "text": "Cede tus datos de uso a terceros",
   "from": "Passes your usage data to third parties"
+ },
+ "srv.consent.unnamedAgreement": {
+  "text": "Registrado con un acuerdo que la TV no nombra.",
+  "from": "Filed under an agreement the TV does not name."
  },
  "srv.consent.voice2Allowed": {
   "text": "Grabaciones de voz (bandera secundaria)",
@@ -2478,6 +2502,10 @@
  "srv.lgsettings.unknown": {
   "text": "Ajuste desconocido",
   "from": "Unknown setting"
+ },
+ "srv.list": {
+  "text": "{items} y {last}",
+  "from": "{items} and {last}"
  },
  "srv.mqtt.dropped": {
   "text": "conexión perdida, reintentando",

@@ -61,6 +61,14 @@ function msg(key, en, vars) {
   return text;
 }
 
+// "A, B and C" as a message, so the joining word follows the page's language
+// too. The items are left as they are: they may be messages themselves, or
+// names the TV gave in its own language.
+function list(items) {
+  if (items.length < 2) return items[0] || '';
+  return msg('srv.list', '{items} and {last}', { items: items.slice(0, -1).join(', '), last: items[items.length - 1] });
+}
+
 // The language files beside the pages. Read once; a new release restarts the
 // server, which is when they change.
 function init(dir) {
@@ -126,6 +134,7 @@ function translateBody(body, lang) {
 
 module.exports = {
   msg: msg,
+  list: list,
   init: init,
   langOf: langOf,
   translateBody: translateBody,
