@@ -475,8 +475,10 @@ button.pill{min-height:0;color:inherit}
 .pill.bad{color:var(--red);border-color:var(--red)}
 .pill.idle{color:var(--w60);border-color:var(--edge)}
 /* A border means it can be pressed. A status that is only reported (a span)
-   reads as text, with a dot in its state colour where it has one. */
-span.pill{border-color:transparent;min-width:0;padding:0;gap:8px}
+   reads as text, with a dot in its state colour where it has one. The state
+   classes are repeated because .pill.good and the like outrank span.pill. */
+span.pill,span.pill.good,span.pill.warn,span.pill.bad,span.pill.idle{border-color:transparent}
+span.pill{min-width:0;padding:0;gap:8px}
 span.pill.good::before,span.pill.warn::before,span.pill.bad::before{
   content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
 .pill-sel{font:500 11px 'Manrope';letter-spacing:.1em;height:28px;min-width:112px;padding:0 8px;
