@@ -20,8 +20,8 @@ lgs.init({
   clearLunaCache: function () { cleared++; }
 });
 
-// 1. Only the rows the TV has come back, one read per category
-lgs.collect(function (r) {
+// 1. Only the rows the TV has come back, one read per category of the section
+lgs.collect('promotions', function (r) {
   assert.strictEqual(r.ok, true);
   var ids = r.rows.map(function (x) { return x.id; });
   assert.deepEqual(ids, ['homePromotion', 'livePromotion']);
@@ -39,10 +39,32 @@ lgs.set('homePromotion', false, function (r) {
   console.log('  ✓ a switch writes the value LG stores');
 });
 
-// 3. Only rows in the table can be written
+// 3. Choices and numbers take only their own values, and report the dimension
+stored.other = { gameGenre: 'Standard', blackStabilizer: 10 };
+stored.sound = { aigamesound: 'on' };
+lgs.collect('game', function (r) {
+  var by = {};
+  r.rows.forEach(function (x) { by[x.id] = x; });
+  assert.strictEqual(by.gameGenre.type, 'choice');
+  assert.strictEqual(by.gameGenre.value, 'Standard');
+  assert.strictEqual(by.blackStabilizer.min, 0);
+  assert.strictEqual(by.aigamesound.on, true);
+  assert.strictEqual(by.enableALLM, undefined, 'a key the TV lacks is left out');
+});
+lgs.set('gameGenre', 'FPS', function (r) { assert.strictEqual(r.ok, true); });
+lgs.set('gameGenre', 'Racing', function (r) { assert.strictEqual(r.ok, false); });
+lgs.set('blackStabilizer', 21, function (r) { assert.strictEqual(r.ok, false); });
+lgs.set('blackStabilizer', 15, function (r) { assert.strictEqual(r.ok, true); });
+assert.deepEqual(writes.slice(1), [
+  { category: 'other', settings: { gameGenre: 'FPS' } },
+  { category: 'other', settings: { blackStabilizer: 15 } }
+]);
+console.log('  ✓ choices and numbers write only values the setting takes');
+
+// 4. Only rows in the table can be written
 lgs.set('systemPin', true, function (r) {
   assert.strictEqual(r.ok, false);
-  assert.strictEqual(writes.length, 1);
+  assert.strictEqual(writes.length, 3);
   console.log('  ✓ anything outside the table is refused');
 });
 

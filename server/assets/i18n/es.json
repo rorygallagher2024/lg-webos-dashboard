@@ -639,6 +639,46 @@
   "text": "{h}h {m}m",
   "from": "{h}h {m}m"
  },
+ "game.frameRate": {
+  "text": "Fotogramas por segundo",
+  "from": "Frame rate"
+ },
+ "game.input": {
+  "text": "Entrada",
+  "from": "Input"
+ },
+ "game.noVrr": {
+  "text": "Los fotogramas por segundo aparecen aquí mientras un juego usa VRR.",
+  "from": "The frame rate shows here while a game uses VRR."
+ },
+ "game.notGameMode": {
+  "text": "Se aplican mientras el modo de imagen es Game Optimizer.",
+  "from": "They apply while the picture mode is Game Optimizer."
+ },
+ "game.nothing": {
+  "text": "No se está reproduciendo nada en una entrada HDMI.",
+  "from": "Nothing is playing on an HDMI input."
+ },
+ "game.now": {
+  "text": "Ahora en pantalla",
+  "from": "Playing now"
+ },
+ "game.optimizer": {
+  "text": "Game Optimizer",
+  "from": "Game Optimizer"
+ },
+ "game.refreshRate": {
+  "text": "Frecuencia de actualización",
+  "from": "Refresh rate"
+ },
+ "game.scope": {
+  "text": "LG los guarda para cada entrada y género. Se muestra {input}.",
+  "from": "LG keeps these for each input and genre. Showing {input}."
+ },
+ "game.vrr": {
+  "text": "VRR",
+  "from": "VRR"
+ },
  "header.brand": {
   "text": "TV LG",
   "from": "LG TV"
@@ -2283,6 +2323,22 @@
   "text": "Ajustes sugeridos que aparecen en el menú de Ajustes de LG. LG lo llama Smart Tips in Settings.",
   "from": "Suggested settings shown in LG's Settings menu. LG calls this Smart Tips in Settings."
  },
+ "srv.lgs.aigamesound": {
+  "text": "AI Game Sound",
+  "from": "AI Game Sound"
+ },
+ "srv.lgs.aigamesound.desc": {
+  "text": "Ajusta el sonido al juego en curso: efectos, voces claras y sonido envolvente.",
+  "from": "Sets the sound for the game being played: effects, clear voices and surround."
+ },
+ "srv.lgs.blackStabilizer": {
+  "text": "Estabilizador de negro",
+  "from": "Black stabilizer"
+ },
+ "srv.lgs.blackStabilizer.desc": {
+  "text": "Aclara las zonas oscuras para que se vea mejor el detalle en las sombras.",
+  "from": "Lifts dark areas so detail in shadows is easier to see."
+ },
  "srv.lgs.contentRecommendation": {
   "text": "Recomendaciones en Inicio",
   "from": "Recommendations on Home"
@@ -2291,6 +2347,82 @@
   "text": "Filas de programas y películas recomendados en la pantalla de Inicio. LG lo llama Content Recommendation.",
   "from": "Rows of recommended programmes and films on the Home screen. LG calls this Content Recommendation."
  },
+ "srv.lgs.darkMode": {
+  "text": "Modo habitación oscura",
+  "from": "Dark room mode"
+ },
+ "srv.lgs.darkMode.desc": {
+  "text": "Baja el brillo para jugar en una habitación a oscuras.",
+  "from": "Lowers the brightness for playing in a dark room."
+ },
+ "srv.lgs.darkMode.level1": {
+  "text": "Nivel 1",
+  "from": "Level 1"
+ },
+ "srv.lgs.darkMode.level2": {
+  "text": "Nivel 2",
+  "from": "Level 2"
+ },
+ "srv.lgs.darkMode.off": {
+  "text": "Desactivado",
+  "from": "Off"
+ },
+ "srv.lgs.enableALLM": {
+  "text": "ALLM",
+  "from": "ALLM"
+ },
+ "srv.lgs.enableALLM.desc": {
+  "text": "Pasa la TV a su modo de juego de baja latencia por sí sola cuando un dispositivo conectado inicia un juego.",
+  "from": "Switches the TV to its low-latency game mode by itself when a connected device starts a game."
+ },
+ "srv.lgs.freesync": {
+  "text": "AMD FreeSync Premium",
+  "from": "AMD FreeSync Premium"
+ },
+ "srv.lgs.freesync.desc": {
+  "text": "Lo mismo para tarjetas gráficas y consolas de AMD que usan FreeSync.",
+  "from": "The same for AMD graphics cards and consoles that use FreeSync."
+ },
+ "srv.lgs.gameGenre": {
+  "text": "Género de juego",
+  "from": "Game genre"
+ },
+ "srv.lgs.gameGenre.desc": {
+  "text": "Ajusta la imagen al tipo de juego. Cada género guarda sus propios ajustes de estabilizador.",
+  "from": "Tunes the picture for the kind of game. Each genre keeps its own stabilizer settings."
+ },
+ "srv.lgs.gameGenre.fps": {
+  "text": "Disparos en primera persona",
+  "from": "First-person shooter"
+ },
+ "srv.lgs.gameGenre.rpg": {
+  "text": "Rol",
+  "from": "Role-playing"
+ },
+ "srv.lgs.gameGenre.rts": {
+  "text": "Estrategia en tiempo real",
+  "from": "Real-time strategy"
+ },
+ "srv.lgs.gameGenre.sports": {
+  "text": "Deportes",
+  "from": "Sports"
+ },
+ "srv.lgs.gameGenre.standard": {
+  "text": "Estándar",
+  "from": "Standard"
+ },
+ "srv.lgs.gameGenre.user": {
+  "text": "Usuario",
+  "from": "User"
+ },
+ "srv.lgs.gameOptimization": {
+  "text": "VRR y G-Sync",
+  "from": "VRR & G-Sync"
+ },
+ "srv.lgs.gameOptimization.desc": {
+  "text": "Permite que la TV siga los fotogramas que envía una consola o un PC, para que el movimiento sea fluido y sin cortes.",
+  "from": "Lets the TV follow the frame rate a console or PC sends, so motion stays smooth without tearing."
+ },
  "srv.lgs.homePromotion": {
   "text": "Mosaicos patrocinados en Inicio",
   "from": "Sponsored tiles on Home"
@@ -2298,6 +2430,22 @@
  "srv.lgs.homePromotion.desc": {
   "text": "Anuncios marcados como patrocinados en la pantalla de Inicio. LG lo llama Home Promotion.",
   "from": "Adverts marked Sponsored on the Home screen. LG calls this Home Promotion."
+ },
+ "srv.lgs.inputOptimization": {
+  "text": "Evitar el retraso de entrada",
+  "from": "Prevent input delay"
+ },
+ "srv.lgs.inputOptimization.auto": {
+  "text": "Estándar",
+  "from": "Standard"
+ },
+ "srv.lgs.inputOptimization.desc": {
+  "text": "Estándar reduce el retraso de entrada según el tipo de contenido; Boost lo reduce aún más igualando los fotogramas de la consola.",
+  "from": "Standard cuts input lag for the kind of content; Boost cuts it further by matching the console's frame rate."
+ },
+ "srv.lgs.inputOptimization.on": {
+  "text": "Boost",
+  "from": "Boost"
  },
  "srv.lgs.livePromotion": {
   "text": "Anuncios mientras ves contenido",
@@ -2314,6 +2462,18 @@
  "srv.lgs.screenSaverAd.desc": {
   "text": "Anuncios que algunas apps, como LG Channels, muestran en el salvapantallas. LG lo llama Screen Saver Promotion.",
   "from": "Adverts that some apps, such as LG Channels, show in the screen saver. LG calls this Screen Saver Promotion."
+ },
+ "srv.lgs.whiteStabilizer": {
+  "text": "Estabilizador de blanco",
+  "from": "White stabilizer"
+ },
+ "srv.lgs.whiteStabilizer.desc": {
+  "text": "Suaviza las zonas brillantes para que se vea mejor el detalle en las luces.",
+  "from": "Tames bright areas so detail in highlights is easier to see."
+ },
+ "srv.lgsettings.badValue": {
+  "text": "Ese valor no es válido para este ajuste",
+  "from": "That value is not one this setting takes"
  },
  "srv.lgsettings.unknown": {
   "text": "Ajuste desconocido",
@@ -2787,6 +2947,10 @@
   "text": "Control",
   "from": "Control"
  },
+ "tab.game": {
+  "text": "Juego",
+  "from": "Game"
+ },
  "tab.metrics": {
   "text": "Métricas",
   "from": "Metrics"
@@ -3118,6 +3282,14 @@
  "tv.flash.wolOn": {
   "text": "Wake-on-LAN activado",
   "from": "Wake-on-LAN turned on"
+ },
+ "tv.game.next": {
+  "text": "Pulsa OK para {name}",
+  "from": "Press OK for {name}"
+ },
+ "tv.game.none": {
+  "text": "Esta TV no tiene Game Optimizer",
+  "from": "This TV has no Game Optimizer"
  },
  "tv.loading": {
   "text": "Cargando…",

@@ -38,6 +38,7 @@ var notifications = require('./lib/notifications');
 var lunaTransport = require('./lib/luna');
 var say = require('./lib/say');
 var lgSettings = require('./lib/lgsettings');
+var game = require('./lib/game');
 var msg = say.msg;
 var luna = lunaTransport.call;
 
@@ -557,6 +558,8 @@ routes.init({
   telemetry: telemetry,
   oled: oled,
   privacy: privacy,
+  lgSettings: lgSettings,
+  game: game,
   apps: appsModule,
   services: servicesModule,
   screensavers: screensavers,

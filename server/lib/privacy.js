@@ -658,7 +658,7 @@ function collectPrivacy(cb) {
               adCount: adBlockAds().length,
               platform: adBlockPlatform()
             };
-            lgSettingsModule.collect(function (ls) {
+            lgSettingsModule.collect('promotions', function (ls) {
               out.lgSettings = ls.rows;
               out.simple = simpleSummary(out);
               cachedPrivacy = out;

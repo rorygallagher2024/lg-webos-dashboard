@@ -369,6 +369,13 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 /* The wear figures and the switches that decide how hard the panel is worked,
    side by side - they are two halves of the same question. */
 .oled-split{display:grid;grid-template-columns:1fr;gap:38px}
+/* The frame rate is the one figure on the Game tab worth reading from the sofa. */
+.game-fps{font-size:clamp(96px,16vw,210px);line-height:.85;font-variant-numeric:tabular-nums}
+.game-fps em{font-size:.2em}
+.game-fps.empty{font-size:clamp(52px,9vw,90px)}
+.game-step{display:flex;align-items:center;gap:10px}
+.game-step .num{min-width:2ch;text-align:center;font-size:15px}
+.game-step button{min-width:34px;padding:4px 0}
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
@@ -737,6 +744,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <button type="button" role="tab" data-tab="apps" data-t="tab.apps">Apps</button>
   <button type="button" role="tab" data-tab="privacy" data-t="tab.privacy">Privacy</button>
   <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden data-t="tab.oledCare">OLED Care</button>
+  <button type="button" role="tab" data-tab="game" id="tab-btn-game" hidden data-t="tab.game">Game</button>
   <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden data-t="tab.serviceMenu">Service menu</button>
   <button type="button" role="tab" data-tab="screensaver" data-t="tab.screensaver">Screensaver</button>
   <button type="button" role="tab" data-tab="advanced" data-t="tab.advanced">Advanced</button>
@@ -1036,6 +1044,26 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         They exist to protect the panel from burn-in, and switching them off makes
         permanent image retention more likely. Doing so may affect your warranty.
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="priv panel" id="gamepane" role="tabpanel" hidden>
+  <div class="oled-split">
+    <div class="oled-wear">
+      <div class="grp" data-t="game.now">Playing now</div>
+      <div class="lbl" id="gm-lbl">&mdash;</div>
+      <div class="n num game-fps" style="margin-top:10px"><span id="gm-fps">&mdash;</span><em id="gm-unit"></em></div>
+      <div class="cols" style="margin-top:22px">
+        <div><div class="lbl" data-t="game.vrr">VRR</div><div class="v" id="gm-vrr">&mdash;</div></div>
+        <div><div class="lbl" data-t="game.input">Input</div><div class="v" id="gm-input">&mdash;</div></div>
+      </div>
+      <div class="sub" id="gm-note" style="margin-top:14px"></div>
+    </div>
+    <div class="oled-controls">
+      <div class="grp" data-t="game.optimizer">Game Optimizer</div>
+      <div class="sub" id="gm-scope" style="margin-bottom:14px"></div>
+      <div id="game-rows"></div>
     </div>
   </div>
 </section>
@@ -1715,6 +1743,9 @@ function row(k, val, pct, sub, warn) {
   q('row-' + k).classList.toggle('hi', pct >= warn);
 }
 
+// For the Game tab, which shows the signal's own rate when there is no VRR.
+let lastSignal = null, lastInputNames = {};
+
 async function tick() {
   try {
     const r = await fetch(api('/api/stats'), { cache: 'no-store' });
@@ -1808,6 +1839,8 @@ async function tick() {
     }
     const modeBadge = pic.mode ? `<span class="stream-mode">${esc(pic.mode)}</span>` : '';
     const resStr = d.signal ? esc(d.signal) : '';
+    lastSignal = d.signal || null;
+    lastInputNames = d.inputs || {};
 
     const primList = [resStr, drBadge, modeBadge].filter(Boolean);
     q('stream-primary').innerHTML = primList.length ? primList.join('  ') : '&mdash;';
@@ -2631,6 +2664,98 @@ document.addEventListener('click', async e => {
   loadPrivacy();
 });
 
+/* ---- game tab --------------------------------------------------------
+   LG's Game Optimizer: its settings from /api/game, and the live frame rate
+   from /api/game/fps, polled once a second only while the tab is open. The
+   server holds the input binding only while it is being asked. */
+let gameTimer = null;
+
+// An input by the name it was given, or its port when it has none.
+function inputName(port) {
+  const name = lastInputNames[port];
+  const bare = port.toUpperCase().replace(/(\d)$/, ' $1');
+  return name && name.replace(/\s/g, '').toLowerCase() !== port ? name + ' (' + bare + ')' : bare;
+}
+
+async function loadGame() {
+  let d;
+  try { d = await (await fetch(api('/api/game'), { cache: 'no-store' })).json(); } catch (e) { return; }
+  if (q('tab-btn-game')) q('tab-btn-game').hidden = !d.available;
+  if (!d.available) return;
+  const where = d.input ? inputName(d.input.toLowerCase()) : '';
+  q('gm-scope').textContent = (where ? t('game.scope', 'LG keeps these for each input and genre. Showing {input}.', { input: where }) : '') +
+    (d.pictureMode && d.pictureMode !== 'game' ? ' ' + t('game.notGameMode', 'They apply while the picture mode is Game Optimizer.') : '');
+  q('game-rows').innerHTML = d.rows.map(r => {
+    let ctl;
+    if (r.type === 'choice') {
+      ctl = '<select class="pill-sel" data-game="' + esc(r.id) + '">' +
+        r.choices.map(c => '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
+        '</select>';
+    } else if (r.type === 'number') {
+      ctl = '<div class="game-step">' +
+        '<button class="pill" data-game="' + esc(r.id) + '" data-value="' + (r.value - 1) + '"' + (r.value <= r.min ? ' disabled' : '') + '>&minus;</button>' +
+        '<span class="num">' + esc(String(r.value)) + '</span>' +
+        '<button class="pill" data-game="' + esc(r.id) + '" data-value="' + (r.value + 1) + '"' + (r.value >= r.max ? ' disabled' : '') + '>+</button></div>';
+    } else {
+      ctl = '<button class="pill ' + (r.on ? 'good' : 'idle') + '" data-game="' + esc(r.id) + '" data-on="' + (r.on ? '0' : '1') + '">' +
+        esc(r.on ? t('common.on', 'On') : t('common.off', 'Off')) + '</button>';
+    }
+    return '<div class="oled-row"><div><div class="oled-name">' + esc(r.title) + '</div>' +
+      '<div class="oled-desc">' + esc(r.desc) + '</div></div><div>' + ctl + '</div></div>';
+  }).join('');
+}
+
+async function setGame(id, value) {
+  await c('lgSetting', value === true || value === false ? { id, on: value } : { id, value });
+  loadGame();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#game-rows button[data-game]');
+  if (!b) return;
+  b.disabled = true;
+  setGame(b.dataset.game, b.dataset.on !== undefined ? b.dataset.on === '1' : Number(b.dataset.value));
+});
+document.addEventListener('change', e => {
+  const s = e.target.closest('#game-rows select[data-game]');
+  if (s) setGame(s.dataset.game, s.value);
+});
+
+async function pollFps() {
+  let d;
+  try { d = await (await fetch(api('/api/game/fps'), { cache: 'no-store' })).json(); } catch (e) { return; }
+  const f = (d && d.fps) || {};
+  const vrr = f.vrrType && f.vrrType !== 'off';
+  const hz = lastSignal && /@\s*(\d+)/.exec(lastSignal);
+  if (vrr && f.frameRate > 0) {
+    q('gm-lbl').textContent = t('game.frameRate', 'Frame rate');
+    q('gm-fps').textContent = Math.round(f.frameRate);
+    q('gm-unit').textContent = 'fps';
+    q('gm-note').textContent = '';
+  } else if (hz) {
+    q('gm-lbl').textContent = t('game.refreshRate', 'Refresh rate');
+    q('gm-fps').textContent = hz[1];
+    q('gm-unit').textContent = 'Hz';
+    q('gm-note').textContent = t('game.noVrr', 'The frame rate shows here while a game uses VRR.');
+  } else {
+    q('gm-lbl').textContent = t('game.frameRate', 'Frame rate');
+    q('gm-fps').textContent = '\u2014';
+    q('gm-unit').textContent = '';
+    q('gm-note').textContent = t('game.nothing', 'Nothing is playing on an HDMI input.');
+  }
+  q('gm-fps').parentElement.classList.toggle('empty', !(vrr && f.frameRate > 0) && !hz);
+  q('gm-vrr').textContent = vrr ? f.vrrType.toUpperCase() : t('common.off', 'Off');
+  q('gm-input').textContent = f.port ? inputName(f.port.toLowerCase()) : '\u2014';
+}
+
+function gamePolling(on) {
+  clearInterval(gameTimer);
+  gameTimer = null;
+  if (!on) return;
+  loadGame();
+  pollFps();
+  gameTimer = setInterval(pollFps, 1000);
+}
+
 async function loadPrivacy() {
   try {
     const r = await fetch(api('/api/privacy'), { cache: 'no-store' });
@@ -3422,6 +3547,7 @@ const TABS = {
   metrics:     'tab-metrics',
   apps:        'appspane',
   oledcare:    'oledpane',
+  game:        'gamepane',
   servicemenu: 'svcpane',
   screensaver: 'sspane',
   privacy:     'privpane',
@@ -3464,6 +3590,7 @@ function showTab(name) {
   if (name === 'server') checkOnOpen();
   if (name === 'server') loadTvApp();
   if (name === 'oledcare') loadOledCare();
+  gamePolling(name === 'game');
   if (name === 'servicemenu') loadServiceMenu();
   if (name === 'screensaver') loadScreensavers();
   if (name === 'privacy') loadPrivacy();
@@ -3472,6 +3599,8 @@ function showTab(name) {
 
 document.querySelectorAll('#tabs button').forEach(b =>
   b.addEventListener('click', () => showTab(b.dataset.tab)));
+// Reveals the Game tab on TVs with LG's Game Optimizer.
+loadGame();
 
 /*
  * Each arrow shows only while the strip has more that way. Tabs appear after

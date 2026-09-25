@@ -27,6 +27,8 @@ var controlsModule = null;
 var telemetryModule = null;
 var oledModule = null;
 var privacyModule = null;
+var lgSettingsModule = null;
+var gameModule = null;
 var appsModule = null;
 var servicesModule = null;
 var screensaversModule = null;
@@ -712,6 +714,26 @@ function handleRequest(req, res) {
     return telemetryModule.collectProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
+  // LG's Game Optimizer settings, for the game input and genre in use, and
+  // the picture mode, since LG applies them only in its Game Optimizer mode.
+  if (pathname === '/api/game') {
+    return lgSettingsModule.collect('game', function (g) {
+      if (!g.rows.length) return send(res, 200, JSON.stringify({ ok: true, available: false }));
+      lunaFn('com.webos.service.settings/getSystemSettings', { category: 'picture', keys: ['pictureMode'] }, function (p) {
+        send(res, 200, JSON.stringify({
+          ok: true, available: true, rows: g.rows,
+          input: g.dimensions.other ? g.dimensions.other.gameInput : null,
+          pictureMode: (p && p.settings && p.settings.pictureMode) || null
+        }));
+      });
+    });
+  }
+
+  // Polled once a second while the Game tab is open; see game.js.
+  if (pathname === '/api/game/fps') {
+    return send(res, 200, JSON.stringify({ ok: true, fps: gameModule.frameRate() }));
+  }
+
   if (pathname === '/api/privacy') {
     return privacyModule.collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
   }
@@ -969,6 +991,8 @@ function init(opts) {
   if (opts.telemetry) telemetryModule = opts.telemetry;
   if (opts.oled) oledModule = opts.oled;
   if (opts.privacy) privacyModule = opts.privacy;
+  if (opts.lgSettings) lgSettingsModule = opts.lgSettings;
+  if (opts.game) gameModule = opts.game;
   if (opts.apps) appsModule = opts.apps;
   if (opts.services) servicesModule = opts.services;
   if (opts.screensavers) screensaversModule = opts.screensavers;

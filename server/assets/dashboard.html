@@ -211,6 +211,7 @@ var TABS = [
   { key: 'system',  label: t('tab.metrics', 'Metrics'),      url: '/api/stats',       build: sysRows,  poll: 5000 },
   { key: 'apps',    label: t('tab.apps', 'Apps'),         url: '/api/apps',        build: appsRows },
   { key: 'oled',    label: t('tab.oledCare', 'OLED Care'),    url: '/api/oledcare',    build: oledRows },
+  { key: 'game',    label: t('tab.game', 'Game'),         url: '/api/game',        build: gameRows },
   { key: 'saver',   label: t('tv.tab.screenSaver', 'Screen Saver'), url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: t('tab.privacy', 'Privacy'),      url: '/api/privacy',     build: privacyRows },
   { key: 'service', label: t('tv.tab.serviceMenu', 'Service Menu'), url: '/api/servicemenu', build: svcRows },
@@ -403,6 +404,38 @@ function appearanceRows() {
     press: currentTheme === 'light' ? t('tv.appearance.toDark', 'Press OK to switch to Dark theme') : t('tv.appearance.toLight', 'Press OK to switch to Light theme'),
     hint: t('tv.appearance.theme.hint', 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.')
   }];
+}
+
+/*
+ * LG's Game Optimizer settings. The frame rate is left to the browser
+ * dashboard: while this app is on screen, no game is. A choice steps to its
+ * next value on OK, and a number rises by one, back to its lowest after the
+ * highest.
+ */
+function gameRows(d) {
+  if (!d || !d.ok) return [];
+  if (!d.available) return [{ label: t('tv.game.none', 'This TV has no Game Optimizer'), value: '' }];
+  var r = [head(t('game.optimizer', 'Game Optimizer'))];
+  for (var i = 0; i < d.rows.length; i++) {
+    var g = d.rows[i];
+    if (g.type === 'choice') {
+      var at = 0;
+      for (var c = 0; c < g.choices.length; c++) if (g.choices[c].value === g.value) at = c;
+      var nx = g.choices[(at + 1) % g.choices.length];
+      r.push({ label: g.title, value: g.choices[at].label, cls: 'act', act: 'lgValue', key: g.id, next: nx.value,
+               press: t('tv.game.next', 'Press OK for {name}', { name: nx.label }), hint: g.desc });
+    } else if (g.type === 'number') {
+      var up = g.value >= g.max ? g.min : g.value + 1;
+      r.push({ label: g.title, value: String(g.value), cls: 'act', act: 'lgValue', key: g.id, next: up,
+               press: t('tv.game.next', 'Press OK for {name}', { name: String(up) }), hint: g.desc });
+    } else {
+      r.push({ label: g.title, value: g.on ? t('common.on', 'On') : t('common.off', 'Off'), cls: g.on ? 'on' : 'off',
+               act: 'lgSetting', key: g.id, on: g.on,
+               press: g.on ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+               hint: g.desc });
+    }
+  }
+  return r;
 }
 
 function oledRows(d) {
@@ -1408,6 +1441,8 @@ function activate() {
     case 'consent':
       return send({ action: 'consent', value: { key: r.key, enabled: !r.on } },
                   r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
+    case 'lgValue':
+      return send({ action: 'lgSetting', value: { id: r.key, value: r.next } });
     case 'lgSetting':
       return send({ action: 'lgSetting', value: { id: r.key, on: !r.on } },
                   r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));

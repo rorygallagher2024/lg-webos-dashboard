@@ -521,10 +521,10 @@ function doControl(action, value, cb) {
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
-    // One of lgsettings.js's rows: { id, on }.
+    // One of lgsettings.js's rows: { id, on } for a switch, { id, value } otherwise.
     case 'lgSetting':
       if (!value || typeof value.id !== 'string') return cb({ ok: false, error: 'lgSetting needs an id' });
-      return lgSettings.set(value.id, value.on === true, function (r) {
+      return lgSettings.set(value.id, 'on' in value ? value.on === true : value.value, function (r) {
         privacy.clearCache();
         cb(r);
       });
