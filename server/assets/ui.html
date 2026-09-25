@@ -1365,6 +1365,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <section class="priv panel" id="serverpane" role="tabpanel" hidden>
   <div class="upd">
+    <div class="pv-sec">Server updates</div>
     <div class="prot-table">
       <div class="prot-row">
         <div class="prot-main">
@@ -1380,21 +1381,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
         </div>
         <div class="prot-status"><button type="button" class="pill idle" id="upd-auto" onclick="toggleAutoCheck()">Off</button></div>
       </div>
-      <div class="prot-row">
-        <div class="prot-main">
-          <div class="prot-title">Block TV software updates</div>
-          <div class="prot-desc">Stops the TV installing LG's system updates, which can take away the access
-            Glasshouse runs with. Apps and Glasshouse's own updates are unaffected.</div>
-        </div>
-        <div class="prot-status"><button type="button" class="pill idle" id="upd-tvblock" onclick="toggleTvUpdates()">&mdash;</button></div>
-      </div>
-      <div class="prot-row" id="tvapp-row" hidden>
-        <div class="prot-main">
-          <div class="prot-title">App on the TV's home screen</div>
-          <div class="prot-desc" id="tvapp-desc">Opens this dashboard on the TV itself, driven by the remote.</div>
-        </div>
-        <div class="prot-status"><button type="button" class="pill idle" id="tvapp-btn" onclick="toggleTvApp()">&mdash;</button></div>
-      </div>
     </div>
     <div class="btns" id="upd-btns">
       <button type="button" id="upd-check" onclick="checkNow()">Check now</button>
@@ -1406,20 +1392,45 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="track"><b id="upd-bar"></b></div>
     </div>
     <div class="sub" id="upd-msg"></div>
-  </div>
 
-  <div class="pv-h">This browser</div>
-  <div class="prot-table">
-    <div class="prot-row">
-      <div class="prot-main">
-        <div class="prot-title">Theme</div>
-        <div class="prot-desc">Auto follows this device's light or dark setting. Applies to this browser only:
-          other phones and computers keep their own. The button at the end of the footer changes it too.</div>
+    <div class="pv-sec adv-sec">TV software updates</div>
+    <div class="prot-table">
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-title">Block TV software updates</div>
+          <div class="prot-desc">Stops the TV installing LG's system updates, which can take away the access
+            Glasshouse runs with. Apps and Glasshouse's own updates are unaffected.</div>
+        </div>
+        <div class="prot-status"><button type="button" class="pill idle" id="upd-tvblock" onclick="toggleTvUpdates()">&mdash;</button></div>
       </div>
-      <div class="prot-status"><div class="theme-seg" role="group" aria-label="Theme">
-        <button type="button" data-theme-set="auto">Auto</button><button type="button"
-          data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button>
-      </div></div>
+    </div>
+
+    <!-- Hidden where the TV will not take the app; renderTvApp shows it. -->
+    <div id="tvapp-row" hidden>
+      <div class="pv-sec adv-sec">Dashboard app</div>
+      <div class="prot-table">
+        <div class="prot-row">
+          <div class="prot-main">
+            <div class="prot-title">App on the TV's home screen</div>
+            <div class="prot-desc" id="tvapp-desc">Opens this dashboard on the TV itself, driven by the remote.</div>
+          </div>
+          <div class="prot-status"><button type="button" class="pill idle" id="tvapp-btn" onclick="toggleTvApp()">&mdash;</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pv-sec adv-sec">Theme (this browser)</div>
+    <div class="prot-table">
+      <div class="prot-row">
+        <div class="prot-main">
+          <div class="prot-desc">Auto follows this device's light or dark setting. Other phones and computers
+            keep their own. The button at the end of the footer changes it too.</div>
+        </div>
+        <div class="prot-status"><div class="theme-seg" role="group" aria-label="Theme">
+          <button type="button" data-theme-set="auto">Auto</button><button type="button"
+            data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button>
+        </div></div>
+      </div>
     </div>
   </div>
 </section>
