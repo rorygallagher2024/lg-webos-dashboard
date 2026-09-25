@@ -687,10 +687,6 @@
   "text": "LG OLED TV",
   "from": "LG OLED TV"
  },
- "header.kind": {
-  "text": "panel web",
-  "from": "web dashboard"
- },
  "metrics.ambient": {
   "text": "Ambiente",
   "from": "Ambient"

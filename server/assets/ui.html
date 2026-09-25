@@ -97,16 +97,18 @@ body{
 /* ---- masthead ---- */
 header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
 .hdr-left{display:flex;align-items:flex-start;gap:18px}
-/* The masthead speaks in the page's two voices: the name in the thin display
-   face the big readings use, the TV beneath it as a tracked label. */
-.mark{display:flex;flex-direction:column;gap:10px}
-.mark-name{font-family:'Outfit';font-weight:200;font-size:clamp(28px,3.8vw,40px);line-height:.95;
-  letter-spacing:-.02em;color:var(--w100)}
-.mark-kind{color:var(--w50);white-space:nowrap}
-.mark-tv{display:flex;align-items:center;gap:12px;font-family:'Manrope';font-weight:500;font-size:13px;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--w60)}
-.mark-tv i{width:22px;height:1px;background:var(--w25)}
-.mark-tv #model{color:var(--w80);letter-spacing:.14em}
+/* The masthead: the Glasshouse mark, a hairline, and the TV in the page's two
+   voices - the kind of TV as a tracked label, the model in the thin display
+   face the big readings use. The mark takes the text colour, so it follows
+   the theme. */
+.mark{display:flex;align-items:center;gap:clamp(14px,1.8vw,22px)}
+.mark-logo{height:clamp(40px,4.6vw,54px);width:auto;color:var(--w100);flex:none}
+.mark-rule{width:1px;align-self:stretch;margin:4px 0;background:var(--w25)}
+.mark-tv{display:flex;flex-direction:column;gap:7px}
+.mark-tv #brand{font-family:'Manrope';font-weight:500;font-size:12px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--w60)}
+.mark-tv #model{font-family:'Outfit';font-weight:200;font-size:clamp(22px,2.6vw,30px);line-height:1;
+  letter-spacing:.01em;color:var(--w100)}
 
 /* Theme toggle, at the end of the footer: a set-and-forget control, which
    left the masthead room to stay on one line at narrower widths. */
@@ -719,8 +721,13 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <header>
   <div class="hdr-left">
     <div class="mark">
-      <div class="mark-name"><span translate="no">Glasshouse</span> <span class="mark-kind" data-t="header.kind">web dashboard</span></div>
-      <div class="mark-tv"><span id="brand">&mdash;</span><i></i><span id="model">&mdash;</span></div>
+      <!-- docs/logo/glasshouse.svg without its tile. -->
+      <svg class="mark-logo" viewBox="124 104 264 302" role="img" aria-label="Glasshouse">
+        <path d="M358 214 L256 134 L154 214 V342 A34 34 0 0 0 188 376 H324 A34 34 0 0 0 358 342 V286 H272"
+              fill="none" stroke="currentColor" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="mark-rule"></span>
+      <div class="mark-tv"><span id="brand">&mdash;</span><span id="model" class="num">&mdash;</span></div>
     </div>
   </div>
   <div class="src">
