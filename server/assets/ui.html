@@ -384,6 +384,17 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .lgs-range{display:flex;align-items:center;gap:14px}
 .lgs-range input{width:170px;accent-color:var(--w100);cursor:pointer}
 .lgs-range .num{min-width:7ch;text-align:right;font-size:14px;color:var(--w80)}
+/* The HDMI inputs as a table: an input per row, a setting per column, and
+   one explanation above it rather than the same one under every row. */
+.hdmi-in .pv-sub{max-width:78ch;margin-bottom:18px}
+.hdmi-grid{display:grid;column-gap:24px;max-width:760px}
+.hdmi-grid>div{padding:14px 0;border-top:1px solid var(--w12);display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.hdmi-grid .hh{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--w50);border-top:0;padding-top:0}
+.hdmi-grid .in b{font-weight:400;font-size:15px;color:var(--w100)}
+.hdmi-grid .in span{display:block;font-size:12px;color:var(--w50);margin-top:3px}
+.hdmi-grid .na{color:var(--w40)}
+/* A setting the TV has greyed out: dimmed, as a disabled pill already is. */
+.pill-sel:disabled,.lgs-range input:disabled{opacity:.35;cursor:default}
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
@@ -1145,6 +1156,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
   <div class="pv-sec adv-sec" id="adv-sound" hidden data-t="adv.sound">Sound</div>
   <div class="prot-table" id="adv-lgs-sound" data-reload="loadAdvSettings"></div>
+
+  <div class="pv-sec adv-sec" id="adv-hdmi" hidden data-t="adv.hdmi">HDMI inputs</div>
+  <div class="hdmi-in" id="adv-lgs-hdmi" data-reload="loadAdvSettings"></div>
 
   <div class="pv-sec adv-sec" id="adv-devices" hidden data-t="adv.devices">Devices</div>
   <div class="prot-table">
@@ -2721,7 +2735,8 @@ async function loadGame() {
    choice, a stepper for a number. After a change, the loader named by the
    nearest data-reload redraws the rows. */
 function lgsControl(r) {
-  const id = ' data-lgs="' + esc(r.id) + '"';
+  // A setting the TV has greyed out, such as Deep Colour off an HDMI input.
+  const id = ' data-lgs="' + esc(r.id) + '"' + (r.active === false ? ' disabled' : '');
   if (r.type === 'choice') {
     return '<select class="pill-sel"' + id + '>' +
       r.choices.map(c => '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
@@ -2763,15 +2778,51 @@ document.addEventListener('input', e => {
   if (range) range.nextElementSibling.textContent = lgsNumber(Number(range.min), Number(range.value));
 });
 
+/*
+ * HDMI inputs, a row each. A B8 keeps Deep Colour per port; a C2 keeps one,
+ * for the input on screen, which LG reports as the dimension's gameInput, so
+ * it goes in that input's row.
+ */
+function hdmiTable(rows, dims, inputs) {
+  const cols = [['deepColor', t('lgs.hdmi.deepColor', 'Deep Colour')], ['audioFormat', t('lgs.hdmi.audioFormat', 'Audio format')]]
+    .filter(c => rows.some(r => r.column === c[0]));
+  const single = rows.find(r => r.column === 'deepColor' && !r.port);
+  const on = /^hdmi(\d)$/.exec((dims.other && dims.other.gameInput) || '');
+  const onPort = on ? Number(on[1]) : 0;
+  const ports = [1, 2, 3, 4].filter(n => rows.some(r => r.port === n) || (single && n === onPort));
+  const cell = (n, col) => {
+    const r = rows.find(x => x.port === n && x.column === col) || (col === 'deepColor' && n === onPort ? single : null);
+    return '<div>' + (r ? lgsControl(r) : '<span class="na">&mdash;</span>') + '</div>';
+  };
+  const intro = [t('lgs.hdmi.intro.deepColor', 'Deep Colour lets an input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree a change.')];
+  if (single) intro.push(t('lgs.hdmi.intro.gameOptimizer', 'Turning it off also turns off Game Optimizer for that input.'));
+  if (cols.some(c => c[0] === 'audioFormat'))
+    intro.push(t('lgs.hdmi.intro.audioFormat', 'Audio format decides whether Dolby Atmos and DTS reach a soundbar or receiver: Bitstream passes them on, PCM asks for plain audio.'));
+  intro.push(t('lgs.hdmi.intro.onScreen', 'As in LG\u2019s own menu, only the input on screen can be changed.'));
+  return '<div class="pv-sub">' + esc(intro.join(' ')) + '</div>' +
+    '<div class="hdmi-grid" style="grid-template-columns:minmax(150px,1.3fr)' + ' minmax(130px,1fr)'.repeat(cols.length) + '">' +
+    '<div class="hh">' + esc(t('lgs.hdmi.input', 'Input')) + '</div>' + cols.map(c => '<div class="hh">' + esc(c[1]) + '</div>').join('') +
+    ports.map(n => {
+      const port = 'hdmi' + n, name = (inputs || lastInputNames)[port];
+      const label = name && name.replace(/\s/g, '').toLowerCase() !== port ? name : 'HDMI ' + n;
+      return '<div class="in"><b>' + esc(label) + '</b>' + (label !== 'HDMI ' + n ? '<span>HDMI ' + n + '</span>' : '') + '</div>' +
+        cols.map(c => cell(n, c[0])).join('');
+    }).join('') + '</div>';
+}
+
 // The Advanced tab's Sound section, and the SIMPLINK rows in Devices.
 var advLgsDevices = false;   // read by tick(), which can run before this line on the first load
 async function loadAdvSettings() {
   let d;
-  try { d = await (await fetch(api('/api/lgsettings?section=sound,devices'), { cache: 'no-store' })).json(); } catch (e) { return; }
+  try { d = await (await fetch(api('/api/lgsettings?section=sound,hdmi,devices'), { cache: 'no-store' })).json(); } catch (e) { return; }
   const row = r => '<div class="prot-row"><div class="prot-main"><div class="prot-title">' + esc(r.title) + '</div>' +
-    '<div class="prot-desc">' + esc(r.desc) + '</div></div><div class="prot-status">' + lgsControl(r) + '</div></div>';
+    '<div class="prot-desc">' + esc(r.desc) + (r.active === false ? ' ' + esc(t('lgs.inactive', 'Not available with the TV’s current input or sound output.')) : '') +
+    '</div></div><div class="prot-status">' + lgsControl(r) + '</div></div>';
   const sound = (d.rows || []).filter(r => r.section === 'sound');
   const devices = (d.rows || []).filter(r => r.section === 'devices');
+  const hdmi = (d.rows || []).filter(r => r.section === 'hdmi');
+  q('adv-hdmi').hidden = !hdmi.length;
+  q('adv-lgs-hdmi').innerHTML = hdmi.length ? hdmiTable(hdmi, d.dimensions || {}, d.inputs) : '';
   q('adv-sound').hidden = !sound.length;
   q('adv-lgs-sound').innerHTML = sound.map(row).join('');
   advLgsDevices = devices.length > 0;

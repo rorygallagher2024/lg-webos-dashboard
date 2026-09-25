@@ -732,7 +732,11 @@ function handleRequest(req, res) {
   // Rows of lgsettings.js for the dashboards: ?section=sound,devices.
   if (pathname === '/api/lgsettings') {
     var secs = String(u.query.section || '').split(',').filter(Boolean);
-    return lgSettingsModule.collect(secs, function (r) { send(res, 200, JSON.stringify(r)); });
+    return lgSettingsModule.collect(secs, function (r) {
+      // The names the TV gives its inputs, for the HDMI table.
+      r.inputs = telemetryModule.inputNameMap;
+      send(res, 200, JSON.stringify(r));
+    });
   }
 
   // Polled once a second while the Game tab is open; see game.js. The input's
@@ -870,7 +874,7 @@ function handleRequest(req, res) {
       if (u.query.with !== 'settings') return send(res, 200, JSON.stringify(s));
       // The TV dashboard's System page, which reads one endpoint, also lists
       // the sound and SIMPLINK settings. Copied, since s is telemetry's cache.
-      lgSettingsModule.collect(['sound', 'devices'], function (ls) {
+      lgSettingsModule.collect(['sound', 'hdmi', 'devices'], function (ls) {
         var copy = JSON.parse(JSON.stringify(s));
         copy.lgSettings = ls.rows;
         send(res, 200, JSON.stringify(copy));

@@ -385,9 +385,14 @@ function optionRows(d) {
   var ls = d.lgSettings || [];
   var snd = ls.filter(function (x) { return x.section === 'sound'; });
   var dev = ls.filter(function (x) { return x.section === 'devices'; });
+  var hin = ls.filter(function (x) { return x.section === 'hdmi'; });
   if (snd.length) {
     r.push(head(t('adv.sound', 'Sound')));
     for (var si = 0; si < snd.length; si++) r.push(lgRow(snd[si]));
+  }
+  if (hin.length) {
+    r.push(head(t('adv.hdmi', 'HDMI inputs')));
+    for (var hi = 0; hi < hin.length; hi++) r.push(lgRow(hin[hi]));
   }
   if (d.lgLogo !== undefined) {
     r.push(head(t('adv.display', 'Display')));
@@ -445,6 +450,12 @@ function gameRows(d) {
  * range, such as balance's 101 steps, which is shown and left to a browser.
  */
 function lgRow(g) {
+  // A setting the TV has greyed out, such as Deep Colour off an HDMI input.
+  if (g.active === false) {
+    var shown = g.type === 'switch' ? (g.on ? t('common.on', 'On') : t('common.off', 'Off')) : String(g.value);
+    if (g.type === 'choice') for (var gc = 0; gc < g.choices.length; gc++) if (g.choices[gc].value === g.value) shown = g.choices[gc].label;
+    return { label: g.title, value: shown, hint: g.desc + ' ' + t('lgs.inactive', 'Not available with the TV’s current input or sound output.') };
+  }
   if (g.type === 'choice') {
     var at = 0;
     for (var c = 0; c < g.choices.length; c++) if (g.choices[c].value === g.value) at = c;
