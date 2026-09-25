@@ -6,6 +6,12 @@ on:
     branches: ['**']
   pull_request:
 
+# A push to a branch with an open PR starts both events; share one group per
+# branch so the later run replaces the earlier. Every merge on main runs in full.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   checks:
     runs-on: ubuntu-latest
