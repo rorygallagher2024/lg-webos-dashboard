@@ -132,6 +132,22 @@ console.log('Running test-telemetry.js ...');
   console.log('  ✓ hdmiPorts parses both HDMI 2.0 and HDMI 2.1 PHY timing nodes');
 })();
 
+// 6b. An HDMI input is active only while it is on screen
+(function testHdmiActive() {
+  var fg = 'com.webos.applicationManager/getForegroundAppInfo';
+  var orig = mockEnv.luna[fg];
+  telemetry.hdmiInputs(function (r) {
+    assert.strictEqual(r.inputs[1].active, true, 'the selected input on screen is active');
+    assert.strictEqual(r.inputs[0].active, false);
+    mockEnv.luna[fg] = { returnValue: true, appId: 'io.github.rorygallagher2024.lg-webos-dashboard' };
+    telemetry.hdmiInputs(function (r2) {
+      assert.strictEqual(r2.inputs[1].active, false, 'the selected input behind another app is not');
+      mockEnv.luna[fg] = orig;
+      console.log('  ✓ an HDMI input is active only while it is on screen');
+    });
+  });
+})();
+
 // 7. Format helpers
 (function testFormatters() {
   assert.strictEqual(telemetry.formatPicMode('expert1'), 'ISF Expert (Bright)');

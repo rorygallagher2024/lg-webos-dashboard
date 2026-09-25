@@ -637,34 +637,44 @@ function hdmiPorts() {
 function hdmiInputs(cb) {
   if (!lunaFn) return cb({ ok: false, error: 'luna bus not available' });
   lunaFn('com.webos.service.eim/getAllInputStatus', {}, function (res) {
-    var devs = (res && res.devices) || [];
-    var ports = hdmiPorts();
-    var signalling = [];
-    for (var p = 0; p < ports.length; p++) if (ports[p].connected) signalling.push(ports[p]);
+    // eim's activate marks the input last selected, and stays set while
+    // another app is in front of it. Only the foreground app says whether the
+    // input is on screen.
+    lunaCachedFn('com.webos.applicationManager/getForegroundAppInfo', {}, 4000, function (fg) {
+      var onScreen = (fg && fg.appId) || null;
+      var devs = (res && res.devices) || [];
+      var ports = hdmiPorts();
+      var signalling = [];
+      for (var p = 0; p < ports.length; p++) if (ports[p].connected) signalling.push(ports[p]);
 
-    var inputs = [];
-    var activeIdx = -1;
-    for (var d = 0; d < devs.length; d++) {
-      if (!devs[d].id || String(devs[d].id).indexOf('HDMI') !== 0) continue;
-      if (devs[d].activate) activeIdx = inputs.length;
-      var hasCec = devs[d].lastUniqueId !== undefined &&
-                   devs[d].lastUniqueId !== 255 &&
-                   devs[d].lastUniqueId !== -1;
-      var seen = !!(hasCec || devs[d].hdmiPlugIn || devs[d].connected || (devs[d].subCount > 0));
-      inputs.push({
-        id: devs[d].id,
-        port: devs[d].port,
-        label: devs[d].label || devs[d].id,
-        appId: devs[d].appId,
-        active: !!devs[d].activate,
-        deviceSeen: seen,
-        signal: null
-      });
-    }
-    if (activeIdx !== -1 && signalling.length === 1) {
-      inputs[activeIdx].signal = signalling[0];
-    }
-    cb({ ok: true, inputs: inputs, ports: ports, pairedUnambiguously: (activeIdx !== -1 && signalling.length === 1) });
+      var inputs = [];
+      var selectedIdx = -1;
+      for (var d = 0; d < devs.length; d++) {
+        if (!devs[d].id || String(devs[d].id).indexOf('HDMI') !== 0) continue;
+        if (devs[d].activate) selectedIdx = inputs.length;
+        var hasCec = devs[d].lastUniqueId !== undefined &&
+                     devs[d].lastUniqueId !== 255 &&
+                     devs[d].lastUniqueId !== -1;
+        var seen = !!(hasCec || devs[d].hdmiPlugIn || devs[d].connected || (devs[d].subCount > 0));
+        // HDMI_2 is com.webos.app.hdmi2, for firmware that leaves appId out.
+        var appId = devs[d].appId || 'com.webos.app.' + String(devs[d].id).toLowerCase().replace('_', '');
+        inputs.push({
+          id: devs[d].id,
+          port: devs[d].port,
+          label: devs[d].label || devs[d].id,
+          appId: appId,
+          active: !!devs[d].activate && appId === onScreen,
+          deviceSeen: seen,
+          signal: null
+        });
+      }
+      // The selected input keeps its signal behind another app, so the pairing
+      // does not depend on it being on screen.
+      if (selectedIdx !== -1 && signalling.length === 1) {
+        inputs[selectedIdx].signal = signalling[0];
+      }
+      cb({ ok: true, inputs: inputs, ports: ports, pairedUnambiguously: (selectedIdx !== -1 && signalling.length === 1) });
+    });
   });
 }
 
