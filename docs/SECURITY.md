@@ -9,8 +9,9 @@ it before exposing it more widely.
   `/api/` request must carry `?k=something-long`. Bookmark the dashboard with
   the token in the URL. This gates the HTTP API only &mdash; **MQTT and the Home
   Assistant integration are unaffected**, since they use a separate channel.
-- **`allowPower` ships disabled**, so a fresh install cannot be told to turn the
-  TV off by anything that finds the port. Enable it deliberately.
+- **`"allowPower": false`** hides and refuses power off, power on and reboot,
+  in the dashboard and in Home Assistant, for a TV that should never be
+  switched off over the network. The other controls stay.
 - **Turn the dashboard off if you do not use it.** `"web": { "enabled": false }`
   removes the HTTP endpoint altogether, which is stronger than gating it with a
   token. An MQTT-only install has no reason to expose one. The on-TV app runs on

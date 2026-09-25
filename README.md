@@ -385,7 +385,7 @@ It can be removed again from the dashboard at any time. Updating an existing ins
 
 The server starts again by itself whenever the TV restarts. To try it without that, add `--no-persist`, and it runs only until the TV next restarts. Setting the router to always give the TV the same address saves looking it up again.
 
-No configuration is needed for this part. Without a config file the dashboard runs on port 8080, the controls are live, MQTT is off, and power off / reboot are disabled.
+No configuration is needed for this part. Without a config file the dashboard runs on port 8080, the controls are live, including power off and reboot, and MQTT is off.
 
 Nothing is sent anywhere: the server talks to the TV and to whoever opens the page, and reaches the internet only to look for a new release — when the dashboard's Server tab is opened, or daily if [checking automatically](#checking-automatically) is switched on.
 
@@ -452,7 +452,7 @@ The dashboard can change the broker, credentials, topic prefix and device identi
 
 Edit those in `config.json` and redeploy, or edit `/var/lib/tvweb/config.json` on the TV and restart.
 
-`allowPower` ships disabled, because there is no authentication unless `token` is set — a fresh install should not expose "turn the TV off" to the whole network. Enable it deliberately.
+`allowPower` is on, like the other controls: who on the network can use them is decided by opening the dashboard to the network in setup, and by `token`. `"allowPower": false` hides and refuses power off, power on and reboot, in the dashboard and in Home Assistant.
 
 > [!NOTE]
 > Give the TV its own MQTT user with a restricted topic ACL rather than reusing your main Home Assistant credentials. See [docs/SECURITY.md](docs/SECURITY.md).

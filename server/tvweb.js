@@ -63,11 +63,11 @@ var CONFIG = {
   // Anyone who can reach this port can use the controls below.
   allowControl: true,   // volume, screen off/on, input switching, toast
 
-  // Power off / reboot ship DISABLED, because there is no authentication
-  // unless `token` is set and a fresh install should not expose "turn the TV
-  // off" to the whole network. Enable in your own config.json:
-  //     { "allowPower": true }
-  allowPower: false,
+  // Power off / power on / reboot. On like the other controls: who on the
+  // network can use any of them is decided by opening the dashboard to the
+  // network in setup, and by `token`. { "allowPower": false } in config.json
+  // hides and refuses them.
+  allowPower: true,
 
   // Optional shared secret. If non-empty, every /api/ request must carry
   // ?k=<token>. Keeps casual LAN devices out.
