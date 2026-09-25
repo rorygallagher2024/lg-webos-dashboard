@@ -13,6 +13,7 @@ html,body{background:#000;color:#fff}
 body{font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   padding:max(28px,env(safe-area-inset-top)) 22px 40px;max-width:480px;margin:0 auto}
 h1{font-weight:400;font-size:26px;line-height:1.2;margin:0 0 8px}
+.mark{display:block;height:34px;width:auto;color:#fff;margin:0 0 22px}
 .sub{color:rgba(255,255,255,.6);font-size:15px;margin-bottom:26px}
 label{display:block;font-size:13px;color:rgba(255,255,255,.6);margin:18px 0 6px}
 input[type=text],input[type=password],input[type=number]{width:100%;font:inherit;color:#fff;
@@ -31,6 +32,8 @@ button:disabled{opacity:.5}
 </head>
 <body>
 <main id="form">
+  <!-- docs/logo/glasshouse.svg without its tile. -->
+  <svg class="mark" viewBox="124 104 264 302" role="img" aria-label="Glasshouse" translate="no"><path d="M358 214 L256 134 L154 214 V342 A34 34 0 0 0 188 376 H324 A34 34 0 0 0 358 342 V286 H272" fill="none" stroke="currentColor" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <h1 data-t="phone.title">Connect Home Assistant</h1>
   <p class="sub" data-t="phone.sub">The details of your MQTT broker. With the Mosquitto add-on, the address is your Home Assistant's own.</p>
 

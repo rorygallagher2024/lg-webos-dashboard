@@ -15,6 +15,7 @@ body{font-family:'Manrope',sans-serif}
 #stage{position:relative;height:100vh;padding:12vh 8vw 8vh}
 .step{font-family:'Manrope';font-weight:600;font-size:1.6vh;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.4)}
 .title{font-family:'Outfit';font-weight:300;font-size:6.4vh;line-height:1.1;margin:2.4vh 0 2vh}
+.mark{display:block;height:11vh;width:auto;color:#fff;margin:6vh 0 3vh}
 .sub{font-size:2.5vh;line-height:1.6;color:rgba(255,255,255,.6);max-width:62vw}
 .rows{margin-top:5vh;width:52vw}
 .row{display:flex;align-items:center;justify-content:space-between;height:8vh;
@@ -116,13 +117,16 @@ body{font-family:'Manrope',sans-serif}
     }
   }
 
+  // docs/logo/glasshouse.svg without its tile.
+  var MARK = '<svg class="mark" viewBox="124 104 264 302" role="img" aria-label="Glasshouse" translate="no"><path d="M358 214 L256 134 L154 214 V342 A34 34 0 0 0 188 376 H324 A34 34 0 0 0 358 342 V286 H272" fill="none" stroke="currentColor" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   function show(name) {
     screen = name;
     rows = []; sel = 0;
     if (poll) { clearInterval(poll); poll = null; }
 
     if (name === 'welcome') {
-      render('<div class="step">Glasshouse</div><div class="title" style="margin-top:16vh">' + esc(t('setup.slogan', 'Own the glass.')) + '</div>' +
+      render(MARK + '<div class="step">Glasshouse</div><div class="title">' + esc(t('setup.slogan', 'Own the glass.')) + '</div>' +
         '<div class="sub">' + esc(t('setup.welcome', 'Readings, controls and privacy settings for this TV, right here with the remote.')) + ' ' +
         (hasAR() ? esc(t('setup.welcome.three', 'Three quick choices first, and you can change any of them later.')) : esc(t('setup.welcome.two', 'Two quick choices first, and you can change both later.'))) +
         '</div><div class="btn">' + esc(t('setup.start', 'Get started')) + '</div>' + dots(1));
