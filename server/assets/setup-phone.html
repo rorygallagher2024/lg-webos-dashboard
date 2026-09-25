@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<title>Connect Home Assistant</title>
+<title data-t="phone.title">Connect Home Assistant</title>
 <style>
 /* Served by the TV's one-time setup link, which serves nothing else, so this
    page carries everything it needs: no fonts or scripts from the TV. */
@@ -31,33 +31,34 @@ button:disabled{opacity:.5}
 </head>
 <body>
 <main id="form">
-  <h1>Connect Home Assistant</h1>
-  <p class="sub">The details of your MQTT broker. With the Mosquitto add-on, the address is your Home Assistant's own.</p>
+  <h1 data-t="phone.title">Connect Home Assistant</h1>
+  <p class="sub" data-t="phone.sub">The details of your MQTT broker. With the Mosquitto add-on, the address is your Home Assistant's own.</p>
 
-  <label for="host">Broker address</label>
-  <input id="host" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.10" required>
+  <label for="host" data-t="mqtt.host">Broker address</label>
+  <input id="host" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.10" translate="no" required>
 
-  <label for="port">Port</label>
+  <label for="port" data-t="mqtt.port">Port</label>
   <input id="port" type="number" inputmode="numeric" value="1883" min="1" max="65535">
 
-  <label for="user">Username</label>
+  <label for="user" data-t="mqtt.user">Username</label>
   <input id="user" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
 
-  <label for="pass">Password</label>
+  <label for="pass" data-t="mqtt.password">Password</label>
   <input id="pass" type="password" autocomplete="off">
 
-  <label class="check"><input id="tls" type="checkbox"> Encrypted connection (TLS)</label>
-  <p class="note">Only if your broker is set up for it. Usually on port 8883.</p>
+  <label class="check"><input id="tls" type="checkbox"> <span data-t="phone.tls">Encrypted connection (TLS)</span></label>
+  <p class="note" data-t="phone.tls.note">Only if your broker is set up for it. Usually on port 8883.</p>
 
-  <button id="save" type="button">Connect</button>
+  <button id="save" type="button" data-t="phone.connect">Connect</button>
   <p id="msg" role="status"></p>
 </main>
 
 <main id="done" class="done" hidden>
-  <h1>Sent to the TV</h1>
-  <p class="sub">It's connecting now and will show the result on screen. You can close this page.</p>
+  <h1 data-t="phone.sent">Sent to the TV</h1>
+  <p class="sub" data-t="phone.sent.sub">It's connecting now and will show the result on screen. You can close this page.</p>
 </main>
 
+<script src="/assets/i18n.js"></script>
 <script>
 (function () {
   var code = (location.search.match(/[?&]c=([0-9a-f]+)/) || [])[1] || '';
@@ -76,11 +77,11 @@ button:disabled{opacity:.5}
 
   btn.addEventListener('click', function () {
     var host = $('host').value.trim();
-    if (!host) { $('host').focus(); return say('Enter the broker address.', true); }
+    if (!host) { $('host').focus(); return say(t('phone.needHost', 'Enter the broker address.'), true); }
     var port = parseInt($('port').value, 10);
-    if (!(port >= 1 && port <= 65535)) { $('port').focus(); return say('The port is a number from 1 to 65535.', true); }
+    if (!(port >= 1 && port <= 65535)) { $('port').focus(); return say(t('phone.badPort', 'The port is a number from 1 to 65535.'), true); }
     btn.disabled = true;
-    say('Sending…');
+    say(t('phone.sending', 'Sending…'));
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/mqtt?c=' + encodeURIComponent(code), true);
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -93,12 +94,12 @@ button:disabled{opacity:.5}
         return;
       }
       btn.disabled = false;
-      if (xhr.status === 403) return say('This link has expired. Start again on the TV.', true);
-      say(r.error ? 'The TV turned that down: ' + r.error + '.' : 'That did not work. Try again.', true);
+      if (xhr.status === 403) return say(t('phone.expired', 'This link has expired. Start again on the TV.'), true);
+      say(r.error ? t('phone.refused', 'The TV turned that down: {error}.', { error: r.error }) : t('phone.failed', 'That did not work. Try again.'), true);
     };
     xhr.onerror = function () {
       btn.disabled = false;
-      say('Could not reach the TV. Check your phone is on the same network.', true);
+      say(t('phone.unreachable', 'Could not reach the TV. Check your phone is on the same network.'), true);
     };
     xhr.send(JSON.stringify({
       host: host, port: port, tls: $('tls').checked,

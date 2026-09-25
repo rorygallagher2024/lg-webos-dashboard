@@ -48,6 +48,9 @@ LANG_DIR = ASSETS / 'i18n'
 # the same in every language - a product name, a unit - carries translate="no".
 CONVERTED = {
     'ui.html': ['<body>'],
+    'dashboard.html': ['<body>'],
+    'setup.html': ['<body>'],
+    'setup-phone.html': ['<body>'],
 }
 
 KEY_RE = re.compile(r'^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)*$')

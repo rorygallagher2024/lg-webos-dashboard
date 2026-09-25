@@ -10,8 +10,10 @@ running server, and a laptop's node parses all of it happily.
 
     ./scripts/check-es5.py [files...]
 
-Defaults to server/tvweb.js. Only that file is restricted: server/assets/ui.html
-runs in a browser, not on the TV.
+Defaults to the server (tvweb.js and lib/), and the pages the TV's own browser
+runs - the dashboard app, setup and the helper they load - whose inline scripts
+are checked in place. server/assets/ui.html runs in a phone or computer's
+browser and is not restricted.
 
 Strings, template literals, regex literals and comments are blanked before the
 scan, so a `=>` inside a string or a comment mentioning `const` is not a hit.
@@ -164,6 +166,11 @@ def blank(src):
 
 def check(path):
     src = path.read_text(encoding='utf-8')
+    if path.suffix == '.html':
+        # Inline scripts only, each left on its own lines so a hit reports the
+        # page's line number; the markup around them becomes blank lines.
+        src = re.sub(r'(?s)(^|</script>).*?(<script>|$)',
+                     lambda m: '\n' * m.group(0).count('\n'), src)
     code, templates = blank(src)
     hits = [(ln, 'template literal - use string concatenation') for ln in templates]
     for pattern, why in RULES:
@@ -185,7 +192,9 @@ else:
     lib_dir = root / 'server' / 'lib'
     if lib_dir.exists():
         targets.extend(sorted(lib_dir.glob('*.js')))
-    # Loaded by the dashboard on the TV, in the TV's own browser.
-    targets.append(root / 'server' / 'assets' / 'i18n.js')
+    # The pages the TV's own browser runs, and the helper they load: on webOS 4
+    # it parses nothing newer. ui.html is for a phone or computer's browser.
+    assets = root / 'server' / 'assets'
+    targets += [assets / 'i18n.js', assets / 'dashboard.html', assets / 'setup.html', assets / 'setup-phone.html']
 
 sys.exit(1 if sum(check(t) for t in targets) else 0)

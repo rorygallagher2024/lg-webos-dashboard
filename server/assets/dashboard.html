@@ -186,7 +186,7 @@ body.light #flash{color:rgba(0,0,0,.88)}
   <nav id="tabs"></nav>
   <div id="main">
     <div id="list">
-      <div id="msg">Loading&hellip;</div>
+      <div id="msg"></div>
       <div class="more" id="moreUp">&#9650;</div>
       <div id="rows"></div>
       <div class="more" id="moreDown">&#9660;</div>
@@ -201,21 +201,22 @@ body.light #flash{color:rgba(0,0,0,.88)}
   <div id="flash"></div>
 </div>
 <script src="/assets/qr.js"></script>
+<script src="/assets/i18n.js"></script>
 <script>
 /* Every section reads an endpoint the server already serves to the browser
    dashboard, so nothing here needs its own API. A section is a tab; its rows
    are built from that payload by its own builder below. */
 var TABS = [
   // Metrics keeps the key it had as System, which the installed app opens on.
-  { key: 'system',  label: 'Metrics',      url: '/api/stats',       build: sysRows,  poll: 5000 },
-  { key: 'apps',    label: 'Apps',         url: '/api/apps',        build: appsRows },
-  { key: 'oled',    label: 'OLED Care',    url: '/api/oledcare',    build: oledRows },
-  { key: 'saver',   label: 'Screen Saver', url: '/api/screensaver', build: saverRows },
-  { key: 'privacy', label: 'Privacy',      url: '/api/privacy',     build: privacyRows },
-  { key: 'service', label: 'Service Menu', url: '/api/servicemenu', build: svcRows },
-  { key: 'options', label: 'System',       url: '/api/stats',       build: optionRows, poll: 5000 },
-  { key: 'update',  label: 'Updates',      url: '/api/update',      build: updateRows },
-  { key: 'settings', label: 'Settings',    url: '/api/setup',       build: settingsRows }
+  { key: 'system',  label: t('tab.metrics', 'Metrics'),      url: '/api/stats',       build: sysRows,  poll: 5000 },
+  { key: 'apps',    label: t('tab.apps', 'Apps'),         url: '/api/apps',        build: appsRows },
+  { key: 'oled',    label: t('tab.oledCare', 'OLED Care'),    url: '/api/oledcare',    build: oledRows },
+  { key: 'saver',   label: t('tv.tab.screenSaver', 'Screen Saver'), url: '/api/screensaver', build: saverRows },
+  { key: 'privacy', label: t('tab.privacy', 'Privacy'),      url: '/api/privacy',     build: privacyRows },
+  { key: 'service', label: t('tv.tab.serviceMenu', 'Service Menu'), url: '/api/servicemenu', build: svcRows },
+  { key: 'options', label: t('tv.tab.system', 'System'),       url: '/api/stats',       build: optionRows, poll: 5000 },
+  { key: 'update',  label: t('tv.tab.updates', 'Updates'),      url: '/api/update',      build: updateRows },
+  { key: 'settings', label: t('tv.tab.settings', 'Settings'),    url: '/api/setup',       build: settingsRows }
 ];
 
 var tab = 0, sel = 0, busy = false, ROW_VH = 7.6, HEAD_VH = 5.4;
@@ -238,14 +239,15 @@ function refreshCaps() {
 }
 refreshCaps();
 var data = {}, rows = [], timer = null, flashTimer = null;
+document.getElementById('msg').textContent = t('tv.loading', 'Loading\u2026');
 var currentTheme = 'dark';
 try {
   var urlTheme = (location.search.match(/[?&]theme=([^&]+)/) || [])[1];
   currentTheme = urlTheme || localStorage.getItem('theme') || 'dark';
 } catch (e) { currentTheme = 'dark'; }
 
-function applyTheme(t) {
-  currentTheme = t === 'light' ? 'light' : 'dark';
+function applyTheme(theme) {
+  currentTheme = theme === 'light' ? 'light' : 'dark';
   if (document.documentElement) {
     document.documentElement.className = currentTheme === 'light' ? 'light' : '';
   }
@@ -300,38 +302,38 @@ function head(label) { return { label: label, head: true }; }
 function sysRows(d) {
   if (!d || !d.ok) return [];
   var r = [];
-  r.push(head('Load'));
-  if (d.temp !== null && d.temp !== undefined) r.push({ label: 'Temperature', value: withUnit(d.temp, '°C'),
-    hint: 'The main processor (SoC) sensor, not the panel. It climbs with video decoding and CPU workload.' });
-  if (d.load !== null && d.load !== undefined) r.push({ label: 'CPU load', value: withUnit(d.load, '%'),
-    hint: 'Across all cores. Brief peaks while an app opens are normal; a sustained high figure with nothing playing is not.' });
-  if (d.mhz) r.push({ label: 'CPU frequency', value: withUnit(d.mhz, 'MHz'),
-    hint: 'The current clock. It drops when the TV is idle and rises under load.' });
-  if (d.gpuMhz) r.push({ label: 'GPU clock', value: withUnit(d.gpuMhz, 'MHz'),
-    hint: 'Drives the interface and video scaling.' });
+  r.push(head(t('tv.system.head.load', 'Load')));
+  if (d.temp !== null && d.temp !== undefined) r.push({ label: t('metrics.temperature', 'Temperature'), value: withUnit(d.temp, '°C'),
+    hint: t('tv.system.temperature.hint', 'The main processor (SoC) sensor, not the panel. It climbs with video decoding and CPU workload.') });
+  if (d.load !== null && d.load !== undefined) r.push({ label: t('tv.system.cpuLoad', 'CPU load'), value: withUnit(d.load, '%'),
+    hint: t('tv.system.cpuLoad.hint', 'Across all cores. Brief peaks while an app opens are normal; a sustained high figure with nothing playing is not.') });
+  if (d.mhz) r.push({ label: t('tv.system.cpuFrequency', 'CPU frequency'), value: withUnit(d.mhz, 'MHz'),
+    hint: t('tv.system.cpuFrequency.hint', 'The current clock. It drops when the TV is idle and rises under load.') });
+  if (d.gpuMhz) r.push({ label: t('tv.system.gpuClock', 'GPU clock'), value: withUnit(d.gpuMhz, 'MHz'),
+    hint: t('tv.system.gpuClock.hint', 'Drives the interface and video scaling.') });
   if (d.cores && d.cores.length)
-    r.push({ label: 'Per-core load', value: d.cores.map(function (c) { return c + '%'; }).join('  '),
-      hint: 'One figure per core. An even spread is healthy; one core pinned while the rest idle points at a stuck process.' });
+    r.push({ label: t('tv.system.perCoreLoad', 'Per-core load'), value: d.cores.map(function (c) { return c + '%'; }).join('  '),
+      hint: t('tv.system.perCoreLoad.hint', 'One figure per core. An even spread is healthy; one core pinned while the rest idle points at a stuck process.') });
 
-  r.push(head('Memory and storage'));
-  if (d.mem) r.push({ label: 'Memory free', value: fmtKB(d.mem.avail) + ' of ' + fmtKB(d.mem.total),
-    hint: 'Free memory is expected to be low: webOS keeps apps loaded so they reopen quickly, and releases them under pressure.' });
-  if (d.swap && d.swap.total) r.push({ label: 'Swap free', value: fmtKB(d.swap.free) + ' of ' + fmtKB(d.swap.total),
-    hint: 'Compressed memory held in RAM rather than on disk, so heavy use costs speed but does not wear the storage.' });
-  if (d.emmc && d.emmc.health) r.push({ label: 'eMMC health', value: d.emmc.health,
-    hint: 'Life left in the built-in storage, as the chip itself reports it. It falls very slowly and cannot be reset.' });
+  r.push(head(t('tv.system.head.memoryAndStorage', 'Memory and storage')));
+  if (d.mem) r.push({ label: t('tv.system.memoryFree', 'Memory free'), value: t('tv.system.freeOf', '{free} of {total}', { free: fmtKB(d.mem.avail), total: fmtKB(d.mem.total) }),
+    hint: t('tv.system.memoryFree.hint', 'Free memory is expected to be low: webOS keeps apps loaded so they reopen quickly, and releases them under pressure.') });
+  if (d.swap && d.swap.total) r.push({ label: t('tv.system.swapFree', 'Swap free'), value: t('tv.system.freeOf', '{free} of {total}', { free: fmtKB(d.swap.free), total: fmtKB(d.swap.total) }),
+    hint: t('tv.system.swapFree.hint', 'Compressed memory held in RAM rather than on disk, so heavy use costs speed but does not wear the storage.') });
+  if (d.emmc && d.emmc.health) r.push({ label: t('tv.system.emmcHealth', 'eMMC health'), value: d.emmc.health,
+    hint: t('tv.system.emmcHealth.hint', 'Life left in the built-in storage, as the chip itself reports it. It falls very slowly and cannot be reset.') });
 
-  r.push(head('This TV'));
-  if (d.device && d.device.model) r.push({ label: 'Model', value: d.device.model });
-  if (d.system && d.system.firmware) r.push({ label: 'Firmware', value: d.system.firmware });
+  r.push(head(t('tv.system.head.thisTv', 'This TV')));
+  if (d.device && d.device.model) r.push({ label: t('tv.system.model', 'Model'), value: d.device.model });
+  if (d.system && d.system.firmware) r.push({ label: t('metrics.firmware', 'Firmware'), value: d.system.firmware });
   if (d.system && d.system.webos) r.push({ label: 'webOS', value: String(d.system.webos) });
   if (d.hardware && d.hardware.soc_arch) r.push({ label: 'SoC', value: d.hardware.soc_arch });
   if (d.hardware && d.hardware.ram) r.push({ label: 'RAM', value: d.hardware.ram });
-  if (d.hardware && d.hardware.refresh_rate) r.push({ label: 'Panel refresh', value: withUnit(d.hardware.refresh_rate, 'Hz') });
-  if (d.uptime) r.push({ label: 'Uptime', value: fmtUptime(d.uptime) });
+  if (d.hardware && d.hardware.refresh_rate) r.push({ label: t('tv.system.panelRefresh', 'Panel refresh'), value: withUnit(d.hardware.refresh_rate, 'Hz') });
+  if (d.uptime) r.push({ label: t('tv.system.uptime', 'Uptime'), value: fmtUptime(d.uptime) });
   if (d.remote && d.remote.battery !== null && d.remote.battery !== undefined)
-    r.push({ label: 'Remote battery', value: withUnit(d.remote.battery, '%') });
-  if (d.ssid) r.push({ label: 'Wi-Fi', value: d.ssid });
+    r.push({ label: t('tv.system.remoteBattery', 'Remote battery'), value: withUnit(d.remote.battery, '%') });
+  if (d.ssid) r.push({ label: t('tv.system.wiFi', 'Wi-Fi'), value: d.ssid });
 
   return r;
 }
@@ -344,129 +346,129 @@ function optionRows(d) {
   if (!d || !d.ok) return [];
   var r = [], lights = d.lights || {};
   function toggle(label, on, act, hint, onWord, offWord) {
-    return { label: label, value: on ? (onWord || 'On') : (offWord || 'Off'), cls: 'act', act: act, on: !!on,
-             press: 'Press OK to turn ' + (on ? 'off' : 'on'), hint: hint };
+    return { label: label, value: on ? (onWord || t('common.on', 'On')) : (offWord || t('common.off', 'Off')), cls: 'act', act: act, on: !!on,
+             press: on ? t('tv.press.turnOff', 'Press OK to turn off') : t('tv.press.turnOn', 'Press OK to turn on'), hint: hint };
   }
   if (d.quickBoot !== undefined || d.wakeOnLan !== undefined || d.alwaysReady !== undefined) {
-    r.push(head('Power'));
+    r.push(head(t('adv.power', 'Power')));
     if (d.quickBoot !== undefined)
-      r.push(toggle('Quick Boot', d.quickBoot, 'quickBoot',
-        'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.'));
+      r.push(toggle(t('adv.quickBoot', 'Quick Boot'), d.quickBoot, 'quickBoot',
+        t('adv.quickBoot.desc', 'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.')));
     if (d.alwaysReady !== undefined)
-      r.push(toggle('Stay connected when off', d.alwaysReady, 'alwaysReady',
-        'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2.'));
+      r.push(toggle(t('adv.stayConnected', 'Stay connected when off'), d.alwaysReady, 'alwaysReady',
+        t('tv.options.stayConnected.hint', 'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2.')));
     // Only while it is on: with it off, the TV sleeps every night anyway.
     if (d.alwaysReady && d.alwaysReadyOff)
-      r.push({ label: 'Nightly power-down', value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,
+      r.push({ label: t('adv.nightlyOff', 'Nightly power-down'), value: d.alwaysReadyOff.start + '–' + d.alwaysReadyOff.end,
                cls: 'act', act: 'arOff', start: d.alwaysReadyOff.start,
-               press: 'Press OK to move it an hour later',
-               hint: 'For five hours every night, LG lets a switched-off TV sleep fully. It is offline then, so Glasshouse and Home Assistant cannot reach it. LG fixes the length; choose hours when the TV is not used.' });
+               press: t('tv.options.nightlyPowerDown.press', 'Press OK to move it an hour later'),
+               hint: t('tv.options.nightlyPowerDown.hint', 'For five hours every night, LG lets a switched-off TV sleep fully. It is offline then, so Glasshouse and Home Assistant cannot reach it. LG fixes the length; choose hours when the TV is not used.') });
     if (d.wakeOnLan !== undefined)
-      r.push(toggle('Wake-on-LAN', d.wakeOnLan, 'wakeOnLan',
-        'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.'));
+      r.push(toggle(t('adv.wol', 'Wake-on-LAN'), d.wakeOnLan, 'wakeOnLan',
+        t('tv.options.wol.hint', 'Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On.')));
   }
   if (d.lgLogo !== undefined) {
-    r.push(head('Display'));
-    var logo = toggle('LG logo', d.lgLogo, 'lgLogo',
-      'Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.', 'Shown', 'Hidden');
-    logo.press = 'Press OK to ' + (d.lgLogo ? 'hide' : 'show') + ' it';
+    r.push(head(t('adv.display', 'Display')));
+    var logo = toggle(t('adv.lgLogo', 'LG logo'), d.lgLogo, 'lgLogo',
+      t('adv.lgLogo.desc', 'Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.'), t('tv.options.lgLogo.shown', 'Shown'), t('apps.tile.hidden', 'Hidden'));
+    logo.press = d.lgLogo ? t('tv.options.lgLogo.hide', 'Press OK to hide it') : t('tv.options.lgLogo.show', 'Press OK to show it');
     r.push(logo);
   }
   if (d.deviceDetection !== undefined) {
-    r.push(head('Devices'));
-    r.push(toggle('Auto device detection', d.deviceDetection, 'deviceDetection',
-      'Finds devices to show on the Home Dashboard and control: a set-top box, and smart lights, plugs and switches such as Philips Hue, LIFX and TP-Link Kasa. Newer TVs look up every address on your home network each time they switch on to do it. Switched off, the scans stop and the TV no longer finds devices by itself.'));
+    r.push(head(t('adv.devices', 'Devices')));
+    r.push(toggle(t('adv.deviceDetection', 'Auto device detection'), d.deviceDetection, 'deviceDetection',
+      t('tv.options.deviceDetection.hint', 'Finds devices to show on the Home Dashboard and control: a set-top box, and smart lights, plugs and switches such as Philips Hue, LIFX and TP-Link Kasa. Newer TVs look up every address on your home network each time they switch on to do it. Switched off, the scans stop and the TV no longer finds devices by itself.')));
   }
   if (lights.standby !== undefined || lights.hasLogo) {
-    r.push(head('Front lights'));
+    r.push(head(t('adv.frontLights', 'Front lights')));
     if (lights.standby !== undefined)
-      r.push(toggle('Standby light', lights.standby, 'standbyLight',
-        'The small light on the front of the TV that shows while it is switched off.'));
+      r.push(toggle(t('adv.standbyLight', 'Standby light'), lights.standby, 'standbyLight',
+        t('adv.standbyLight.desc', 'The small light on the front of the TV that shows while it is switched off.')));
     if (lights.hasLogo)
-      r.push(toggle('Logo light', lights.logo, 'logoLight', 'The lit LG logo on the front of the TV.'));
+      r.push(toggle(t('adv.logoLight', 'Logo light'), lights.logo, 'logoLight', t('tv.options.logoLight.hint', 'The lit LG logo on the front of the TV.')));
   }
-  if (!r.length) r.push({ label: 'Nothing to set on this TV', value: '' });
+  if (!r.length) r.push({ label: t('tv.options.nothingToSetOn', 'Nothing to set on this TV'), value: '' });
   return r;
 }
 
 function appearanceRows() {
-  return [head('Appearance'), {
-    label: 'Theme',
-    value: currentTheme === 'light' ? 'Light' : 'Dark',
+  return [head(t('tv.appearance.head.appearance', 'Appearance')), {
+    label: t('theme', 'Theme'),
+    value: currentTheme === 'light' ? t('theme.light', 'Light') : t('theme.dark', 'Dark'),
     cls: 'act',
     act: 'toggleTheme',
-    press: 'Press OK to switch to ' + (currentTheme === 'light' ? 'Dark' : 'Light') + ' theme',
-    hint: 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.'
+    press: currentTheme === 'light' ? t('tv.appearance.toDark', 'Press OK to switch to Dark theme') : t('tv.appearance.toLight', 'Press OK to switch to Light theme'),
+    hint: t('tv.appearance.theme.hint', 'Switches the dashboard interface between Dark (true black for OLED) and Light theme.')
   }];
 }
 
 function oledRows(d) {
   if (!d || !d.ok) return [];
-  if (!d.isOled) return [{ label: 'This is not an OLED panel', value: '' }];
+  if (!d.isOled) return [{ label: t('tv.oled.thisIsNotAn', 'This is not an OLED panel'), value: '' }];
   var canSet = d.writable && d.serviceControls;
   var r = [];
 
-  r.push(head('Panel life'));
+  r.push(head(t('oled.panelLife', 'Panel life')));
   if (d.panelHours !== null && d.panelHours !== undefined)
-    r.push({ label: 'Total power-on hours', value: num(d.panelHours),
-      hint: 'Hours the panel has been lit since new. The figure the maintenance cycles below are scheduled against.' });
+    r.push({ label: t('tv.oled.totalPowerOnHours', 'Total power-on hours'), value: num(d.panelHours),
+      hint: t('tv.oled.totalPowerOnHours.hint', 'Hours the panel has been lit since new. The figure the maintenance cycles below are scheduled against.') });
   if (d.hoursUntilComp !== null && d.hoursUntilComp !== undefined)
-    r.push({ label: 'Panel maintenance in', value: withUnit(Math.round(d.hoursUntilComp), 'h'),
-      hint: 'The short compensation pass, run roughly every four hours of use. It happens by itself after the TV is switched off.' });
+    r.push({ label: t('oled.compIn', 'Panel maintenance in'), value: withUnit(Math.round(d.hoursUntilComp), 'h'),
+      hint: t('tv.oled.panelMaintenanceIn.hint', 'The short compensation pass, run roughly every four hours of use. It happens by itself after the TV is switched off.') });
   if (d.hoursUntilRefresher !== null && d.hoursUntilRefresher !== undefined)
-    r.push({ label: 'Pixel refresher in', value: withUnit(Math.round(d.hoursUntilRefresher), 'h'),
-      hint: 'The long calibration, due about every 2,000 hours. It takes around an hour and runs once the TV is off.' });
+    r.push({ label: t('oled.refresherIn', 'Pixel refresher in'), value: withUnit(Math.round(d.hoursUntilRefresher), 'h'),
+      hint: t('tv.oled.pixelRefresherIn.hint', 'The long calibration, due about every 2,000 hours. It takes around an hour and runs once the TV is off.') });
   if (d.compCycles !== null && d.compCycles !== undefined)
-    r.push({ label: 'Short cycles completed', value: num(d.compCycles),
-      hint: 'How many short compensation passes the panel has run.' });
+    r.push({ label: t('oled.cycles.comp', 'Short cycles completed'), value: num(d.compCycles),
+      hint: t('tv.oled.shortCyclesCompleted.hint', 'How many short compensation passes the panel has run.') });
   if (d.refresherCycles !== null && d.refresherCycles !== undefined)
-    r.push({ label: 'Pixel refresher cycles', value: num(d.refresherCycles),
-      hint: 'How many long calibrations the panel has run. These are the ones that matter for wear.' });
+    r.push({ label: t('oled.cycles.refresher', 'Pixel refresher cycles'), value: num(d.refresherCycles),
+      hint: t('tv.oled.pixelRefresherCycles.hint', 'How many long calibrations the panel has run. These are the ones that matter for wear.') });
   if (d.gsrStressCount !== null && d.gsrStressCount !== undefined)
-    r.push({ label: 'GSR stress events', value: num(d.gsrStressCount),
-      hint: 'How often sticky reduction has had to step in. A rising count means static content is being shown for long stretches.' });
+    r.push({ label: t('oled.cycles.gsr', 'GSR stress events'), value: num(d.gsrStressCount),
+      hint: t('tv.oled.gsrStressEvents.hint', 'How often sticky reduction has had to step in. A rising count means static content is being shown for long stretches.') });
 
-  r.push(head('Protections'));
+  r.push(head(t('oled.protections', 'Protections')));
   if (d.gsr !== null && d.gsr !== undefined)
-    r.push({ label: 'Global sticky reduction', value: d.gsr ? 'On' : 'Off', cls: d.gsr ? 'on' : 'off',
+    r.push({ label: t('tv.oled.globalStickyReduction', 'Global sticky reduction'), value: d.gsr ? t('common.on', 'On') : t('common.off', 'Off'), cls: d.gsr ? 'on' : 'off',
              act: canSet ? 'oled' : null, key: 'gsr', on: d.gsr, guard: true,
-             press: d.gsr ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'Dims static content - channel logos, scoreboards, menu bars - so it does not burn in. Switching it off makes permanent image retention more likely.' });
+             press: d.gsr ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+             hint: t('tv.oled.globalStickyReduction.hint', 'Dims static content - channel logos, scoreboards, menu bars - so it does not burn in. Switching it off makes permanent image retention more likely.') });
   if (d.tpc !== null && d.tpc !== undefined)
-    r.push({ label: 'Temporal peak control', value: d.tpc ? 'On' : 'Off', cls: d.tpc ? 'on' : 'off',
+    r.push({ label: t('tv.oled.temporalPeakControl', 'Temporal peak control'), value: d.tpc ? t('common.on', 'On') : t('common.off', 'Off'), cls: d.tpc ? 'on' : 'off',
              act: canSet ? 'oled' : null, key: 'tpc', on: d.tpc, guard: true,
-             press: d.tpc ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'Limits how long the panel holds peak brightness, which protects it and keeps heat down. Switching it off makes burn-in more likely.' });
+             press: d.tpc ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+             hint: t('tv.oled.temporalPeakControl.hint', 'Limits how long the panel holds peak brightness, which protects it and keeps heat down. Switching it off makes burn-in more likely.') });
   if (d.screenShift)
-    r.push({ label: 'Screen shift', value: d.screenShift, cls: /on/i.test(d.screenShift) ? 'on' : 'off',
+    r.push({ label: t('tv.oled.screenShift', 'Screen shift'), value: d.screenShift, cls: /on/i.test(d.screenShift) ? 'on' : 'off',
              act: d.writable ? 'shift' : null, on: /on/i.test(d.screenShift),
-             press: 'Press OK to switch ' + (/on/i.test(d.screenShift) ? 'off' : 'on'),
-             hint: 'Nudges the whole image by a pixel now and then so a fixed edge never sits on the same pixels. Invisible in use.' });
+             press: /on/i.test(d.screenShift) ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+             hint: t('tv.oled.screenShift.hint', 'Nudges the whole image by a pixel now and then so a fixed edge never sits on the same pixels. Invisible in use.') });
   if (d.logoDimming)
-    r.push({ label: 'Logo dimming', value: d.logoDimming, cls: /off/i.test(d.logoDimming) ? 'off' : 'on',
+    r.push({ label: t('tv.oled.logoDimming', 'Logo dimming'), value: d.logoDimming, cls: /off/i.test(d.logoDimming) ? 'off' : 'on',
              act: d.writable ? 'logo' : null, cur: String(d.logoDimming).toLowerCase(),
-             press: 'Press OK for off, light or high',
-             hint: 'Spots a station logo that has not moved and fades it slightly. Higher settings dim more of the picture around it.' });
+             press: t('tv.oled.logoDimming.press', 'Press OK for off, light or high'),
+             hint: t('tv.oled.logoDimming.hint', 'Spots a station logo that has not moved and fades it slightly. Higher settings dim more of the picture around it.') });
 
   if (d.writable) {
-    r.push(head('Run now'));
-    r.push({ label: 'Schedule a pixel refresher', value: '→', cls: 'act', act: 'refresh',
-      press: 'Press OK to schedule',
-      hint: 'Queues the long calibration for the next time the TV is switched off. It cannot run while the screen is on.' });
-    r.push({ label: 'Cancel a scheduled refresher', value: '→', cls: 'act', act: 'refreshCancel',
-      press: 'Press OK to cancel',
-      hint: 'Clears a queued calibration so the TV does not spend an hour on it after the next switch-off.' });
+    r.push(head(t('tv.oled.head.runNow', 'Run now')));
+    r.push({ label: t('tv.oled.scheduleAPixelRefresher', 'Schedule a pixel refresher'), value: '→', cls: 'act', act: 'refresh',
+      press: t('tv.oled.scheduleAPixelRefresher.press', 'Press OK to schedule'),
+      hint: t('tv.oled.scheduleAPixelRefresher.hint', 'Queues the long calibration for the next time the TV is switched off. It cannot run while the screen is on.') });
+    r.push({ label: t('tv.oled.cancelAScheduledRefresher', 'Cancel a scheduled refresher'), value: '→', cls: 'act', act: 'refreshCancel',
+      press: t('tv.oled.cancelAScheduledRefresher.press', 'Press OK to cancel'),
+      hint: t('tv.oled.cancelAScheduledRefresher.hint', 'Clears a queued calibration so the TV does not spend an hour on it after the next switch-off.') });
   }
   return r;
 }
 
 function saverRows(d) {
   if (!d || !d.ok || !d.modes) return [];
-  var r = [head('Screen saver')];
+  var r = [head(t('tv.saver.head.screenSaver', 'Screen saver'))];
   var busy = !!d.switching;
   if (busy) {
-    r.push({ label: 'Switching screen savers', value: '…',
-             hint: 'The screen may stay dark for up to a minute, then it comes back on its own.' });
+    r.push({ label: t('tv.saver.switchingScreenSavers', 'Switching screen savers'), value: '…',
+             hint: t('tv.saver.switchingScreenSavers.hint', 'The screen may stay dark for up to a minute, then it comes back on its own.') });
   }
   // Where LG's screen saver is built differently from ours, moving to or from
   // it makes the TV go dark for about a minute - this app included.
@@ -474,37 +476,37 @@ function saverRows(d) {
            : d.slowSwitch ? function (m) { return m.id === 'stock'; }
            : function () { return false; };
   d.modes.filter(function (m) { return m.available; }).forEach(function (m) {
-    r.push({ label: m.label, value: m.active ? 'In use' : '', cls: m.active ? 'on' : '',
+    r.push({ label: m.label, value: m.active ? t('ss.inUse', 'In use') : '', cls: m.active ? 'on' : '',
              act: d.writable && !busy ? 'saver' : null, key: m.id,
-             press: m.active ? 'Already in use'
-               : busy ? 'Wait for the switch to finish'
-               : slow(m) ? 'Press OK to use this one. The screen goes dark for about a minute'
-               : 'Press OK to use this one',
+             press: m.active ? t('tv.saver.alreadyInUse', 'Already in use')
+               : busy ? t('tv.saver.waitForSwitch', 'Wait for the switch to finish')
+               : slow(m) ? t('tv.saver.useSlow', 'Press OK to use this one. The screen goes dark for about a minute')
+               : t('tv.saver.use', 'Press OK to use this one'),
              hint: m.id === 'stock'
-               ? 'LG’s own screen saver.'
-               : 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.' });
+               ? t('tv.saver.stock.hint', 'LG’s own screen saver.')
+               : t('tv.saver.ours.hint', 'Replaces LG’s screen saver. Everything on it drifts slowly so no pixel holds the same image.') });
   });
   // Brightness only for the screen savers drawn here, as in the browser
   // dashboard: LG's own is not ours to dim. The mode goes with it, since both
   // are staged into the same file.
   if (d.writable && !busy && d.current && d.current !== 'stock') {
     var bright = d.level === 'bright';
-    r.push(head('How it looks'));
-    r.push({ label: 'Brightness', value: bright ? 'Bright' : 'Dim', cls: 'act', act: 'saverLevel',
+    r.push(head(t('tv.saver.head.howItLooks', 'How it looks')));
+    r.push({ label: t('ss.brightness', 'Brightness'), value: bright ? t('ss.bright', 'Bright') : t('ss.dim', 'Dim'), cls: 'act', act: 'saverLevel',
              key: d.current, next: bright ? 'dim' : 'bright',
-             press: 'Press OK for ' + (bright ? 'Dim' : 'Bright'),
-             hint: 'Dim suits a dark room and is kinder to the panel; bright suits a lit one.' });
+             press: bright ? t('tv.saver.toDim', 'Press OK for Dim') : t('tv.saver.toBright', 'Press OK for Bright'),
+             hint: t('tv.saver.brightness.hint', 'Dim suits a dark room and is kinder to the panel; bright suits a lit one.') });
   }
 
   // The same action as the browser dashboard's Start screen saver. From the
   // dashboard it starts over this app; the server refuses only HDMI and live TV.
   if (d.writable && !busy) {
-    r.push(head('Show it now'));
-    r.push({ label: 'Start screen saver', value: '→', cls: 'act', act: 'saverStart',
-             press: 'Press OK to start it',
-             hint: 'Shows the screen saver in use straight away, to see how it looks. Any button on the remote ends it.' });
+    r.push(head(t('ss.showNow', 'Show it now')));
+    r.push({ label: t('ss.start', 'Start screen saver'), value: '→', cls: 'act', act: 'saverStart',
+             press: t('tv.saver.startScreenSaver.press', 'Press OK to start it'),
+             hint: t('tv.saver.startScreenSaver.hint', 'Shows the screen saver in use straight away, to see how it looks. Any button on the remote ends it.') });
   }
-  r.push(head('A firmware update puts LG’s own back'));
+  r.push(head(t('tv.saver.head.aFirmwareUpdatePuts', 'A firmware update puts LG’s own back')));
   return r;
 }
 
@@ -514,36 +516,38 @@ function appsRows(d) {
 
   var inst = d.installed || [];
   if (inst.length > 0) {
-    r.push(head('Uninstall Applications'));
+    r.push(head(t('tv.apps.head.uninstallApplications', 'Uninstall Applications')));
     for (var j = 0; j < inst.length; j++) {
       var app = inst[j];
       r.push({
         label: app.title || app.id,
-        value: 'Uninstall',
+        value: t('apps.uninstall.button', 'Uninstall'),
         cls: 'bad',
         act: 'uninstall',
         key: app.id,
         title: app.title || app.id,
-        press: 'Press OK to uninstall app',
-        hint: 'Store or user-installed application (' + (app.version ? 'v' + app.version + ', ' : '') + app.id + '). Press OK to uninstall from the TV.'
+        press: t('tv.apps.uninstall.press', 'Press OK to uninstall app'),
+        hint: app.version
+          ? t('tv.apps.uninstall.hintVersion', 'Store or user-installed application (v{version}, {id}). Press OK to uninstall from the TV.', { version: app.version, id: app.id })
+          : t('tv.apps.uninstall.hint', 'Store or user-installed application ({id}). Press OK to uninstall from the TV.', { id: app.id })
       });
     }
   }
 
   var sys = d.systemTiles || [];
   if (sys.length > 0) {
-    r.push(head('Hide Home Screen System Apps'));
+    r.push(head(t('tv.apps.head.hideHomeScreenSystem', 'Hide Home Screen System Apps')));
     var tileHidingEnabled = !!d.tileHidingEnabled;
     r.push({
-      label: 'System App Hiding',
-      value: tileHidingEnabled ? 'Enabled' : 'Disabled',
+      label: t('tv.apps.systemAppHiding', 'System App Hiding'),
+      value: tileHidingEnabled ? t('mqtt.cat.enabled', 'Enabled') : t('mqtt.cat.disabled', 'Disabled'),
       cls: tileHidingEnabled ? 'on' : 'off',
       act: 'tileHiding',
       on: tileHidingEnabled,
-      press: tileHidingEnabled ? 'Press OK to disable tile hiding' : 'Press OK to enable tile hiding',
+      press: tileHidingEnabled ? t('tv.apps.tiles.disable', 'Press OK to disable tile hiding') : t('tv.apps.tiles.enable', 'Press OK to enable tile hiding'),
       hint: tileHidingEnabled
-        ? 'When enabled: On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.'
-        : 'Stock behavior active. Press OK to enable system app hiding.'
+        ? t('tv.apps.tiles.on.hint', 'When enabled: On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.')
+        : t('tv.apps.tiles.off.hint', 'Stock behavior active. Press OK to enable system app hiding.')
     });
     if (tileHidingEnabled) {
       for (var i = 0; i < sys.length; i++) {
@@ -551,16 +555,16 @@ function appsRows(d) {
         var isVisible = !tile.hidden;
         r.push({
           label: tile.title || tile.id,
-          value: isVisible ? 'Visible' : 'Hidden',
+          value: isVisible ? t('apps.tile.visible', 'Visible') : t('apps.tile.hidden', 'Hidden'),
           cls: isVisible ? 'on' : 'off',
           act: 'tile',
           key: tile.id,
           title: tile.title || tile.id,
           on: isVisible,
-          press: isVisible ? 'Press OK to hide tile' : 'Press OK to show tile',
+          press: isVisible ? t('tv.apps.tile.hide', 'Press OK to hide tile') : t('tv.apps.tile.show', 'Press OK to show tile'),
           hint: isVisible
-            ? 'Currently visible on the TV home ribbon. Press OK to hide this tile.'
-            : 'Currently hidden from the TV home ribbon. Press OK to make this tile visible again.'
+            ? t('tv.apps.tile.visible.hint', 'Currently visible on the TV home ribbon. Press OK to hide this tile.')
+            : t('tv.apps.tile.hidden.hint', 'Currently hidden from the TV home ribbon. Press OK to make this tile visible again.')
         });
       }
     }
@@ -568,21 +572,22 @@ function appsRows(d) {
 
   var svcs = d.services || [];
   if (svcs.length > 0) {
-    r.push(head('Turn Off Background Services'));
+    r.push(head(t('tv.apps.head.turnOffBackgroundServices', 'Turn Off Background Services')));
     for (var k = 0; k < svcs.length; k++) {
       var s = svcs[k];
       var isActive = !s.disabled, still = s.disabled && s.running;
       r.push({
         label: s.title || s.id,
-        value: isActive ? 'Active' : still ? 'Disabled, still running' : 'Disabled',
+        value: isActive ? t('metrics.hdmi.active', 'Active') : still ? t('apps.service.stillRunning', 'Disabled, still running') : t('mqtt.cat.disabled', 'Disabled'),
         cls: isActive ? 'good' : 'warn',
         act: 'serviceToggle',
         key: s.id,
         title: s.title || s.id,
         on: isActive,
-        press: isActive ? 'Press OK to disable service' : 'Press OK to enable service',
+        press: isActive ? t('tv.apps.service.disable', 'Press OK to disable service') : t('tv.apps.service.enable', 'Press OK to enable service'),
+        // badge and desc are the server's own words, in English.
         hint: (s.badge ? '[' + s.badge + '] ' : '') + (s.desc || '') +
-              (still ? ' Switched off, but something on the TV has started it again.' : '')
+              (still ? ' ' + t('apps.service.restarted', 'Switched off, but something on the TV has started it again.') : '')
       });
     }
   }
@@ -599,27 +604,27 @@ function privacyRows(d) {
   var sm = d.simple;
   if (sm) {
     var can = d.consentWritable !== false;
-    r.push(head('Tracking and ads overview'));
-    r.push({ label: sm.total ? (sm.total === 1 ? '1 thing is still on' : sm.total + ' things are still on')
-                             : 'Tracking and targeted ads are off',
-             value: sm.total ? (can ? 'Switch it all off' : sm.total + ' on') : 'All off',
+    r.push(head(t('tv.privacy.head.trackingAndAdsOverview', 'Tracking and ads overview')));
+    r.push({ label: sm.total ? (sm.total === 1 ? t('pv.stillOn.one', '1 thing is still on') : t('pv.stillOn', '{n} things are still on', { n: sm.total }))
+                             : t('pv.allOff', 'Tracking and targeted ads are off'),
+             value: sm.total ? (can ? t('pv.switchAllOff', 'Switch it all off') : t('pv.areaOn', '{n} on', { n: sm.total })) : t('pv.allOffShort', 'All off'),
              cls: sm.total ? (can ? 'act' : 'off') : 'on',
              act: sm.total && can ? 'allOff' : null,
-             press: 'Press OK to switch it all off',
-             hint: sm.total ? 'Keeps the TV’s features working. Anything can be switched back on further down.'
-                            : 'If an LG update switches anything back on, it shows here.' });
+             press: t('tv.privacy.allOff.press', 'Press OK to switch it all off'),
+             hint: sm.total ? t('tv.privacy.allOff.hint', 'Keeps the TV’s features working. Anything can be switched back on further down.')
+                            : t('pv.allOff.watch', 'If an LG update switches anything back on, it shows here.') });
     for (var sa = 0; sa < sm.areas.length; sa++) {
       var ar = sm.areas[sa];
       var still = [];
       for (var si = 0; si < ar.items.length; si++) still.push(ar.items[si].label);
-      r.push({ label: ar.name, value: still.length ? still.length + ' still on' : 'Nothing on',
+      // ar.name and ar.detail are the server's own words, in English.
+      r.push({ label: ar.name, value: still.length ? t('tv.privacy.area.stillOn', '{n} still on', { n: still.length }) : t('tv.privacy.area.nothingOn', 'Nothing on'),
                cls: 'st ' + (still.length ? 'hold' : 'good'),
-               hint: ar.detail + (still.length ? ' Still on: ' + still.join(', ') + '.' : '') });
+               hint: ar.detail + (still.length ? ' ' + t('tv.privacy.area.stillOnNames', 'Still on: {names}.', { names: still.join(', ') }) : '') });
     }
     if (sm.kept.length)
-      r.push({ label: 'Left on', value: sm.kept.length + ' kept', cls: 'st note',
-               hint: 'These run features, so switching it all off leaves them: ' + sm.kept.join(', ') +
-                     '. They can be switched off further down.' });
+      r.push({ label: t('tv.privacy.leftOn', 'Left on'), value: t('tv.privacy.leftOn.count', '{n} kept', { n: sm.kept.length }), cls: 'st note',
+               hint: t('tv.privacy.leftOn.hint', 'These run features, so switching it all off leaves them: {names}. They can be switched off further down.', { names: sm.kept.join(', ') }) });
   }
 
   // The same three settings as the browser dashboard, stepped through with OK
@@ -627,70 +632,68 @@ function privacyRows(d) {
   if (d.adblock) {
     var ab = d.adblock, abMode = ab.enabled ? (ab.mode || 'full') : 'off';
     var AB = {
-      off:  { label: 'Off', next: 'ads',
-              hint: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
-      ads:  { label: 'Ads & telemetry', next: 'full',
-              hint: 'Blocks advertising, tracking and diagnostics addresses. ' +
-                    'LG’s app store and software updates still work.' },
-      full: { label: 'Everything', next: 'off',
-              hint: 'Also blocks LG’s platform services. Features that rely on them, such as the app ' +
-                    'store, may stop working.' }
+      off:  { label: t('common.off', 'Off'), next: 'ads', press: t('tv.privacy.blocking.toAds', 'Press OK for Ads & telemetry'),
+              hint: t('pv.adblock.off.detail', 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.') },
+      ads:  { label: t('pv.adblock.ads', 'Ads & telemetry'), next: 'full', press: t('tv.privacy.blocking.toFull', 'Press OK for Everything'),
+              hint: t('tv.privacy.adsTelemetry.hint', 'Blocks advertising, tracking and diagnostics addresses. LG’s app store and software updates still work.') },
+      full: { label: t('pv.adblock.full', 'Everything'), next: 'off', press: t('tv.privacy.blocking.toOff', 'Press OK for Off'),
+              hint: t('tv.privacy.everything.hint', 'Also blocks LG’s platform services. Features that rely on them, such as the app store, may stop working.') }
     };
     var cur = AB[abMode] || AB.off;
-    r.push(head('Ad and tracker blocking'));
-    r.push({ label: 'Blocking', value: cur.label, cls: abMode === 'off' ? 'off' : 'on',
+    r.push(head(t('tv.privacy.head.adAndTrackerBlocking', 'Ad and tracker blocking')));
+    r.push({ label: t('tv.privacy.blocking', 'Blocking'), value: cur.label, cls: abMode === 'off' ? 'off' : 'on',
              act: 'adblock', key: cur.next,
-             press: 'Press OK for ' + AB[cur.next].label,
-             hint: cur.hint + ' Streaming apps are untouched.' });
+             press: cur.press,
+             hint: cur.hint + ' ' + t('tv.privacy.blocking.streaming', 'Streaming apps are untouched.') });
   }
 
   if (d.acr) {
-    r.push(head('Screen content recognition'));
+    r.push(head(t('tv.privacy.head.screenContentRecognition', 'Screen content recognition')));
     var canAcr = d.consentWritable !== false;
-    r.push({ label: d.acr.label || 'Screen content recognition',
-             value: d.acr.active ? 'Active' : 'Off', cls: d.acr.active ? 'off' : 'on',
+    r.push({ label: d.acr.label || t('tv.privacy.acr', 'Screen content recognition'),
+             value: d.acr.active ? t('metrics.hdmi.active', 'Active') : t('common.off', 'Off'), cls: d.acr.active ? 'off' : 'on',
              act: canAcr ? 'acr' : null, on: d.acr.active,
-             press: d.acr.active ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.' });
+             press: d.acr.active ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+             hint: t('tv.privacy.acr.hint', 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.') });
     if (d.acr.captureState)
-      r.push({ label: 'Capture', value: d.acr.capturing ? 'Capturing' : 'Stopped',
+      r.push({ label: t('tv.privacy.capture', 'Capture'), value: d.acr.capturing ? t('pv.capturing', 'Capturing') : t('pv.stopped', 'Stopped'),
                cls: d.acr.capturing ? 'off' : 'on',
-               hint: 'Whether it is sampling the screen right now, as opposed to merely being switched on.' });
+               hint: t('tv.privacy.capture.hint', 'Whether it is sampling the screen right now, as opposed to merely being switched on.') });
   }
 
   if (d.advertisingId && d.advertisingId.available) {
-    r.push(head('Advertising identifier'));
-    r.push({ label: d.advertisingId.limitTrackingLabel || 'Limit ad tracking',
-             value: d.advertisingId.limitTracking ? 'On' : 'Off',
+    r.push(head(t('pv.adid', 'Advertising identifier')));
+    r.push({ label: d.advertisingId.limitTrackingLabel || t('pv.lmt', 'Limit ad tracking'),
+             value: d.advertisingId.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'),
              cls: d.advertisingId.limitTracking ? 'on' : 'off',
              act: d.consentWritable === false ? null : 'lmt', on: d.advertisingId.limitTracking,
-             press: d.advertisingId.limitTracking ? 'Press OK to switch off' : 'Press OK to switch on',
-             hint: 'When on, apps are asked not to use the TV’s advertising ID to profile the viewer. It is a request, not an enforcement.' });
-    r.push({ label: 'Reset the advertising ID', value: '→', cls: 'act', act: 'resetAdId',
-             press: 'Press OK to reset',
-             hint: 'Issues a fresh identifier, which breaks the link to whatever has been collected against the old one. Harmless to repeat.' });
+             press: d.advertisingId.limitTracking ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+             hint: t('tv.privacy.lmt.hint', 'When on, apps are asked not to use the TV’s advertising ID to profile the viewer. It is a request, not an enforcement.') });
+    r.push({ label: t('tv.privacy.resetTheAdvertisingId', 'Reset the advertising ID'), value: '→', cls: 'act', act: 'resetAdId',
+             press: t('tv.privacy.resetTheAdvertisingId.press', 'Press OK to reset'),
+             hint: t('tv.privacy.resetTheAdvertisingId.hint', 'Issues a fresh identifier, which breaks the link to whatever has been collected against the old one. Harmless to repeat.') });
   }
 
   // Each opens its own list, one row per consent or service.
   if (d.consent && d.consent.known) {
     var all = d.consent.known.concat(d.consent.other || []);
     var on = all.filter(function (c) { return c.enabled; }).length;
-    r.push(head('Data consents'));
-    r.push({ label: 'Consents switched on', value: on + ' of ' + all.length,
+    r.push(head(t('tv.privacy.head.dataConsents', 'Data consents')));
+    r.push({ label: t('tv.privacy.consentsSwitchedOn', 'Consents switched on'), value: t('tv.privacy.nOfTotal', '{n} of {total}', { n: on, total: all.length }),
              cls: on === 0 ? 'on' : '', act: 'open', key: 'consents',
-             press: d.consentWritable === false ? 'Press OK to see them' : 'Press OK to see and change them',
+             press: d.consentWritable === false ? t('tv.privacy.lgDataServicesRunning.press', 'Press OK to see them') : t('tv.privacy.seeAndChange', 'Press OK to see and change them'),
              web: '/?tab=privacy',
-             hint: 'The agreements the TV records against this account, each with what it lets LG do.',
-             scan: 'They can be changed from a phone too.' });
+             hint: t('tv.privacy.consentsSwitchedOn.hint', 'The agreements the TV records against this account, each with what it lets LG do.'),
+             scan: t('tv.privacy.scan', 'They can be changed from a phone too.') });
   }
 
   var sup = supervised(d);
   if (sup.length) {
     var run = sup.filter(function (x) { return x.running; }).length;
-    r.push({ label: 'LG data services running', value: run + ' of ' + sup.length,
+    r.push({ label: t('tv.privacy.lgDataServicesRunning', 'LG data services running'), value: t('tv.privacy.nOfTotal', '{n} of {total}', { n: run, total: sup.length }),
              cls: run === 0 ? 'on' : '', act: 'open', key: 'services',
-             press: 'Press OK to see them',
-             hint: 'Background services that collect and send usage data. They are switched off in the Apps tab.' });
+             press: t('tv.privacy.lgDataServicesRunning.press', 'Press OK to see them'),
+             hint: t('tv.privacy.lgDataServicesRunning.hint', 'Background services that collect and send usage data. They are switched off in the Apps tab.') });
   }
   return r;
 }
@@ -703,8 +706,8 @@ function privacyRows(d) {
 var SUBLISTS = { consents: consentRows, services: serviceRows };
 var sub = null, subFrom = 0;
 
-function buildRows(t, d) {
-  return (sub && t.key === 'privacy') ? SUBLISTS[sub](d) : (t.build(d) || []);
+function buildRows(section, d) {
+  return (sub && section.key === 'privacy') ? SUBLISTS[sub](d) : (section.build(d) || []);
 }
 
 function openSub(key) {
@@ -728,8 +731,8 @@ function nextRow(i) {
 }
 
 function backRow() {
-  return { label: '‹ Privacy', value: '', act: 'close', press: 'Press OK or Back to return',
-           hint: 'Back to the Privacy tab.' };
+  return { label: t('tv.backRow.privacy', '‹ Privacy'), value: '', act: 'close', press: t('tv.backRow.privacy.press', 'Press OK or Back to return'),
+           hint: t('tv.backRow.privacy.hint', 'Back to the Privacy tab.') };
 }
 
 // Only the supervised services: an on-demand one starts whenever anything asks
@@ -752,24 +755,24 @@ function consentRows(d) {
     // each: five rows saying the same nothing tell less than a count.
     var anon = g[0] === 'unknown' ? inGroup.filter(function (f) { return !f.settable && !f.documents; }) : [];
     inGroup = inGroup.filter(function (f) { return anon.indexOf(f) < 0; });
-    r.push(head(g[1] || 'Other'));
+    r.push(head(g[1] || t('tv.privacy.otherGroup', 'Other')));
     inGroup.forEach(function (f) {
       var can = cw && f.settable;
       var why = [f.detail ? f.detail.replace(/([^.!?])$/, '$1.') : ''];
-      if (f.agreements && f.agreements.length) why.push('Part of: ' + f.agreements.join(', ') + '.');
-      if (f.sharesWith && f.sharesWith.length) why.push('Switching this off also switches off ' + f.sharesWith.join(', ') + '.');
+      if (f.agreements && f.agreements.length) why.push(t('tv.privacy.partOf', 'Part of: {names}.', { names: f.agreements.join(', ') }));
+      if (f.sharesWith && f.sharesWith.length) why.push(t('tv.privacy.sharesWith', 'Switching this off also switches off {names}.', { names: f.sharesWith.join(', ') }));
       if (!can && g[2]) why.push(g[2]);
-      else if (!can && !cw) why.push('Controls are switched off in this dashboard’s config.');
-      r.push({ label: f.label || f.key, value: f.enabled ? 'On' : 'Off',
+      else if (!can && !cw) why.push(t('tv.privacy.controlsOff', 'Controls are switched off in this dashboard’s config.'));
+      r.push({ label: f.label || f.key, value: f.enabled ? t('common.on', 'On') : t('common.off', 'Off'),
                cls: f.enabled ? 'off' : 'on', act: can ? 'consent' : null, key: f.key, on: f.enabled,
-               press: f.enabled ? 'Press OK to switch off' : 'Press OK to switch on',
+               press: f.enabled ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
                hint: why.join(' ') });
     });
     if (anon.length) {
       var anonOn = anon.filter(function (f) { return f.enabled; }).length;
-      r.push({ label: anon.length + ' unidentified flag' + (anon.length === 1 ? '' : 's'),
-               value: anonOn ? anonOn + ' on' : 'All off', cls: anonOn ? 'off' : 'on',
-               hint: 'Recorded by the TV, tied to no agreement on this firmware, and not writable.' });
+      r.push({ label: anon.length === 1 ? t('pv.anon.one', '1 unidentified flag') : t('pv.anon', '{n} unidentified flags', { n: anon.length }),
+               value: anonOn ? t('pv.areaOn', '{n} on', { n: anonOn }) : t('pv.allOffShort', 'All off'), cls: anonOn ? 'off' : 'on',
+               hint: t('tv.privacy.anon.hint', 'Recorded by the TV, tied to no agreement on this firmware, and not writable.') });
     }
   });
   return r;
@@ -778,14 +781,14 @@ function consentRows(d) {
 // What is running, and where to switch it off: the Apps tab's background
 // services, which hold them off across reboots.
 function serviceRows(d) {
-  var r = [backRow(), head('LG data services')];
+  var r = [backRow(), head(t('tv.service.head.lgDataServices', 'LG data services'))];
   supervised(d).forEach(function (x) {
-    r.push({ label: x.label || x.name, value: x.running ? 'Running' : 'Stopped',
+    r.push({ label: x.label || x.name, value: x.running ? t('pv.running', 'Running') : t('pv.stopped', 'Stopped'),
              cls: x.running ? 'off' : 'on',
              hint: (x.detail ? x.detail.replace(/([^.!?])$/, '$1.') + ' ' : '') +
-                   'Switched off in the Apps tab, under Turn Off Background Services.' });
+                   t('tv.service.whereOff', 'Switched off in the Apps tab, under Turn Off Background Services.') });
   });
-  if (r.length === 2) r.push({ label: 'None on this TV', value: '' });
+  if (r.length === 2) r.push({ label: t('tv.service.noneOnThisTv', 'None on this TV'), value: '' });
   return r;
 }
 
@@ -796,173 +799,172 @@ function serviceRows(d) {
  */
 function settingsRows(d) {
   if (!d || !d.ok) {
-    return [{ label: 'Changed on the TV itself', value: '',
-              hint: 'These settings can only be changed with the remote, on the TV.' }].concat(appearanceRows());
+    return [{ label: t('tv.settings.changedOnTheTv', 'Changed on the TV itself'), value: '',
+              hint: t('tv.settings.changedOnTheTv.hint', 'These settings can only be changed with the remote, on the TV.') }].concat(appearanceRows());
   }
-  var WEB = 'A fuller version of this dashboard, with more controls, for a browser on a phone or computer. ';
-  var r = [head('This dashboard')];
-  r.push({ label: 'Web dashboard', value: d.network ? 'On' : 'Off', cls: d.network ? 'on' : 'off',
+  var WEB = t('tv.settings.web.hint', 'A fuller version of this dashboard, with more controls, for a browser on a phone or computer.') + ' ';
+  var r = [head(t('tv.settings.head.thisDashboard', 'This dashboard'))];
+  r.push({ label: t('tv.settings.webDashboard', 'Web dashboard'), value: d.network ? t('common.on', 'On') : t('common.off', 'Off'), cls: d.network ? 'on' : 'off',
            act: d.writable ? 'net' : null, on: d.network,
-           press: d.network ? 'Press OK to switch it off' : 'Press OK to switch it on',
+           press: d.network ? t('tv.press.switchItOff', 'Press OK to switch it off') : t('tv.press.switchItOn', 'Press OK to switch it on'),
            hint: WEB + (d.network
              ? (d.token
-               ? 'It is on for your home network, and needs the dashboard’s access token, which the code under Address includes.'
-               : 'It is on for your home network, with no password, so anyone on that network can use it.')
-             : 'It is off, so only this TV can reach the dashboard.') });
+               ? t('tv.settings.web.token', 'It is on for your home network, and needs the dashboard’s access token, which the code under Address includes.')
+               : t('tv.settings.web.open', 'It is on for your home network, with no password, so anyone on that network can use it.'))
+             : t('tv.settings.web.off', 'It is off, so only this TV can reach the dashboard.')) });
   if (d.network && d.address) {
-    r.push({ label: 'Address', value: d.address, web: '/',
-             hint: 'Where the web dashboard is, for a browser on a phone or computer on your home network.',
-             scan: 'Scan to open it on your phone.' });
+    r.push({ label: t('tv.settings.address', 'Address'), value: d.address, web: '/',
+             hint: t('tv.settings.address.hint', 'Where the web dashboard is, for a browser on a phone or computer on your home network.'),
+             scan: t('tv.settings.address.scan', 'Scan to open it on your phone.') });
   }
   var ha = d.homeAssistant || {};
-  var haValue = !ha.configured ? 'Not set up' :
-                ha.state === 'connected' ? 'Connected' :
-                ha.state === 'error' ? 'Not connecting' : 'Connecting';
-  r.push(head('Home Assistant (MQTT)'));
-  r.push({ label: 'Home Assistant', value: haValue, cls: ha.state === 'connected' ? 'on' : '',
+  var haValue = !ha.configured ? t('tv.settings.ha.notSetUp', 'Not set up') :
+                ha.state === 'connected' ? t('mqtt.state.connected', 'Connected') :
+                ha.state === 'error' ? t('tv.settings.ha.notConnecting', 'Not connecting') : t('mqtt.state.connecting', 'Connecting');
+  r.push(head(t('tv.settings.head.homeAssistantMqtt', 'Home Assistant (MQTT)')));
+  r.push({ label: t('tv.settings.homeAssistant', 'Home Assistant'), value: haValue, cls: ha.state === 'connected' ? 'on' : '',
            act: d.writable ? 'ha' : null,
-           press: ha.configured ? 'Press OK to set it up again' : 'Press OK to set it up on your phone',
+           press: ha.configured ? t('tv.settings.ha.again', 'Press OK to set it up again') : t('tv.settings.ha.phone', 'Press OK to set it up on your phone'),
            hint: ha.state === 'connected'
-             ? 'Connected to Home Assistant through your MQTT broker. The TV reports its state and takes commands, so it can join your automations.'
+             ? t('tv.settings.ha.connected', 'Connected to Home Assistant through your MQTT broker. The TV reports its state and takes commands, so it can join your automations.')
              : ha.configured
-               ? 'The MQTT broker’s details are saved, but the TV cannot connect to it yet. Set it up again to check them.'
-               : 'Connects this TV to Home Assistant through an MQTT broker, such as Home Assistant’s Mosquitto add-on, so it can join your automations. The broker’s details are entered on your phone.' });
+               ? t('tv.settings.ha.failing', 'The MQTT broker’s details are saved, but the TV cannot connect to it yet. Set it up again to check them.')
+               : t('tv.settings.ha.none', 'Connects this TV to Home Assistant through an MQTT broker, such as Home Assistant’s Mosquitto add-on, so it can join your automations. The broker’s details are entered on your phone.') });
   return r.concat(appearanceRows());
 }
 
 function svcRows(d) {
   if (!d || !d.ok) return [];
-  var r = [head('Service menu')];
+  var r = [head(t('tab.serviceMenu', 'Service menu'))];
   if (d.lockable)
-    r.push({ label: 'Lock', value: d.locked ? 'Locked' : 'Unlocked',
+    r.push({ label: t('tv.svc.lock', 'Lock'), value: d.locked ? t('svc.locked', 'Locked') : t('svc.unlocked', 'Unlocked'),
              cls: d.locked ? 'on' : 'off', act: d.writable ? 'lock' : null, on: d.locked,
-             press: d.locked ? 'Press OK to unlock' : 'Press OK to lock',
-             hint: 'Locked keeps the engineering menus shut even to someone who knows the button sequence.' });
+             press: d.locked ? t('tv.svc.unlock.press', 'Press OK to unlock') : t('tv.svc.lock.press', 'Press OK to lock'),
+             hint: t('tv.svc.lock.hint', 'Locked keeps the engineering menus shut even to someone who knows the button sequence.') });
   if (d.app && d.writable) {
-    r.push({ label: 'Open EZ Adjust', value: '→', cls: 'act', act: 'menu', key: 'ezAdjust',
-             press: 'Press OK to open',
-             hint: 'LG’s engineering menu. It can change panel calibration and hardware settings the normal menus keep out of reach, and some are not easy to put back. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.' });
-    r.push({ label: 'Open In Start', value: '→', cls: 'act', act: 'menu', key: 'inStart',
-             press: 'Press OK to open',
-             hint: 'The factory setup menu, with model and region settings. Changing these can leave the TV misconfigured. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.' });
+    r.push({ label: t('tv.svc.openEzAdjust', 'Open EZ Adjust'), value: '→', cls: 'act', act: 'menu', key: 'ezAdjust',
+             press: t('tv.svc.openEzAdjust.press', 'Press OK to open'),
+             hint: t('tv.svc.openEzAdjust.hint', 'LG’s engineering menu. It can change panel calibration and hardware settings the normal menus keep out of reach, and some are not easy to put back. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.') });
+    r.push({ label: t('tv.svc.openInStart', 'Open In Start'), value: '→', cls: 'act', act: 'menu', key: 'inStart',
+             press: t('tv.svc.openInStart.press', 'Press OK to open'),
+             hint: t('tv.svc.openInStart.hint', 'The factory setup menu, with model and region settings. Changing these can leave the TV misconfigured. The TV asks for a four-digit PIN — usually 0413, though it varies by model and region.') });
   }
-  if (r.length === 1) r.push({ label: 'Not available on this TV', value: '' });
+  if (r.length === 1) r.push({ label: t('tv.svc.notAvailableOnThis', 'Not available on this TV'), value: '' });
   return r;
 }
 
 function updateRows(d) {
   if (!d || !d.ok) return [];
   var r = [];
-  r.push(head('Software Updates'));
+  r.push(head(t('tv.update.head.softwareUpdates', 'Software Updates')));
 
-  var inst = d.installed ? ('Glasshouse ' + d.installed) : '—';
+  var inst = d.installed ? ('Glasshouse ' + d.installed) : '\u2014';
   r.push({
-    label: 'Installed version',
+    label: t('tv.update.installedVersion', 'Installed version'),
     value: inst,
-    hint: 'The version of Glasshouse running on this TV.'
+    hint: t('tv.update.installedVersion.hint', 'The version of Glasshouse running on this TV.')
   });
 
   if (d.state === 'checking') {
     r.push({
-      label: 'Latest release',
-      value: 'Checking…',
+      label: t('tv.update.latestRelease', 'Latest release'),
+      value: t('tv.update.checking', 'Checking…'),
       cls: 'warn',
-      hint: 'Looking for a new release.'
+      hint: t('tv.update.latestRelease.hint', 'Looking for a new release.')
     });
   } else if (d.available && d.latest) {
     r.push({
-      label: 'Latest release',
+      label: t('tv.update.latestRelease', 'Latest release'),
       value: 'v' + d.latest,
       cls: 'on',
       plain: true,
-      hint: 'A newer release is available (v' + d.latest + ').'
+      hint: t('tv.update.newer.hint', 'A newer release is available (v{version}).', { version: d.latest })
     });
     if (d.viaHomebrewChannel) {
       r.push({
-        label: 'Install update',
-        value: 'In the Homebrew Channel',
-        hint: 'Update Glasshouse in the Homebrew Channel. The server follows within a few minutes, keeping your settings, ad blocker and screen saver.'
+        label: t('tv.update.installUpdate', 'Install update'),
+        value: t('tv.update.inHbc', 'In the Homebrew Channel'),
+        hint: t('tv.update.installUpdate.hint', 'Update Glasshouse in the Homebrew Channel. The server follows within a few minutes, keeping your settings, ad blocker and screen saver.')
       });
     } else if (d.writable) {
       r.push({
-        label: 'Install update',
-        value: 'Install v' + d.latest,
+        label: t('tv.update.installUpdate', 'Install update'),
+        value: t('server.install', 'Install v{version}', { version: d.latest }),
         cls: 'act',
         act: 'update',
         targetVer: d.latest,
-        press: 'Press OK to install v' + d.latest,
-        hint: 'Downloads and installs v' + d.latest + ' directly on the TV. Settings, ad blocker, and screen saver are preserved. The TV server restarts automatically.'
+        press: t('tv.update.install.press', 'Press OK to install v{version}', { version: d.latest }),
+        hint: t('tv.update.install.hint', 'Downloads and installs v{version} directly on the TV. Settings, ad blocker, and screen saver are preserved. The TV server restarts automatically.', { version: d.latest })
       });
     }
   } else if (d.latest) {
     r.push({
-      label: 'Latest release',
-      value: 'v' + d.latest + ' (Up to date)',
+      label: t('tv.update.latestRelease', 'Latest release'),
+      value: t('tv.update.current', 'v{version} (Up to date)', { version: d.latest }),
       cls: 'off',
       plain: true,
-      hint: 'You are running the latest release.'
+      hint: t('tv.update.latestRelease.hint3', 'You are running the latest release.')
     });
   } else if (d.error) {
     r.push({
-      label: 'Latest release',
-      value: 'Check failed',
+      label: t('tv.update.latestRelease', 'Latest release'),
+      value: t('tv.update.checkFailed', 'Check failed'),
       cls: 'bad',
-      hint: 'Could not check for a new release: ' + d.error
+      hint: t('tv.update.checkFailed.hint', 'Could not check for a new release: {error}', { error: d.error })
     });
   }
 
   if (d.writable && d.state !== 'checking' && !d.available) {
     r.push({
-      label: 'Check for updates',
-      value: 'Check now',
+      label: t('tv.update.checkForUpdates', 'Check for updates'),
+      value: t('server.checkNow', 'Check now'),
       cls: 'act',
       act: 'updateCheck',
-      press: 'Press OK to check for updates',
-      hint: 'Looks for a newer release now.'
+      press: t('tv.update.checkForUpdates.press', 'Press OK to check for updates'),
+      hint: t('tv.update.checkForUpdates.hint', 'Looks for a newer release now.')
     });
   }
 
   if (typeof d.tvUpdatesBlocked === 'boolean') {
-    r.push(head('TV software'));
-    r.push({ label: 'Block TV software updates',
-             value: d.tvUpdatesBlocked ? 'Blocked' : 'Allowed',
+    r.push(head(t('tv.update.head.tvSoftware', 'TV software')));
+    r.push({ label: t('server.tvUpdates.block', 'Block TV software updates'),
+             value: d.tvUpdatesBlocked ? t('server.tvUpdates.blocked', 'Blocked') : t('server.tvUpdates.allowed', 'Allowed'),
              cls: d.tvUpdatesBlocked ? 'on' : 'off',
              act: d.writable ? 'tvupd' : null, on: d.tvUpdatesBlocked,
-             press: d.tvUpdatesBlocked ? 'Press OK to allow updates' : 'Press OK to block updates',
-             hint: 'Stops the TV installing LG’s system updates, which can take away the access ' +
-                   'Glasshouse runs with. Apps and Glasshouse’s own updates are unaffected.' });
+             press: d.tvUpdatesBlocked ? t('tv.update.allow.press', 'Press OK to allow updates') : t('tv.update.block.press', 'Press OK to block updates'),
+             hint: t('tv.update.blockTvSoftwareUpdates.hint', 'Stops the TV installing LG’s system updates, which can take away the access Glasshouse runs with. Apps and Glasshouse’s own updates are unaffected.') });
   }
 
   if (d.rollbackTo && d.writable) {
-    r.push(head('Rollback'));
+    r.push(head(t('tv.update.head.rollback', 'Rollback')));
     r.push({
-      label: 'Roll back version',
-      value: 'Roll back to v' + d.rollbackTo,
+      label: t('tv.update.rollBackVersion', 'Roll back version'),
+      value: t('server.rollback', 'Roll back to v{version}', { version: d.rollbackTo }),
       cls: 'warn',
       act: 'updateRollback',
       targetVer: d.rollbackTo,
-      press: 'Press OK to roll back to v' + d.rollbackTo,
-      hint: 'Restores the previous backup version (v' + d.rollbackTo + ') and restarts the server.'
+      press: t('tv.update.rollback.press', 'Press OK to roll back to v{version}', { version: d.rollbackTo }),
+      hint: t('tv.update.rollback.hint', 'Restores the previous backup version (v{version}) and restarts the server.', { version: d.rollbackTo })
     });
   }
 
-  r.push(head('Information'));
+  r.push(head(t('tv.update.head.information', 'Information')));
   if (d.checkedMs !== null && d.checkedMs !== undefined) {
     var mins = Math.floor(d.checkedMs / 60000);
-    var checkedStr = mins < 1 ? 'Just now' : (mins === 1 ? '1 min ago' : mins + ' mins ago');
+    var checkedStr = mins < 1 ? t('tv.update.checked.now', 'Just now') : (mins === 1 ? t('tv.update.checked.oneMin', '1 min ago') : t('tv.update.checked.mins', '{n} mins ago', { n: mins }));
     r.push({
-      label: 'Last checked',
+      label: t('tv.update.lastChecked', 'Last checked'),
       value: checkedStr,
-      hint: 'When the TV last checked for a new release.'
+      hint: t('tv.update.lastChecked.hint', 'When the TV last checked for a new release.')
     });
   }
 
   if (!d.writable) {
     r.push({
-      label: 'Controls disabled',
-      value: 'Read-only',
+      label: t('tv.update.controlsDisabled', 'Controls disabled'),
+      value: t('tv.update.readOnly', 'Read-only'),
       cls: 'off',
-      hint: 'allowControl is false in config.json. Updates cannot be triggered from the TV.'
+      hint: t('tv.update.controlsDisabled.hint', 'allowControl is false in config.json. Updates cannot be triggered from the TV.')
     });
   }
 
@@ -980,15 +982,15 @@ function render() {
     msg.style.display = 'block';
     var d = data[T().key];
     if (!d) {
-      msg.innerHTML = 'Loading\u2026';
+      msg.innerHTML = esc(t('tv.loading', 'Loading…'));
     } else if (d.error) {
       var detail = '<div class="msg-detail">' + esc(d.error);
-      if (lanOrigin) detail += '<br>Use the web dashboard instead: <span class="msg-url">' + esc(lanOrigin) + '</span>';
-      detail += '<br>If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard' +
-                '<br>and include the error: <span class="msg-url">' + esc(d.error) + '</span></div>';
-      msg.innerHTML = 'Something went wrong' + detail;
+      if (lanOrigin) detail += '<br>' + esc(t('tv.msg.useWeb', 'Use the web dashboard instead:')) + ' <span class="msg-url">' + esc(lanOrigin) + '</span>';
+      detail += '<br>' + esc(t('tv.msg.issue', 'If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard')) +
+                '<br>' + esc(t('tv.msg.includeError', 'and include the error:')) + ' <span class="msg-url">' + esc(d.error) + '</span></div>';
+      msg.innerHTML = esc(t('tv.msg.wentWrong', 'Something went wrong')) + detail;
     } else {
-      msg.innerHTML = 'Nothing to show here';
+      msg.innerHTML = esc(t('tv.msg.nothing', 'Nothing to show here'));
     }
     return;
   }
@@ -1032,7 +1034,7 @@ function renderHint() {
   document.getElementById('hintBody').textContent =
     (r.hint || '') + (renderQr(r) && r.scan ? ' ' + r.scan : '');
   var act = document.getElementById('hintAct');
-  act.textContent = r.act ? (r.press || 'Press OK to change') : 'View only';
+  act.textContent = r.act ? (r.press || t('tv.press.change', 'Press OK to change')) : t('tv.viewOnly', 'View only');
   act.className = 'h-act' + (r.act ? '' : ' ro');
   el.className = 'on';
 }
@@ -1101,9 +1103,9 @@ function pickRow(i) {
 
 function renderTabs() {
   var bar = document.getElementById('tabs');
-  bar.innerHTML = TABS.map(function (t, i) {
-    return '<div class="tab' + (i === tab ? ' on' : '') + '" data-label="' + esc(t.label) + '" onclick="openTab(' + i + ')">' +
-      esc(t.label) + '</div>';
+  bar.innerHTML = TABS.map(function (section, i) {
+    return '<div class="tab' + (i === tab ? ' on' : '') + '" data-label="' + esc(section.label) + '" onclick="openTab(' + i + ')">' +
+      esc(section.label) + '</div>';
   }).join('');
   // More tabs than fit across the screen: scroll the bar to keep the selected
   // one in view, and fade whichever edge has tabs hidden beyond it.
@@ -1126,13 +1128,13 @@ function flash(text) {
 // ---- data ----
 
 function fetchTab(keepSel) {
-  var t = T(), key = t.key;
-  fetch(t.url, { cache: 'no-store' })
+  var section = T(), key = section.key;
+  fetch(section.url, { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (T().key !== key) return;        // the user moved on while this was in flight
       data[key] = d;
-      rows = buildRows(t, d);
+      rows = buildRows(section, d);
       if (initialSel !== null && initialSel < rows.length && (!rows[initialSel] || !rows[initialSel].head)) {
         sel = initialSel;
         initialSel = null;
@@ -1146,10 +1148,10 @@ function fetchTab(keepSel) {
       document.getElementById('rows').innerHTML = '';
       var msg = document.getElementById('msg');
       msg.style.display = 'block';
-      var detail = '<div class="msg-detail">The dashboard’s server on this TV did not respond.';
-      if (lanOrigin) detail += '<br>Use the web dashboard instead: <span class="msg-url">' + esc(lanOrigin) + '</span>';
-      detail += '<br>If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard</div>';
-      msg.innerHTML = 'Could not reach the TV server' + detail;
+      var detail = '<div class="msg-detail">' + esc(t('tv.msg.noResponse', 'The dashboard’s server on this TV did not respond.'));
+      if (lanOrigin) detail += '<br>' + esc(t('tv.msg.useWeb', 'Use the web dashboard instead:')) + ' <span class="msg-url">' + esc(lanOrigin) + '</span>';
+      detail += '<br>' + esc(t('tv.msg.issue', 'If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard')) + '</div>';
+      msg.innerHTML = esc(t('tv.msg.unreachable', 'Could not reach the TV server')) + detail;
     });
 }
 
@@ -1201,7 +1203,7 @@ function awaitRestart(targetVer, doneLabel) {
   var box = document.getElementById('rows'), msg = document.getElementById('msg');
   box.innerHTML = '';
   msg.style.display = 'block';
-  msg.innerHTML = 'Installing update\u2026<div class="msg-detail">The TV server is restarting. Please wait\u2026</div>';
+  msg.innerHTML = esc(t('tv.update.installingUpdate', 'Installing update…')) + '<div class="msg-detail">' + esc(t('tv.update.restartWait', 'The TV server is restarting. Please wait…')) + '</div>';
 
   var attempts = 0;
   var poll = setInterval(function () {
@@ -1213,7 +1215,7 @@ function awaitRestart(targetVer, doneLabel) {
           if (!targetVer || d.installed === targetVer) {
             clearInterval(poll);
             busy = false;
-            flash(doneLabel || 'Update complete');
+            flash(doneLabel || t('tv.update.complete', 'Update complete'));
             setTimeout(function () {
               location.replace(location.pathname + '?tab=update&t=' + Date.now());
             }, 1000);
@@ -1224,7 +1226,7 @@ function awaitRestart(targetVer, doneLabel) {
     if (attempts > 80) {
       clearInterval(poll);
       busy = false;
-      flash('Restart is taking longer than expected');
+      flash(t('tv.update.slow', 'Restart is taking longer than expected'));
       fetchTab(true);
     }
   }, 1500);
@@ -1238,11 +1240,11 @@ function send(body, note) {
   }).then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (res) {
       busy = false;
-      if (res && res.ok === false) { flash(res.error || 'That did not work'); return fetchTab(true); }
+      if (res && res.ok === false) { flash(res.error || t('tv.failed', 'That did not work')); return fetchTab(true); }
       if (note) flash(note);
       fetchTab(true);
     })
-    .catch(function () { busy = false; flash('That did not work'); });
+    .catch(function () { busy = false; flash(t('tv.failed', 'That did not work')); });
 }
 
 function sendPost(url, body, note) {
@@ -1253,11 +1255,11 @@ function sendPost(url, body, note) {
   }).then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (res) {
       busy = false;
-      if (res && res.ok === false) { flash(res.error || 'That did not work'); return fetchTab(true); }
+      if (res && res.ok === false) { flash(res.error || t('tv.failed', 'That did not work')); return fetchTab(true); }
       if (note) flash(note);
       fetchTab(true);
     })
-    .catch(function () { busy = false; flash('That did not work'); });
+    .catch(function () { busy = false; flash(t('tv.failed', 'That did not work')); });
 }
 
 /*
@@ -1266,16 +1268,16 @@ function sendPost(url, body, note) {
  */
 function setNetwork(open) {
   busy = true;
-  flash(open ? 'Opening it to your network…' : 'Keeping it to this TV…');
+  flash(open ? t('tv.net.opening', 'Opening it to your network…') : t('tv.net.closing', 'Keeping it to this TV…'));
   fetch('/api/setup', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'network', open: open })
   }).then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (res) {
-      if (res && res.ok === false) { busy = false; flash(res.error || 'That did not work'); return; }
+      if (res && res.ok === false) { busy = false; flash(res.error || t('tv.failed', 'That did not work')); return; }
       setTimeout(function () { untilBack(30); }, 1500);
     })
-    .catch(function () { busy = false; flash('That did not work'); });
+    .catch(function () { busy = false; flash(t('tv.failed', 'That did not work')); });
 }
 
 function untilBack(tries) {
@@ -1283,7 +1285,7 @@ function untilBack(tries) {
     .then(function (r) { if (!r.ok) throw new Error('not yet'); return r.json(); })
     .then(function () { busy = false; refreshCaps(); fetchTab(true); })
     .catch(function () {
-      if (tries <= 0) { busy = false; flash('It did not come back. Try again.'); return; }
+      if (tries <= 0) { busy = false; flash(t('tv.net.notBack', 'It did not come back. Try again.')); return; }
       setTimeout(function () { untilBack(tries - 1); }, 1000);
     });
 }
@@ -1299,10 +1301,10 @@ function activate() {
         r.origValue = r.value;
         r.origPress = r.press;
         r.origCls = r.cls;
-        r.value = 'Confirm?';
+        r.value = t('tv.confirm', 'Confirm?');
         r.cls = 'warn';
-        r.press = 'Press OK again to confirm uninstall';
-        flash('Press OK again to uninstall ' + (r.title || r.key));
+        r.press = t('tv.apps.uninstall.confirm', 'Press OK again to confirm uninstall');
+        flash(t('tv.apps.uninstall.again', 'Press OK again to uninstall {name}', { name: r.title || r.key }));
         render();
         setTimeout(function () {
           if (r.confirming) {
@@ -1316,91 +1318,91 @@ function activate() {
         return;
       }
       r.confirming = false;
-      r.value = 'Uninstalling…';
+      r.value = t('apps.uninstall.working', 'Uninstalling…');
       r.cls = 'warn';
-      flash('Uninstalling ' + (r.title || r.key) + '…');
+      flash(t('tv.apps.uninstalling', 'Uninstalling {name}…', { name: r.title || r.key }));
       render();
-      return sendPost('/api/apps/uninstall', { id: r.key }, 'App uninstalled');
+      return sendPost('/api/apps/uninstall', { id: r.key }, t('tv.apps.uninstalled', 'App uninstalled'));
     case 'tile':
       var ep = r.on ? '/api/apps/hide' : '/api/apps/unhide';
-      r.value = r.on ? 'Hiding…' : 'Showing…';
-      flash((r.on ? 'Hiding ' : 'Showing ') + (r.title || r.key) + '…');
+      r.value = r.on ? t('apps.tile.hiding', 'Hiding…') : t('tv.apps.tile.showing', 'Showing…');
+      flash(r.on ? t('tv.apps.tile.hidingName', 'Hiding {name}…', { name: r.title || r.key }) : t('tv.apps.tile.showingName', 'Showing {name}…', { name: r.title || r.key }));
       render();
-      return sendPost(ep, { id: r.key }, r.on ? 'Tile hidden' : 'Tile visible');
+      return sendPost(ep, { id: r.key }, r.on ? t('tv.apps.tile.hidden', 'Tile hidden') : t('tv.apps.tile.visible', 'Tile visible'));
     case 'tileHiding':
       var nextHiding = !r.on;
-      r.value = nextHiding ? 'Enabling…' : 'Disabling…';
-      flash((nextHiding ? 'Enabling' : 'Disabling') + ' tile hiding…');
+      r.value = nextHiding ? t('tv.enabling', 'Enabling…') : t('tv.disabling', 'Disabling…');
+      flash(nextHiding ? t('tv.apps.tiles.enabling', 'Enabling tile hiding…') : t('tv.apps.tiles.disabling', 'Disabling tile hiding…'));
       render();
-      return sendPost('/api/apps/tile-hiding', { enabled: nextHiding }, nextHiding ? 'Tile hiding enabled' : 'Tile hiding disabled');
+      return sendPost('/api/apps/tile-hiding', { enabled: nextHiding }, nextHiding ? t('tv.apps.tiles.enabled', 'Tile hiding enabled') : t('tv.apps.tiles.disabled', 'Tile hiding disabled'));
     case 'serviceToggle':
       var nextDisabled = r.on;
-      r.value = nextDisabled ? 'Disabling…' : 'Enabling…';
-      flash((nextDisabled ? 'Disabling ' : 'Enabling ') + (r.title || r.key) + '…');
+      r.value = nextDisabled ? t('tv.disabling', 'Disabling…') : t('tv.enabling', 'Enabling…');
+      flash(nextDisabled ? t('tv.apps.service.disablingName', 'Disabling {name}…', { name: r.title || r.key }) : t('tv.apps.service.enablingName', 'Enabling {name}…', { name: r.title || r.key }));
       render();
-      return sendPost('/api/services/toggle', { id: r.key, disabled: nextDisabled }, nextDisabled ? 'Service disabled' : 'Service enabled');
+      return sendPost('/api/services/toggle', { id: r.key, disabled: nextDisabled }, nextDisabled ? t('tv.apps.service.disabled', 'Service disabled') : t('tv.apps.service.enabled', 'Service enabled'));
     case 'oled':
       return send({ action: 'oledProtection', value: { key: r.key, enabled: !r.on } },
-                  r.on ? 'Switched off' : 'Switched on');
+                  r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
     case 'shift':
       return send({ action: 'screenShift', value: r.on ? 'off' : 'on' });
     case 'arOff':
       var nextHour = (parseInt(r.start, 10) + 1) % 24;
       return send({ action: 'alwaysReadyOffStart', value: nextHour },
-                  (nextHour < 10 ? '0' : '') + nextHour + ':00 to ' + ((nextHour + 5) % 24 < 10 ? '0' : '') + (nextHour + 5) % 24 + ':00');
+                  t('tv.options.nightlyOff.moved', '{start} to {end}', { start: (nextHour < 10 ? '0' : '') + nextHour + ':00', end: ((nextHour + 5) % 24 < 10 ? '0' : '') + (nextHour + 5) % 24 + ':00' }));
     case 'logo':
       // off -> light -> strong -> off
       var next = r.cur === 'off' ? 'light' : (r.cur === 'light' ? 'strong' : 'off');
       return send({ action: 'logoDimming', value: next });
     case 'refresh':
-      return send({ action: 'refresherSchedule' }, 'Refresher scheduled');
+      return send({ action: 'refresherSchedule' }, t('tv.oled.refresherScheduled', 'Refresher scheduled'));
     case 'refreshCancel':
-      return send({ action: 'refresherCancel' }, 'Refresher cancelled');
+      return send({ action: 'refresherCancel' }, t('tv.oled.refresherCancelled', 'Refresher cancelled'));
     case 'saver':
       return send({ action: 'screensaverMode', value: r.key });
     case 'saverLevel':
       return send({ action: 'screensaverMode', value: { mode: r.key, level: r.next } },
-                  r.next === 'bright' ? 'Bright' : 'Dim');
+                  r.next === 'bright' ? t('ss.bright', 'Bright') : t('ss.dim', 'Dim'));
     case 'saverStart':
       return startSaverAfterRelease();
     case 'quickBoot':
-      return send({ action: 'quickBoot', value: !r.on }, r.on ? 'Quick Boot turned off' : 'Quick Boot turned on');
+      return send({ action: 'quickBoot', value: !r.on }, r.on ? t('tv.flash.quickBootOff', 'Quick Boot turned off') : t('tv.flash.quickBootOn', 'Quick Boot turned on'));
     case 'deviceDetection':
-      return send({ action: 'deviceDetection', value: !r.on }, r.on ? 'Device detection turned off' : 'Device detection turned on');
+      return send({ action: 'deviceDetection', value: !r.on }, r.on ? t('tv.flash.detectionOff', 'Device detection turned off') : t('tv.flash.detectionOn', 'Device detection turned on'));
     case 'alwaysReady':
-      return send({ action: 'alwaysReady', value: !r.on }, r.on ? 'Will sleep when off' : 'Will stay connected when off');
+      return send({ action: 'alwaysReady', value: !r.on }, r.on ? t('tv.flash.willSleep', 'Will sleep when off') : t('tv.flash.willStay', 'Will stay connected when off'));
     case 'lgLogo':
-      return send({ action: 'lgLogo', value: !r.on }, r.on ? 'LG logo hidden' : 'LG logo shown');
+      return send({ action: 'lgLogo', value: !r.on }, r.on ? t('tv.flash.logoHidden', 'LG logo hidden') : t('tv.flash.logoShown', 'LG logo shown'));
     case 'wakeOnLan':
-      return send({ action: 'wakeOnLan', value: !r.on }, r.on ? 'Wake-on-LAN turned off' : 'Wake-on-LAN turned on');
+      return send({ action: 'wakeOnLan', value: !r.on }, r.on ? t('tv.flash.wolOff', 'Wake-on-LAN turned off') : t('tv.flash.wolOn', 'Wake-on-LAN turned on'));
     case 'standbyLight':
-      return send({ action: 'standbyLight', value: !r.on }, r.on ? 'Standby light turned off' : 'Standby light turned on');
+      return send({ action: 'standbyLight', value: !r.on }, r.on ? t('tv.flash.standbyOff', 'Standby light turned off') : t('tv.flash.standbyOn', 'Standby light turned on'));
     case 'logoLight':
-      return send({ action: 'logoLight', value: !r.on }, r.on ? 'Logo light turned off' : 'Logo light turned on');
+      return send({ action: 'logoLight', value: !r.on }, r.on ? t('tv.flash.logoLightOff', 'Logo light turned off') : t('tv.flash.logoLightOn', 'Logo light turned on'));
     case 'adblock':
       return send({ action: 'setAdBlock', value: r.key });
     case 'acr':
-      return send({ action: 'acr', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
+      return send({ action: 'acr', value: !r.on }, r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
     case 'open':
       return openSub(r.key);
     case 'close':
       return closeSub();
     case 'consent':
       return send({ action: 'consent', value: { key: r.key, enabled: !r.on } },
-                  r.on ? 'Switched off' : 'Switched on');
+                  r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
     case 'resetAdId':
-      return send({ action: 'resetAdId' }, 'Advertising ID reset');
+      return send({ action: 'resetAdId' }, t('tv.flash.adIdReset', 'Advertising ID reset'));
     case 'allOff':
-      flash('Switching off…');
-      return send({ action: 'privacyAllOff' }, 'Switched off');
+      flash(t('pv.switchingOff', 'Switching off…'));
+      return send({ action: 'privacyAllOff' }, t('tv.flash.switchedOff', 'Switched off'));
     case 'lmt':
-      return send({ action: 'limitAdTracking', value: !r.on }, r.on ? 'Switched off' : 'Switched on');
+      return send({ action: 'limitAdTracking', value: !r.on }, r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
     case 'tvupd':
-      return send({ action: 'blockTvUpdates', value: !r.on }, r.on ? 'Updates allowed' : 'Updates blocked');
+      return send({ action: 'blockTvUpdates', value: !r.on }, r.on ? t('tv.flash.updatesAllowed', 'Updates allowed') : t('tv.flash.updatesBlocked', 'Updates blocked'));
     case 'lock':
       return send({ action: 'serviceMenuLock', value: { locked: !r.on } });
     case 'menu':
-      return send({ action: 'serviceMenuOpen', value: { menu: r.key } }, 'Opening…');
+      return send({ action: 'serviceMenuOpen', value: { menu: r.key } }, t('tv.flash.opening', 'Opening…'));
     case 'net':
       return setNetwork(!r.on);
     case 'ha':
@@ -1409,28 +1411,28 @@ function activate() {
       var nextTheme = currentTheme === 'light' ? 'dark' : 'light';
       applyTheme(nextTheme);
       try { localStorage.setItem('theme', nextTheme); } catch (e) {}
-      flash('Theme: ' + (nextTheme === 'light' ? 'Light' : 'Dark'));
+      flash(nextTheme === 'light' ? t('tv.flash.themeLight', 'Theme: Light') : t('tv.flash.themeDark', 'Theme: Dark'));
       if (T().key === 'settings') {
         rows = settingsRows(data.settings || {});
         render();
       }
       return;
     case 'updateCheck':
-      r.value = 'Checking…';
+      r.value = t('tv.update.checking', 'Checking…');
       r.cls = 'warn';
       render();
-      flash('Checking for updates…');
-      return sendPost('/api/control', { action: 'updateCheck' }, 'Check complete');
+      flash(t('tv.update.checkingFlash', 'Checking for updates…'));
+      return sendPost('/api/control', { action: 'updateCheck' }, t('tv.update.checked', 'Check complete'));
     case 'update':
       if (!r.confirming) {
         r.confirming = true;
         r.origValue = r.value;
         r.origPress = r.press;
         r.origCls = r.cls;
-        r.value = 'Confirm?';
+        r.value = t('tv.confirm', 'Confirm?');
         r.cls = 'warn';
-        r.press = 'Press OK again to install v' + r.targetVer;
-        flash('Press OK again to install v' + r.targetVer);
+        r.press = t('tv.update.installAgain', 'Press OK again to install v{version}', { version: r.targetVer });
+        flash(r.press);
         render();
         setTimeout(function () {
           if (r.confirming) {
@@ -1444,10 +1446,10 @@ function activate() {
         return;
       }
       r.confirming = false;
-      r.value = 'Installing…';
+      r.value = t('tv.update.installing', 'Installing…');
       r.cls = 'warn';
       render();
-      flash('Installing v' + r.targetVer + '…');
+      flash(t('tv.update.installingVersion', 'Installing v{version}…', { version: r.targetVer }));
       busy = true;
       fetch('/api/control', {
         method: 'POST',
@@ -1457,13 +1459,13 @@ function activate() {
         .then(function (res) {
           if (res && res.ok === false) {
             busy = false;
-            flash(res.error || 'Update failed');
+            flash(res.error || t('server.updateFailed', 'The update failed.'));
             return fetchTab(true);
           }
-          awaitRestart(r.targetVer, 'Updated to v' + r.targetVer);
+          awaitRestart(r.targetVer, t('server.step.updated', 'Updated to v{version}', { version: r.targetVer }));
         })
         .catch(function () {
-          awaitRestart(r.targetVer, 'Updated to v' + r.targetVer);
+          awaitRestart(r.targetVer, t('server.step.updated', 'Updated to v{version}', { version: r.targetVer }));
         });
       return;
     case 'updateRollback':
@@ -1472,10 +1474,10 @@ function activate() {
         r.origValue = r.value;
         r.origPress = r.press;
         r.origCls = r.cls;
-        r.value = 'Confirm?';
+        r.value = t('tv.confirm', 'Confirm?');
         r.cls = 'warn';
-        r.press = 'Press OK again to roll back to v' + r.targetVer;
-        flash('Press OK again to roll back to v' + r.targetVer);
+        r.press = t('tv.update.rollbackAgain', 'Press OK again to roll back to v{version}', { version: r.targetVer });
+        flash(r.press);
         render();
         setTimeout(function () {
           if (r.confirming) {
@@ -1489,10 +1491,10 @@ function activate() {
         return;
       }
       r.confirming = false;
-      r.value = 'Rolling back…';
+      r.value = t('tv.update.rollingBack', 'Rolling back…');
       r.cls = 'warn';
       render();
-      flash('Rolling back to v' + r.targetVer + '…');
+      flash(t('tv.update.rollingBackVersion', 'Rolling back to v{version}…', { version: r.targetVer }));
       busy = true;
       fetch('/api/control', {
         method: 'POST',
@@ -1502,13 +1504,13 @@ function activate() {
         .then(function (res) {
           if (res && res.ok === false) {
             busy = false;
-            flash(res.error || 'Rollback failed');
+            flash(res.error || t('server.rollbackFailed', 'The rollback failed.'));
             return fetchTab(true);
           }
-          awaitRestart(r.targetVer, 'Rolled back to v' + r.targetVer);
+          awaitRestart(r.targetVer, t('server.step.rolledBack', 'Rolled back to v{version}', { version: r.targetVer }));
         })
         .catch(function () {
-          awaitRestart(r.targetVer, 'Rolled back to v' + r.targetVer);
+          awaitRestart(r.targetVer, t('server.step.rolledBack', 'Rolled back to v{version}', { version: r.targetVer }));
         });
       return;
   }
@@ -1547,7 +1549,7 @@ function leaveApp() {
 var saverPending = null;
 function startSaverAfterRelease() {
   if (saverPending) return;
-  flash('Starting the screen saver…');
+  flash(t('tv.flash.startingSaver', 'Starting the screen saver…'));
   function go() {
     if (!saverPending) return;
     clearTimeout(saverPending);

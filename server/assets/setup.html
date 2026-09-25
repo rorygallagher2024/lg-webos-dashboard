@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1920,initial-scale=1">
-<title>Glasshouse setup</title>
+<title data-t="setup.pageTitle">Glasshouse setup</title>
 <style>
 /* First-run setup on the TV, and the Home Assistant screen the dashboard's
    Settings tab reuses. Same type and palette as the dashboard. */
@@ -42,6 +42,7 @@ body{font-family:'Manrope',sans-serif}
 <body>
 <div id="stage"></div>
 <script src="/assets/qr.js"></script>
+<script src="/assets/i18n.js"></script>
 <script>
 /*
  * Four screens - welcome, network, Home Assistant, summary - plus the phone
@@ -57,7 +58,7 @@ body{font-family:'Manrope',sans-serif}
   var screen = null, rows = [], sel = 0, busy = false, poll = null;
   var netChosen = false;
 
-  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) {
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   function api(method, body, cb) {
@@ -111,7 +112,7 @@ body{font-family:'Manrope',sans-serif}
     var h = document.getElementById('hint'), r = rows[sel];
     if (h && r && !r.ro) {
       h.innerHTML = '<div class="ht">' + esc(r.label) + '</div><div class="hb">' + esc(r.hint || '') +
-                    '</div><div class="ok">Press OK to choose</div>';
+                    '</div><div class="ok">' + esc(t('setup.pressToChoose', 'Press OK to choose')) + '</div>';
     }
   }
 
@@ -121,69 +122,65 @@ body{font-family:'Manrope',sans-serif}
     if (poll) { clearInterval(poll); poll = null; }
 
     if (name === 'welcome') {
-      render('<div class="step">Glasshouse</div><div class="title" style="margin-top:16vh">Own the glass.</div>' +
-        '<div class="sub">Readings, controls and privacy settings for this TV, right here with the remote. ' +
-        (hasAR() ? 'Three quick choices first, and you can change any of them later.'
-                 : 'Two quick choices first, and you can change both later.') +
-        '</div><div class="btn">Get started</div>' + dots(1));
+      render('<div class="step">Glasshouse</div><div class="title" style="margin-top:16vh">' + esc(t('setup.slogan', 'Own the glass.')) + '</div>' +
+        '<div class="sub">' + esc(t('setup.welcome', 'Readings, controls and privacy settings for this TV, right here with the remote.')) + ' ' +
+        (hasAR() ? esc(t('setup.welcome.three', 'Three quick choices first, and you can change any of them later.')) : esc(t('setup.welcome.two', 'Two quick choices first, and you can change both later.'))) +
+        '</div><div class="btn">' + esc(t('setup.start', 'Get started')) + '</div>' + dots(1));
     } else if (name === 'network') {
       rows = [
-        { id: 'open', label: 'Yes, on phones and computers at home',
-          hint: 'A fuller version of this dashboard, with more controls, that opens in a browser on any phone or computer on your home network. ' +
-            (state.token ? 'Using it needs the dashboard’s access token.' : 'There is no password, so anyone on that network can use it.') },
-        { id: 'closed', label: 'No, only on this TV',
-          hint: 'Nothing else on your network can reach the dashboard. The safest choice, and it can be switched on later in Settings.' }
+        { id: 'open', label: t('setup.net.open', 'Yes, on phones and computers at home'),
+          hint: t('setup.net.open.hint', 'A fuller version of this dashboard, with more controls, that opens in a browser on any phone or computer on your home network.') + ' ' +
+            (state.token ? t('setup.net.token', 'Using it needs the dashboard’s access token.') : t('setup.net.noPassword', 'There is no password, so anyone on that network can use it.')) },
+        { id: 'closed', label: t('setup.net.closed', 'No, only on this TV'),
+          hint: t('setup.net.closed.hint', 'Nothing else on your network can reach the dashboard. The safest choice, and it can be switched on later in Settings.') }
       ];
       // A fresh install starts closed, so the TV's current state would always
       // preselect "Only on this TV"; only follow it once a choice has been made.
       sel = (netChosen && !state.network) ? 1 : 0;
-      render('<div class="step">Step 1 of ' + steps() + '</div><div class="title">Turn on the web dashboard?</div>' +
+      render('<div class="step">' + esc(t('setup.step', 'Step {n} of {total}', { n: 1, total: steps() })) + '</div><div class="title">' + esc(t('setup.net.title', 'Turn on the web dashboard?')) + '</div>' +
         '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(2));
     } else if (name === 'ha') {
       rows = [
-        { id: 'phone', label: 'Set it up on my phone',
-          hint: 'The TV connects through an MQTT broker, such as Home Assistant’s Mosquitto add-on. Scan a code with your phone and enter the broker’s details there.' },
-        { id: 'later', label: 'Not now',
-          hint: 'The dashboard works without it. Set it up any time from Settings.' }
+        { id: 'phone', label: t('setup.ha.phone', 'Set it up on my phone'),
+          hint: t('setup.ha.phone.hint', 'The TV connects through an MQTT broker, such as Home Assistant’s Mosquitto add-on. Scan a code with your phone and enter the broker’s details there.') },
+        { id: 'later', label: t('setup.ha.later', 'Not now'),
+          hint: t('setup.ha.later.hint', 'The dashboard works without it. Set it up any time from Settings.') }
       ];
-      render('<div class="step">Step 2 of ' + steps() + '</div><div class="title">Connect to Home Assistant?</div>' +
+      render('<div class="step">' + esc(t('setup.step', 'Step {n} of {total}', { n: 2, total: steps() })) + '</div><div class="title">' + esc(t('setup.ha.title', 'Connect to Home Assistant?')) + '</div>' +
         '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(3));
     } else if (name === 'handoff') {
-      render('<div class="step">Home Assistant</div><div class="title">Finish on your phone</div>' +
-        '<div class="sub" id="hsub" style="max-width:44vw">Setting up the link…</div>' +
-        '<div class="wait" id="hwait" style="visibility:hidden">Waiting for your phone…</div>' + dots(3));
+      render('<div class="step">Home Assistant</div><div class="title">' + esc(t('setup.handoff.title', 'Finish on your phone')) + '</div>' +
+        '<div class="sub" id="hsub" style="max-width:44vw">' + esc(t('setup.handoff.preparing', 'Setting up the link…')) + '</div>' +
+        '<div class="wait" id="hwait" style="visibility:hidden">' + esc(t('setup.handoff.waiting', 'Waiting for your phone…')) + '</div>' + dots(3));
       startHandoff();
     } else if (name === 'standby') {
       rows = [
-        { id: 'on', label: 'Yes, keep it connected',
-          hint: 'When the TV is switched off, it stays on your network with the screen dark, so this dashboard and ' +
-            'Home Assistant keep working and can switch it back on. It uses about 12 W while off. For five hours each ' +
-            'night it sleeps fully and is offline; the dashboard can move those hours.' },
-        { id: 'off', label: 'No, let it sleep',
-          hint: 'Switched off, the TV sleeps as normal and uses almost no power. The dashboard and Home Assistant ' +
-            'wait until it is switched back on.' }
+        { id: 'on', label: t('setup.standby.on', 'Yes, keep it connected'),
+          hint: t('setup.standby.on.hint', 'When the TV is switched off, it stays on your network with the screen dark, so this dashboard and Home Assistant keep working and can switch it back on. It uses about 12 W while off. For five hours each night it sleeps fully and is offline; the dashboard can move those hours.') },
+        { id: 'off', label: t('setup.standby.off', 'No, let it sleep'),
+          hint: t('setup.standby.off.hint', 'Switched off, the TV sleeps as normal and uses almost no power. The dashboard and Home Assistant wait until it is switched back on.') }
       ];
       sel = state.alwaysReady ? 0 : 1;
-      render('<div class="step">Step 3 of 3</div><div class="title">Stay connected when off?</div>' +
+      render('<div class="step">' + esc(t('setup.step', 'Step {n} of {total}', { n: 3, total: 3 })) + '</div><div class="title">' + esc(t('setup.standby.title', 'Stay connected when off?')) + '</div>' +
         '<div class="rows" id="rows"></div><div id="hint"></div>' + dots(4));
     } else if (name === 'summary') {
       var ha = state.homeAssistant || {};
       rows = [
-        { ro: true, label: 'On this TV', value: 'Yes', cls: 'on' },
-        { ro: true, label: 'Web dashboard', value: state.network ? 'On' : 'Off', cls: state.network ? 'on' : '' },
-        { ro: true, label: 'Home Assistant', value: ha.state === 'connected' ? 'Connected' : (ha.configured ? 'Connecting' : 'Not set up'),
+        { ro: true, label: t('setup.summary.onTv', 'On this TV'), value: t('setup.yes', 'Yes'), cls: 'on' },
+        { ro: true, label: t('tv.settings.webDashboard', 'Web dashboard'), value: state.network ? t('common.on', 'On') : t('common.off', 'Off'), cls: state.network ? 'on' : '' },
+        { ro: true, label: t('tv.settings.homeAssistant', 'Home Assistant'), value: ha.state === 'connected' ? t('mqtt.state.connected', 'Connected') : (ha.configured ? t('mqtt.state.connecting', 'Connecting') : t('tv.settings.ha.notSetUp', 'Not set up')),
           cls: ha.state === 'connected' ? 'on' : '' }
       ];
-      if (hasAR()) rows.push({ ro: true, label: 'Stays connected when off', value: state.alwaysReady ? 'On' : 'Off',
+      if (hasAR()) rows.push({ ro: true, label: t('setup.summary.standby', 'Stays connected when off'), value: state.alwaysReady ? t('common.on', 'On') : t('common.off', 'Off'),
                                cls: state.alwaysReady ? 'on' : '' });
-      render('<div class="step">All set</div><div class="title">Ready to go</div>' +
-        '<div class="rows" id="rows"></div><div class="sub" style="margin-top:2vh">Change any of these in Settings.</div>' +
-        '<div class="btn">Open dashboard</div>' + dots(steps() + 2));
+      render('<div class="step">' + esc(t('setup.summary.step', 'All set')) + '</div><div class="title">' + esc(t('setup.summary.title', 'Ready to go')) + '</div>' +
+        '<div class="rows" id="rows"></div><div class="sub" style="margin-top:2vh">' + esc(t('setup.summary.change', 'Change any of these in Settings.')) + '</div>' +
+        '<div class="btn">' + esc(t('setup.summary.open', 'Open dashboard')) + '</div>' + dots(steps() + 2));
     } else if (name === 'restarting') {
-      render('<div class="step">One moment</div><div class="title">Applying your choice…</div>' + dots(2));
+      render('<div class="step">' + esc(t('setup.restarting.step', 'One moment')) + '</div><div class="title">' + esc(t('setup.restarting.title', 'Applying your choice…')) + '</div>' + dots(2));
     } else if (name === 'trouble') {
-      render('<div class="step">Setup</div><div class="title">Something went wrong</div>' +
-        '<div class="sub">The dashboard stopped answering. Press OK to try again.</div>');
+      render('<div class="step">' + esc(t('setup.trouble.step', 'Setup')) + '</div><div class="title">' + esc(t('tv.msg.wentWrong', 'Something went wrong')) + '</div>' +
+        '<div class="sub">' + esc(t('setup.trouble', 'The dashboard stopped answering. Press OK to try again.')) + '</div>');
     }
   }
 
@@ -193,10 +190,10 @@ body{font-family:'Manrope',sans-serif}
       if (screen !== 'handoff') return;
       var sub = document.getElementById('hsub');
       if (!r || !r.ok || !r.url) {
-        sub.textContent = 'The link could not be opened. Press OK to try again.';
+        sub.textContent = t('setup.handoff.failed', 'The link could not be opened. Press OK to try again.');
         return;
       }
-      sub.textContent = 'Scan this with your phone’s camera. This screen moves on by itself once the TV connects.';
+      sub.textContent = t('setup.handoff.scan', 'Scan this with your phone’s camera. This screen moves on by itself once the TV connects.');
       var qr = document.createElement('div');
       qr.id = 'qr';
       qr.innerHTML = '<svg shape-rendering="crispEdges"></svg><div class="url"></div>';
@@ -217,14 +214,14 @@ body{font-family:'Manrope',sans-serif}
           var wait = document.getElementById('hwait');
           if (restarted && ha.state === 'connected') {
             clearInterval(poll); poll = null;
-            wait.textContent = 'Connected';
+            wait.textContent = t('mqtt.state.connected', 'Connected');
             setTimeout(next, 1500);
           } else if (restarted && ha.state === 'error' && ++failedFor > 5) {
             clearInterval(poll); poll = null;
-            wait.textContent = 'It did not connect. Check the details and press OK to try again.';
+            wait.textContent = t('setup.handoff.notConnected', 'It did not connect. Check the details and press OK to try again.');
           } else if (!restarted && !s.handoff && ++goneFor >= 2) {
             clearInterval(poll); poll = null;
-            wait.textContent = 'The code has expired. Press OK for a new one.';
+            wait.textContent = t('setup.handoff.expired', 'The code has expired. Press OK for a new one.');
           }
         });
       }, 2000);
