@@ -1384,6 +1384,7 @@ var MIME = {
   '.html': 'text/html; charset=utf-8',
   '.otf': 'font/otf', '.ttf': 'font/ttf', '.woff2': 'font/woff2',
   '.css': 'text/css; charset=utf-8', '.js': 'application/javascript',
+  '.json': 'application/json; charset=utf-8',
   '.png': 'image/png', '.svg': 'image/svg+xml'
 };
 
@@ -1615,7 +1616,11 @@ var server = http.createServer(function (req, res) {
     if (!file) return send(res, 404, JSON.stringify({ ok: false, error: 'not found' }));
     var ext = path.extname(file).toLowerCase();
     var mime = MIME[ext] || 'application/octet-stream';
-    var cacheHdr = ext === '.html' ? 'no-cache' : 'public, max-age=86400';
+    // The strings and their translations change with each release as the pages
+    // do, so a day-old copy beside a new page would show text the page no
+    // longer has, or miss text it now does.
+    var fresh = ext === '.html' || ext === '.json' || /(^|\/)i18n\.js$/.test(file);
+    var cacheHdr = fresh ? 'no-cache' : 'public, max-age=86400';
     if (ASSET_CACHE[file]) {
       res.writeHead(200, {
         'Content-Type': mime,

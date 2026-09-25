@@ -185,5 +185,7 @@ else:
     lib_dir = root / 'server' / 'lib'
     if lib_dir.exists():
         targets.extend(sorted(lib_dir.glob('*.js')))
+    # Loaded by the dashboard on the TV, in the TV's own browser.
+    targets.append(root / 'server' / 'assets' / 'i18n.js')
 
 sys.exit(1 if sum(check(t) for t in targets) else 0)

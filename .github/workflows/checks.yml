@@ -26,6 +26,9 @@ jobs:
       - name: dashboard reaches for no missing element
         run: ./scripts/check-ui-ids.py
 
+      - name: strings keyed and translations current
+        run: ./scripts/check-strings.py
+
       - name: screen saver QML matches its declared QtQuick version
         run: ./scripts/check-screensavers.py
 

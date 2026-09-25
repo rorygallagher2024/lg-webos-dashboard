@@ -47,3 +47,10 @@ Skip comments that restate the code.
 
 Keep the measured facts that justify a decision (an observed value, a version,
 a threshold). Drop the story around them.
+
+# Strings on the dashboards
+
+Text shown on the dashboards is keyed for translation: `data-t` in markup,
+`t('key', 'English', {vars})` in script. docs/STRINGS.md has the rules, and
+`scripts/check-strings.py` checks them. The parts already converted are listed
+in `CONVERTED` in that script, and new text in one of them needs a key.
