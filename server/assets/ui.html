@@ -708,8 +708,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <header>
   <div class="hdr-left">
     <div class="mark">
-      <div class="mark-name">Glasshouse <span class="mark-kind">web dashboard</span></div>
-      <div class="mark-tv"><span id="brand">LG TV</span><i></i><span id="model">&mdash;</span></div>
+      <div class="mark-name"><span translate="no">Glasshouse</span> <span class="mark-kind" data-t="header.kind">web dashboard</span></div>
+      <div class="mark-tv"><span id="brand">&mdash;</span><i></i><span id="model">&mdash;</span></div>
     </div>
   </div>
   <div class="src">
@@ -730,32 +730,32 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 
 <div class="tabs-wrap">
-  <button type="button" class="tabs-arrow" id="tabs-prev" hidden aria-label="Scroll tabs left" onclick="scrollTabs(-1)">&#8249;</button>
+  <button type="button" class="tabs-arrow" id="tabs-prev" hidden aria-label="Scroll tabs left" data-t-aria-label="tabs.scrollLeft" onclick="scrollTabs(-1)">&#8249;</button>
   <nav class="tabs" id="tabs" role="tablist">
-  <button type="button" role="tab" data-tab="control">Control</button>
-  <button type="button" role="tab" data-tab="metrics">Metrics</button>
-  <button type="button" role="tab" data-tab="apps">Apps</button>
-  <button type="button" role="tab" data-tab="privacy">Privacy</button>
-  <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden>OLED Care</button>
-  <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden>Service menu</button>
-  <button type="button" role="tab" data-tab="screensaver">Screensaver</button>
-  <button type="button" role="tab" data-tab="advanced">Advanced</button>
-  <button type="button" role="tab" data-tab="mqtt">MQTT</button>
-  <button type="button" role="tab" data-tab="server">Server</button>
+  <button type="button" role="tab" data-tab="control" data-t="tab.control">Control</button>
+  <button type="button" role="tab" data-tab="metrics" data-t="tab.metrics">Metrics</button>
+  <button type="button" role="tab" data-tab="apps" data-t="tab.apps">Apps</button>
+  <button type="button" role="tab" data-tab="privacy" data-t="tab.privacy">Privacy</button>
+  <button type="button" role="tab" data-tab="oledcare" id="tab-btn-oledcare" hidden data-t="tab.oledCare">OLED Care</button>
+  <button type="button" role="tab" data-tab="servicemenu" id="tab-btn-servicemenu" hidden data-t="tab.serviceMenu">Service menu</button>
+  <button type="button" role="tab" data-tab="screensaver" data-t="tab.screensaver">Screensaver</button>
+  <button type="button" role="tab" data-tab="advanced" data-t="tab.advanced">Advanced</button>
+  <button type="button" role="tab" data-tab="mqtt" translate="no">MQTT</button>
+  <button type="button" role="tab" data-tab="server" data-t="tab.server">Server</button>
   </nav>
-  <button type="button" class="tabs-arrow right" id="tabs-next" hidden aria-label="Scroll tabs right" onclick="scrollTabs(1)">&#8250;</button>
+  <button type="button" class="tabs-arrow right" id="tabs-next" hidden aria-label="Scroll tabs right" data-t-aria-label="tabs.scrollRight" onclick="scrollTabs(1)">&#8250;</button>
 </div>
 
 <main id="panels">
 <section class="panel" id="tab-metrics" role="tabpanel" hidden>
   <div class="col-telemetry">
-    <div class="col-sec">System</div>
+    <div class="col-sec" data-t="metrics.system">System</div>
 
     <div class="grp-sec first" data-col="0">
-      <div class="grp">Temperature</div>
+      <div class="grp" data-t="metrics.temperature">Temperature</div>
       <section class="hero" style="margin-top:0">
         <div>
-          <div class="lbl" style="margin-bottom:14px">SoC</div>
+          <div class="lbl" style="margin-bottom:14px" translate="no">SoC</div>
           <div class="big num none" id="tempbig"><span id="temp">&mdash;</span><span class="deg" id="degsym">&deg;</span></div>
         </div>
         <div class="side">
@@ -769,81 +769,81 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
 
     <div class="grp-sec" data-col="0">
-      <div class="grp">System</div>
+      <div class="grp" data-t="metrics.system">System</div>
       <section class="readouts" id="readouts"></section>
     </div>
 
     <div class="grp-sec" id="luxblock" data-col="2" hidden>
-      <div class="grp">Ambient</div>
-      <div class="lbl">Room light</div>
+      <div class="grp" data-t="metrics.ambient">Ambient</div>
+      <div class="lbl" data-t="metrics.roomLight">Room light</div>
       <div class="v num" id="lux">&mdash;</div>
-      <div class="sub">Ambient sensor</div>
+      <div class="sub" data-t="metrics.ambientSensor">Ambient sensor</div>
     </div>
 
     <div class="grp-sec" data-col="1">
-      <div class="grp">Storage</div>
+      <div class="grp" data-t="metrics.storage">Storage</div>
       <div id="appstore-cell" hidden>
-        <div class="lbl">App space</div>
-        <div class="n num" style="margin-top:10px"><span id="appstore">&mdash;</span><em>GB free</em></div>
+        <div class="lbl" data-t="metrics.appSpace">App space</div>
+        <div class="n num" style="margin-top:10px"><span id="appstore">&mdash;</span><em data-t="metrics.gbFree">GB free</em></div>
         <div class="sub" id="appstore-sub"></div>
       </div>
       <div class="cols" style="margin-top:24px">
-        <div id="flashwear-cell"><div class="lbl">Flash wear</div><div class="v num" id="flashval">&mdash;</div><div class="sub">eMMC lifetime estimated</div></div>
-        <div id="flashhealth-cell"><div class="lbl">Pre-EOL status</div><div class="v" id="flasheol">&mdash;</div><div class="sub">Drive's own assessment</div></div>
+        <div id="flashwear-cell"><div class="lbl" data-t="metrics.flashWear">Flash wear</div><div class="v num" id="flashval">&mdash;</div><div class="sub" data-t="metrics.flashWear.sub">eMMC lifetime estimated</div></div>
+        <div id="flashhealth-cell"><div class="lbl" data-t="metrics.preEol">Pre-EOL status</div><div class="v" id="flasheol">&mdash;</div><div class="sub" data-t="metrics.preEol.sub">Drive's own assessment</div></div>
       </div>
     </div>
 
     <div class="grp-sec" id="remoteblock" data-col="2" hidden>
-      <div class="grp">Magic remote</div>
-      <div class="lbl">Battery</div>
+      <div class="grp" data-t="metrics.remote">Magic remote</div>
+      <div class="lbl" data-t="metrics.battery">Battery</div>
       <div class="n num" style="margin-top:10px"><span id="remote-pct">&mdash;</span><em>%</em></div>
       <div class="track" style="margin-top:16px;max-width:220px"><b id="remote-gauge-fill" style="width:0%"></b></div>
       <div class="sub" id="remote-model-sub"></div>
     </div>
 
     <div class="grp-sec" id="hdmiblock" data-col="2">
-      <div class="grp">HDMI<span class="cur" id="hdmi-cur"></span></div>
+      <div class="grp"><span translate="no">HDMI</span><span class="cur" id="hdmi-cur"></span></div>
       <div class="ports" id="hdmi-grid"></div>
       <div class="sub" id="hdmi-diag-row" hidden style="margin-top:12px;line-height:1.5"></div>
     </div>
 
     <div class="grp-sec" id="advblock" data-col="1">
-      <div class="grp">Advanced</div>
+      <div class="grp" data-t="tab.advanced">Advanced</div>
       <details class="disc" id="disc-hwinfo" hidden style="border-top:0;margin-top:0">
-      <summary>System info</summary>
+      <summary data-t="metrics.systemInfo">System info</summary>
       <div class="prot-table" id="hw-specs">
         <div class="prot-row" id="spec-os-item" hidden>
           <div class="prot-main">
-            <div class="prot-title">webOS</div>
-            <div class="prot-desc">Operating system release version</div>
+            <div class="prot-title" translate="no">webOS</div>
+            <div class="prot-desc" data-t="metrics.webos.desc">Operating system release version</div>
           </div>
           <div class="prot-status"><span class="pill idle" id="spec-os">&mdash;</span></div>
         </div>
         <div class="prot-row" id="spec-fw-item" hidden>
           <div class="prot-main">
-            <div class="prot-title">Firmware</div>
-            <div class="prot-desc">TV software build version</div>
+            <div class="prot-title" data-t="metrics.firmware">Firmware</div>
+            <div class="prot-desc" data-t="metrics.firmware.desc">TV software build version</div>
           </div>
           <div class="prot-status"><span class="pill idle" id="spec-fw">&mdash;</span></div>
         </div>
         <div class="prot-row" id="spec-arch-item" hidden>
           <div class="prot-main">
-            <div class="prot-title">Processor</div>
-            <div class="prot-desc">SoC platform and generation</div>
+            <div class="prot-title" data-t="metrics.processor">Processor</div>
+            <div class="prot-desc" data-t="metrics.processor.desc">SoC platform and generation</div>
           </div>
           <div class="prot-status"><span class="pill idle" id="spec-arch">&mdash;</span></div>
         </div>
         <div class="prot-row" id="spec-silicon-item" hidden>
           <div class="prot-main">
-            <div class="prot-title">OLED Cell</div>
-            <div class="prot-desc">Panel silicon cell identifier</div>
+            <div class="prot-title" data-t="metrics.oledCell">OLED Cell</div>
+            <div class="prot-desc" data-t="metrics.oledCell.desc">Panel silicon cell identifier</div>
           </div>
           <div class="prot-status"><span class="pill idle" id="spec-silicon">&mdash;</span></div>
         </div>
         <div class="prot-row" id="spec-tcon-item" hidden>
           <div class="prot-main">
-            <div class="prot-title">TCON Firmware</div>
-            <div class="prot-desc">Timing controller driving the panel</div>
+            <div class="prot-title" data-t="metrics.tcon">TCON Firmware</div>
+            <div class="prot-desc" data-t="metrics.tcon.desc">Timing controller driving the panel</div>
           </div>
           <div class="prot-status"><span class="pill idle" id="spec-tcon">&mdash;</span></div>
         </div>
@@ -852,12 +852,12 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 
       <details class="disc" id="disc-proc">
-      <summary>Process memory <span class="cur" id="proc-cur"></span></summary>
+      <summary><span data-t="metrics.processMemory">Process memory</span> <span class="cur" id="proc-cur"></span></summary>
       <div id="proc-list"></div>
     </details>
 
       <details class="disc" id="disc-cpu">
-      <summary>Detailed CPU usage <span class="cur" id="cpu-cur"></span></summary>
+      <summary><span data-t="metrics.cpuDetail">Detailed CPU usage</span> <span class="cur" id="cpu-cur"></span></summary>
       <div id="cpu-list"></div>
     </details>
     </div>
@@ -867,136 +867,136 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <section class="panel" id="tab-control" role="tabpanel" hidden>
   <div class="col-controls">
-    <div class="col-sec">Control</div>
+    <div class="col-sec" data-t="tab.control">Control</div>
     <div id="err"></div>
 
     <!-- Panel first: it is the control the remote cannot do easily, and the
          reason a lot of people install this at all. -->
-    <div class="set" style="margin-top:0"><div class="lbl">Panel</div>
+    <div class="set" style="margin-top:0"><div class="lbl" data-t="ctl.panel">Panel</div>
       <div class="btns">
-        <button id="btn-screenoff" onclick="c('screenOff')">Screen off</button>
-        <button id="btn-screenon" onclick="c('screenOn')">Screen on</button>
-        <button id="btn_ss" onclick="pressScreensaver('btn_ss')">Screensaver</button>
+        <button id="btn-screenoff" onclick="c('screenOff')" data-t="ctl.screenOff">Screen off</button>
+        <button id="btn-screenon" onclick="c('screenOn')" data-t="ctl.screenOn">Screen on</button>
+        <button id="btn_ss" onclick="pressScreensaver('btn_ss')" data-t="tab.screensaver">Screensaver</button>
       </div>
     </div>
 
-    <div class="set"><div class="lbl">Source</div>
+    <div class="set"><div class="lbl" data-t="ctl.source">Source</div>
       <div class="btns" id="inputs"></div>
     </div>
 
-    <div class="set"><div class="lbl">Volume &middot; <span id="vol" class="num">&mdash;</span></div>
+    <div class="set"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
       <div class="btns">
-        <button onclick="c('volumeStep',-1)">Vol &minus;</button>
-        <button onclick="c('volumeStep',1)">Vol &plus;</button>
-        <button id="mute" onclick="toggleMute()">Mute</button>
+        <button onclick="c('volumeStep',-1)" data-t="ctl.volDown">Vol &minus;</button>
+        <button onclick="c('volumeStep',1)" data-t="ctl.volUp">Vol &plus;</button>
+        <button id="mute" onclick="toggleMute()" data-t="ctl.mute">Mute</button>
       </div>
     </div>
 
-    <div class="set"><div class="lbl">Playback</div>
+    <div class="set"><div class="lbl" data-t="ctl.playback">Playback</div>
       <div class="playback-btns">
-        <button onclick="c('media','rewind')">Rewind</button>
-        <button onclick="c('media','playPause')">Play / Pause</button>
-        <button onclick="c('media','stop')">Stop</button>
-        <button onclick="c('media','fastForward')">Fast Fwd</button>
+        <button onclick="c('media','rewind')" data-t="ctl.rewind">Rewind</button>
+        <button onclick="c('media','playPause')" data-t="ctl.playPause">Play / Pause</button>
+        <button onclick="c('media','stop')" data-t="ctl.stop">Stop</button>
+        <button onclick="c('media','fastForward')" data-t="ctl.fastForward">Fast Fwd</button>
       </div>
     </div>
 
     <!-- Pinned to the first column: it is the one control here that people
          reach for repeatedly, so it should not move about as the others grow. -->
     <details class="disc" id="disc-dpad" data-col="0">
-      <summary>D-pad <span class="cur">Navigate the TV</span></summary>
+      <summary><span data-t="ctl.dpad">D-pad</span> <span class="cur" data-t="ctl.dpad.sub">Navigate the TV</span></summary>
 
       <div class="set">
         <div class="dpad">
-          <button class="dp dp-up"    onclick="c('rcu','up')"    title="Up">&#9650;</button>
-          <button class="dp dp-left"  onclick="c('rcu','left')"  title="Left">&#9664;</button>
-          <button class="dp dp-ok"    onclick="c('rcu','ok')"    title="Select">OK</button>
-          <button class="dp dp-right" onclick="c('rcu','right')" title="Right">&#9654;</button>
-          <button class="dp dp-down"  onclick="c('rcu','down')"  title="Down">&#9660;</button>
+          <button class="dp dp-up"    onclick="c('rcu','up')"    title="Up" data-t-title="ctl.up">&#9650;</button>
+          <button class="dp dp-left"  onclick="c('rcu','left')"  title="Left" data-t-title="ctl.left">&#9664;</button>
+          <button class="dp dp-ok"    onclick="c('rcu','ok')"    title="Select" data-t-title="ctl.select" translate="no">OK</button>
+          <button class="dp dp-right" onclick="c('rcu','right')" title="Right" data-t-title="ctl.right">&#9654;</button>
+          <button class="dp dp-down"  onclick="c('rcu','down')"  title="Down" data-t-title="ctl.down">&#9660;</button>
         </div>
         <div class="btns">
-          <button onclick="c('rcu','back')">Back</button>
-          <button onclick="c('rcu','home')">Home</button>
+          <button onclick="c('rcu','back')" data-t="ctl.back">Back</button>
+          <button onclick="c('rcu','home')" data-t="ctl.home">Home</button>
         </div>
       </div>
     </details>
 
     <details class="disc" id="disc-timers">
-      <summary>Sleep timer <span class="cur" id="tl-cur"></span></summary>
+      <summary><span data-t="ctl.sleep">Sleep timer</span> <span class="cur" id="tl-cur"></span></summary>
 
       <div class="set">
         <div class="btns" id="sleepbtns">
-          <button id="sl_off" onclick="c('sleepTimer','off')">Off</button>
-          <button id="sl_10"  onclick="c('sleepTimer','10')">10 min</button>
-          <button id="sl_30"  onclick="c('sleepTimer','30')">30 min</button>
-          <button id="sl_60"  onclick="c('sleepTimer','60')">60 min</button>
-          <button id="sl_90"  onclick="c('sleepTimer','90')">90 min</button>
-          <button id="sl_120" onclick="c('sleepTimer','120')">120 min</button>
+          <button id="sl_off" onclick="c('sleepTimer','off')" data-t="common.off">Off</button>
+          <button id="sl_10"  onclick="c('sleepTimer','10')" data-t="ctl.sleep.10">10 min</button>
+          <button id="sl_30"  onclick="c('sleepTimer','30')" data-t="ctl.sleep.30">30 min</button>
+          <button id="sl_60"  onclick="c('sleepTimer','60')" data-t="ctl.sleep.60">60 min</button>
+          <button id="sl_90"  onclick="c('sleepTimer','90')" data-t="ctl.sleep.90">90 min</button>
+          <button id="sl_120" onclick="c('sleepTimer','120')" data-t="ctl.sleep.120">120 min</button>
         </div>
       </div>
     </details>
 
     <details class="disc" id="disc-display">
-      <summary>Picture <span class="cur" id="ds-cur"></span></summary>
+      <summary><span data-t="ctl.picture">Picture</span> <span class="cur" id="ds-cur"></span></summary>
 
-      <div class="set"><div class="lbl">Mode &middot; <span id="picmode-lbl" class="num">&mdash;</span></div>
+      <div class="set"><div class="lbl"><span data-t="ctl.pictureMode">Mode</span> &middot; <span id="picmode-lbl" class="num">&mdash;</span></div>
         <!-- Built from what the TV says it will accept: the settable modes
              change with the dynamic range of what is playing. -->
         <div class="btns" id="picmodes"></div>
       </div>
 
-      <div class="set"><div class="lbl">Energy saving &middot; <span id="energy-lbl" class="num">&mdash;</span></div>
+      <div class="set"><div class="lbl"><span data-t="ctl.energySaving">Energy saving</span> &middot; <span id="energy-lbl" class="num">&mdash;</span></div>
         <div class="btns" id="energysteps">
-          <button id="es_auto" onclick="c('energySaving','auto')">Auto</button>
-          <button id="es_off" onclick="c('energySaving','off')">Off</button>
-          <button id="es_min" onclick="c('energySaving','min')">Minimum</button>
-          <button id="es_med" onclick="c('energySaving','med')">Medium</button>
-          <button id="es_max" onclick="c('energySaving','max')">Maximum</button>
-          <button id="es_screen_off" onclick="c('energySaving','screen_off')">Screen off</button>
+          <button id="es_auto" onclick="c('energySaving','auto')" data-t="energy.auto">Auto</button>
+          <button id="es_off" onclick="c('energySaving','off')" data-t="common.off">Off</button>
+          <button id="es_min" onclick="c('energySaving','min')" data-t="energy.min">Minimum</button>
+          <button id="es_med" onclick="c('energySaving','med')" data-t="energy.med">Medium</button>
+          <button id="es_max" onclick="c('energySaving','max')" data-t="energy.max">Maximum</button>
+          <button id="es_screen_off" onclick="c('energySaving','screen_off')" data-t="ctl.screenOff">Screen off</button>
         </div>
       </div>
 
     </details>
 
     <details class="disc" id="disc-sound">
-      <summary>Sound <span class="cur" id="snd-cur"></span></summary>
+      <summary><span data-t="ctl.sound">Sound</span> <span class="cur" id="snd-cur"></span></summary>
 
-      <div class="set"><div class="lbl">Output &middot; <span id="soundout-lbl" class="num">&mdash;</span></div>
+      <div class="set"><div class="lbl"><span data-t="ctl.soundOutput">Output</span> &middot; <span id="soundout-lbl" class="num">&mdash;</span></div>
         <div class="btns" id="soundouts">
-          <button id="so_tv_speaker" onclick="c('soundOutput','tv_speaker')">TV Speaker</button>
-          <button id="so_external_arc" onclick="c('soundOutput','external_arc')">HDMI ARC</button>
-          <button id="so_optical" onclick="c('soundOutput','optical')">Optical</button>
-          <button id="so_headphone" onclick="c('soundOutput','headphone')">Headphone</button>
-          <button id="so_bt_soundbar" onclick="c('soundOutput','bt_soundbar')">Bluetooth</button>
+          <button id="so_tv_speaker" onclick="c('soundOutput','tv_speaker')" data-t="sound.tvSpeaker">TV Speaker</button>
+          <button id="so_external_arc" onclick="c('soundOutput','external_arc')" translate="no">HDMI ARC</button>
+          <button id="so_optical" onclick="c('soundOutput','optical')" data-t="sound.optical">Optical</button>
+          <button id="so_headphone" onclick="c('soundOutput','headphone')" data-t="sound.headphone">Headphone</button>
+          <button id="so_bt_soundbar" onclick="c('soundOutput','bt_soundbar')" translate="no">Bluetooth</button>
         </div>
       </div>
     </details>
 
     <details class="disc" id="disc-apps">
-      <summary>Apps <span class="cur" id="currapp-lbl"></span></summary>
+      <summary><span data-t="tab.apps">Apps</span> <span class="cur" id="currapp-lbl"></span></summary>
       <div class="set">
         <div class="app-grid" id="apps"></div>
       </div>
     </details>
 
-    <div class="set"><div class="lbl">Screen notification</div>
+    <div class="set"><div class="lbl" data-t="ctl.toast">Screen notification</div>
       <form class="toast-form" onsubmit="event.preventDefault();sendToast();">
-        <input type="text" id="toast-input" placeholder="Message to display on TV screen..." maxlength="120" autocomplete="off">
-        <button type="submit" id="btn-toast">Send</button>
+        <input type="text" id="toast-input" placeholder="Message to display on TV screen..." data-t-placeholder="ctl.toast.placeholder" maxlength="120" autocomplete="off">
+        <button type="submit" id="btn-toast" data-t="ctl.toast.send">Send</button>
       </form>
     </div>
 
-    <div class="set"><div class="lbl">Open a web page</div>
+    <div class="set"><div class="lbl" data-t="ctl.openUrl">Open a web page</div>
       <form class="toast-form" onsubmit="event.preventDefault();openUrl();">
-        <input type="text" id="url-input" placeholder="https://example.com" maxlength="2048" autocomplete="off" spellcheck="false">
-        <button type="submit" id="btn-url">Open</button>
+        <input type="text" id="url-input" placeholder="https://example.com" translate="no" maxlength="2048" autocomplete="off" spellcheck="false">
+        <button type="submit" id="btn-url" data-t="ctl.openUrl.open">Open</button>
       </form>
     </div>
 
-    <div class="set"><div class="lbl">Power</div>
+    <div class="set"><div class="lbl" data-t="adv.power">Power</div>
       <div class="btns">
-        <button id="poff" onclick="pw(pwStandby ? 'powerOn' : 'powerOff')">Power off</button>
-        <button id="prb" onclick="pw('reboot')">Reboot</button>
+        <button id="poff" onclick="pw(pwStandby ? 'powerOn' : 'powerOff')">&mdash;</button>
+        <button id="prb" onclick="pw('reboot')" data-t="ctl.reboot">Reboot</button>
       </div>
       <div class="sub" id="pwnote"></div>
     </div>
@@ -1465,7 +1465,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span class="foot-end"><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme">☾</button></span>
+  <span class="foot-end"><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
 </footer>
 
 <script src="/assets/i18n.js"></script>
@@ -1563,15 +1563,15 @@ const bytes = n => {
 /* Level is carried by fill and opacity, never by hue - so "hi" is a state
    class that brightens the row rather than turning it red. */
 const ROWS = [
-  { k: 'cpu',   label: 'Processor',  warn: 85 },
-  { k: 'mem',   label: 'Memory',     warn: 90 },
-  { k: 'swap',  label: 'Swap',       warn: 70 },
+  { k: 'cpu',   label: t('metrics.processor', 'Processor'), warn: 85 },
+  { k: 'mem',   label: t('metrics.memory', 'Memory'),       warn: 90 },
+  { k: 'swap',  label: t('metrics.swap', 'Swap'),           warn: 70 },
   /* Throughput and draw have no threshold to cross - warn: 101 was the tell.
      A level hue on them would be a lie, and the fixed blue and amber they used
      to carry read as level anyway, sitting in a column where every other bar
      meant exactly that. Their domain shows on the unit instead. */
-  { k: 'net',   label: 'Network',    warn: 101, flat: true },
-  { k: 'draw',  label: 'Current',    warn: 101, flat: true }
+  { k: 'net',   label: t('metrics.network', 'Network'),    warn: 101, flat: true },
+  { k: 'draw',  label: t('metrics.current', 'Current'),    warn: 101, flat: true }
 ];
 const FLAT = Object.fromEntries(ROWS.map(r => [r.k, !!r.flat]));
 
@@ -1617,17 +1617,17 @@ function cleanAppTitle(title, id) {
   if (id === 'spotify-beehive') return 'Spotify';
   if (id === 'amazon') return 'Prime Video';
   if (id === 'org.webosbrew.hbchannel') return 'Homebrew';
-  if (id === 'com.webos.app.browser') return 'Browser';
-  if (id === 'com.webos.app.igallery') return 'Gallery';
+  if (id === 'com.webos.app.browser') return t('app.browser', 'Browser');
+  if (id === 'com.webos.app.igallery') return t('app.gallery', 'Gallery');
   if (id === 'com.webos.app.btspeakerapp') return 'BT Audio';
   if (id === 'com.webos.app.amazon-echo') return 'Alexa';
   if (id === 'com.webos.app.google-home') return 'Google';
-  if (id === 'com.webos.app.photovideo') return 'Photos';
-  if (id === 'com.webos.app.connectionwizard') return 'Connector';
-  if (id === 'com.webos.app.notificationcenter') return 'Alerts';
-  if (id === 'com.open.hidden.menu') return 'Service Menu';
+  if (id === 'com.webos.app.photovideo') return t('app.photos', 'Photos');
+  if (id === 'com.webos.app.connectionwizard') return t('app.connector', 'Connector');
+  if (id === 'com.webos.app.notificationcenter') return t('app.alerts', 'Alerts');
+  if (id === 'com.open.hidden.menu') return t('app.serviceMenu', 'Service Menu');
   if (id === 'com.webos.app.remoteservice') return 'LG Remote';
-  if (id === 'com.webos.app.accessibility') return 'Accessibility';
+  if (id === 'com.webos.app.accessibility') return t('app.accessibility', 'Accessibility');
   if (id === 'com.theadelab.amclient-lg') return 'Amazon Music';
   return title;
 }
@@ -1705,7 +1705,7 @@ function row(k, val, pct, sub, warn) {
 async function tick() {
   try {
     const r = await fetch(api('/api/stats'), { cache: 'no-store' });
-    if (!r.ok) throw new Error(r.status === 401 ? 'Unauthorised — token missing or wrong' : 'HTTP ' + r.status);
+    if (!r.ok) throw new Error(r.status === 401 ? t('common.unauthorised', 'Unauthorised \u2014 token missing or wrong') : 'HTTP ' + r.status);
     const d = await r.json();
     document.body.classList.remove('stale');
     q('err').style.display = 'none';
@@ -1716,7 +1716,7 @@ async function tick() {
     q('model').textContent = model;
     const isOled = !(d.capabilities && d.capabilities.oled === false) &&
                     (d.capabilities ? d.capabilities.oled === true : (/oled/i.test(model) || !!(d.oled && d.oled.panel_hours !== undefined)));
-    const brand = isOled ? 'LG OLED TV' : 'LG TV';
+    const brand = isOled ? t('header.brand.oled', 'LG OLED TV') : t('header.brand', 'LG TV');
     if (q('brand')) q('brand').textContent = brand;
     const want = model ? 'Glasshouse · ' + model : 'Glasshouse';
     if (document.title !== want) document.title = want;
@@ -1725,14 +1725,14 @@ async function tick() {
     const ps = d.powerState || {};
     const o = d.oled || {};
     pwStandby = ps.raw === 'Active Standby';
-    if (q('poff')) q('poff').textContent = pwStandby ? 'Power on' : 'Power off';
+    if (q('poff')) q('poff').textContent = pwStandby ? t('ctl.powerOn', 'Power on') : t('ctl.powerOff', 'Power off');
     const isComp = !!(o.comp_status === 'Running' || (ps.raw === 'Active Standby' && o.hours_until_comp === 0));
     const stEl = q('state');
     stEl.classList.toggle('comp', isComp);
     stEl.classList.toggle('off', !isComp && ps.screenOn === false);
     if (isComp) {
-      stEl.querySelector('span').textContent = 'Active Standby';
-      q('source').textContent = 'Completing Panel Maintenance (Short Cycle)';
+      stEl.querySelector('span').textContent = t('state.activeStandby', 'Active Standby');
+      q('source').textContent = t('state.compRunning', 'Completing Panel Maintenance (Short Cycle)');
     } else {
       stEl.querySelector('span').textContent = ps.label || '—';
       q('source').textContent = d.display_title || d.app_name || d.app || '—';
@@ -1764,7 +1764,7 @@ async function tick() {
       advPill('devdetect', 'btn_devdetect', d.deviceDetection);
       if (q('adv-devices')) q('adv-devices').hidden = d.deviceDetection === undefined;
       if (q('tl-cur')) {
-        q('tl-cur').textContent = st === 'off' ? 'Off' : `${st} min`;
+        q('tl-cur').textContent = st === 'off' ? t('common.off', 'Off') : t('ctl.sleep.minutes', '{n} min', { n: st });
       }
 
       q('ds-cur').textContent = pic.mode || '';
@@ -1779,7 +1779,9 @@ async function tick() {
       gFill.style.width = Math.max(5, Math.min(100, rem.battery)) + '%';
       gFill.style.background = rem.battery <= 15 ? 'var(--red)' : rem.battery <= 30 ? 'var(--cand)' : 'var(--green)';
       q('remote-model-sub').textContent = rem.model ? rem.model.replace(/^LGE\s*/i, '') : 'MR22';
-      q('remoteblock').title = (rem.model || 'Magic Remote') + (rem.firmware ? ' · Firmware: ' + rem.firmware : '') + (rem.mac ? ' · Bluetooth: ' + rem.mac : '');
+      q('remoteblock').title = [rem.model || t('metrics.remote.name', 'Magic Remote'),
+        rem.firmware ? t('metrics.remote.firmware', 'Firmware: {version}', { version: rem.firmware }) : '',
+        rem.mac ? t('metrics.remote.bluetooth', 'Bluetooth: {address}', { address: rem.mac }) : ''].filter(Boolean).join(' · ');
     } else {
       q('remoteblock').hidden = true;
     }
@@ -1817,9 +1819,9 @@ async function tick() {
       else { hist.push(d.temp); if (hist.length > 240) hist.shift(); }
     }
     trace(hist);
-    q('trange').textContent = noThermal ? 'NO THERMAL SENSOR'
-      : hist.length ? ('MIN ' + Math.min(...hist) + '   MAX ' + Math.max(...hist))
-      : 'WARMING UP';
+    q('trange').textContent = noThermal ? t('metrics.temp.noSensor', 'NO THERMAL SENSOR')
+      : hist.length ? t('metrics.temp.range', 'MIN {min}   MAX {max}', { min: Math.min(...hist), max: Math.max(...hist) })
+      : t('metrics.temp.warmingUp', 'WARMING UP');
     q('mhz').textContent = d.mhz ? d.mhz + ' MHZ' : '';
 
     /* The core figures are positional, so the c0/c1 prefixes were four
@@ -1829,7 +1831,8 @@ async function tick() {
        wakes them - say how many are down rather than leaving that unexplained. */
     const live = d.cores || [];
     const parked = Math.max(0, (d.coresTotal || live.length) - live.length);
-    const cores = live.map(v => v + '%').join('  ·  ') + (parked ? '  ·  ' + parked + ' parked' : '');
+    const cores = live.map(v => v + '%').join('  ·  ') +
+      (parked ? '  ·  ' + t('metrics.cpu.parked', '{n} parked', { n: parked }) : '');
     row('cpu', d.load + '<small>%</small>', d.load, cores, 85);
 
     const mu = d.mem.total ? 100 * (d.mem.total - d.mem.avail) / d.mem.total : 0;
@@ -1851,14 +1854,14 @@ async function tick() {
     const netParts = [];
     if (d.ssid) netParts.push(esc(d.ssid));
     if (d.wifi && d.wifi.level) netParts.push(d.wifi.level + ' dBm');
-    if (tx > 0) netParts.push(tx.toFixed(0) + ' kB/s up');
+    if (tx > 0) netParts.push(t('metrics.net.up', '{rate} kB/s up', { rate: tx.toFixed(0) }));
     if (nt) netParts.push('↓ ' + bytes(nt.rx) + ' ↑ ' + bytes(nt.tx));
     row('net', rx.toFixed(0) + '<small>kB/s</small>', Math.min(100, rx / 20),
-        netParts.join('  ·  ') || 'Connected', 101);
+        netParts.join('  ·  ') || t('metrics.net.connected', 'Connected'), 101);
 
     const ma = (d.power && d.power.current_ma) || 0;
     row('draw', ma + '<small>mA</small>', Math.min(100, ma / 4),
-        d.power ? ('Processor ' + d.power.cpu_ma + ' mA · Platform ' + d.power.core_ma + ' mA') : '', 101);
+        d.power ? t('metrics.draw.split', 'Processor {cpu} mA · Platform {core} mA', { cpu: d.power.cpu_ma, core: d.power.core_ma }) : '', 101);
 
     // Hardware & System Specifications
     let hasHw = false;
@@ -1912,7 +1915,7 @@ async function tick() {
     q('appstore-cell').hidden = !st_;
     if (st_) {
       q('appstore').textContent = (st_.freeMb / 1024).toFixed(1);
-      q('appstore-sub').textContent = `${st_.pct}% of ${(st_.totalMb/1024).toFixed(1)} GB used`;
+      q('appstore-sub').textContent = t('metrics.storage.used', '{pct}% of {total} GB used', { pct: st_.pct, total: (st_.totalMb / 1024).toFixed(1) });
     }
     /* Flash wear is independent of panel type, but the counters do not exist
        on webOS 3.x - drop the cells rather than print "unknown" twice. */
@@ -1929,13 +1932,13 @@ async function tick() {
     pruneEmptySections();
 
     muted = !!d.muted;
-    q('vol').textContent = muted ? 'MUTED' : d.volume;
+    q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : d.volume;
     q('mute').classList.toggle('on', muted);
 
     if (d.inputs && !q('inputs').dataset.built) {
       q('inputs').innerHTML = Object.keys(d.inputs).map(k =>
         `<button id="in_${esc(k)}" onclick="c('input','${jsq(k)}')">${esc(d.inputs[k])}</button>`).join('') +
-        `<button id="in_livetv" onclick="c('input','livetv')">Live TV</button>`;
+        `<button id="in_livetv" onclick="c('input','livetv')">${esc(t('ctl.liveTv', 'Live TV'))}</button>`;
       q('inputs').dataset.built = '1';
     }
 
@@ -1947,7 +1950,8 @@ async function tick() {
         b.classList.toggle('on', b.id === 'in_' + d.app);
       }
     } else {
-      if (q('currapp-lbl')) q('currapp-lbl').textContent = isComp ? 'MAINTENANCE' : (ps.label ? ps.label.toUpperCase() : 'STANDBY');
+      if (q('currapp-lbl')) q('currapp-lbl').textContent = isComp ? t('ctl.app.maintenance', 'MAINTENANCE')
+        : (ps.label ? ps.label.toUpperCase() : t('ctl.app.standby', 'STANDBY'));
       const inBtns = q('inputs') ? q('inputs').querySelectorAll('button') : [];
       for (let b of inBtns) {
         b.classList.toggle('on', false);
@@ -2035,7 +2039,9 @@ async function tick() {
     }
 
     const up = d.uptime, dd = Math.floor(up / 86400), hh = Math.floor(up % 86400 / 3600), mm = Math.floor(up % 3600 / 60);
-    q('uptime').textContent = 'Up ' + (dd ? dd + 'd ' : '') + hh + 'h ' + mm + 'm   ·   load ' + (d.loadavg || []).join(' ');
+    const upFor = dd ? t('footer.uptime.days', '{d}d {h}h {m}m', { d: dd, h: hh, m: mm })
+      : t('footer.uptime.hours', '{h}h {m}m', { h: hh, m: mm });
+    q('uptime').textContent = t('footer.uptime', 'Up {time}   ·   load {load}', { time: upFor, load: (d.loadavg || []).join(' ') });
     q('clock').textContent = new Date().toLocaleTimeString();
     setVersion(d.tvwebVersion);
     // Several groups stay hidden until the first payload says the TV has them,
@@ -2044,13 +2050,16 @@ async function tick() {
   } catch (e) {
     if (updRestarting) return;
     document.body.classList.add('stale');
-    if (Date.now() - lastOk > 6000) showErr(e.message || 'TV unreachable');
+    if (Date.now() - lastOk > 6000) showErr(e.message || t('common.unreachable', 'TV unreachable'));
   }
 }
 
 // Releases are cut on the upstream repo, so the tag link points there.
 // The steps the picture service accepts, in the TV's own order.
-const ENERGY_STEPS = { auto: 'Auto', off: 'Off', min: 'Minimum', med: 'Medium', max: 'Maximum', screen_off: 'Screen off' };
+const ENERGY_STEPS = {
+  auto: t('energy.auto', 'Auto'), off: t('common.off', 'Off'), min: t('energy.min', 'Minimum'),
+  med: t('energy.med', 'Medium'), max: t('energy.max', 'Maximum'), screen_off: t('ctl.screenOff', 'Screen off')
+};
 
 const REPO = 'https://github.com/rorygallagher2024/lg-webos-dashboard';
 
@@ -2399,7 +2408,7 @@ async function c(action, value) {
       body: JSON.stringify({ action, value })
     });
     const j = await r.json();
-    if (!j.ok) showErr(j.error || 'Action failed'); else q('err').style.display = 'none';
+    if (!j.ok) showErr(j.error || t('common.actionFailed', 'Action failed')); else q('err').style.display = 'none';
     setTimeout(tick, 320);
     return j;
   } catch (e) { showErr(e.message); }
@@ -2454,10 +2463,11 @@ async function sendToast() {
     await c('toast', msg);
     if (inp) inp.value = '';
     if (btn) {
-      btn.textContent = 'Sent';
+      const label = btn.textContent;
+      btn.textContent = t('ctl.toast.sent', 'Sent');
       btn.classList.add('on');
       setTimeout(() => {
-        btn.textContent = 'Send';
+        btn.textContent = label;
         btn.classList.remove('on');
         btn.disabled = false;
       }, 1400);
@@ -2478,14 +2488,15 @@ async function openUrl() {
     const r = await c('launch_url', url);
     if (r && r.ok && inp) inp.value = '';
     if (btn) {
+      const label = btn.textContent;
       // The browser takes a moment to come up, so say it went rather than
       // leaving a button that looks like it did nothing.
       if (r && r.ok) {
-        btn.textContent = 'Opened';
+        btn.textContent = t('ctl.openUrl.opened', 'Opened');
         btn.classList.add('on');
       }
       setTimeout(() => {
-        btn.textContent = 'Open';
+        btn.textContent = label;
         btn.classList.remove('on');
         btn.disabled = false;
       }, 1400);
@@ -2501,15 +2512,15 @@ let pwStandby = false;
 function pw(a) {
   if (a === 'powerOn') return c(a);
   const msg = a === 'reboot'
-    ? 'Reboot the TV now? It will be unavailable for about a minute.'
-    : 'Power off the TV now?';
+    ? t('ctl.reboot.confirm', 'Reboot the TV now? It will be unavailable for about a minute.')
+    : t('ctl.powerOff.confirm', 'Power off the TV now?');
   if (confirm(msg)) c(a);
 }
 
 fetch(api('/api/caps')).then(r => r.json()).then(cp => {
   if (!cp.allowPower) {
     q('poff').disabled = q('prb').disabled = true;
-    q('pwnote').textContent = 'Disabled in config (allowPower: false).';
+    q('pwnote').textContent = t('ctl.power.disabled', 'Disabled in config (allowPower: false).');
   }
 }).catch(() => {});
 
@@ -2800,7 +2811,7 @@ function renderHdmiDiag(diag, colSpace) {
     if (diag.allm) parts.push('ALLM');
     if (diag.vrr) parts.push('VRR');
     if (diag.qms) parts.push('QMS');
-    if (diag.phy_errors > 0) parts.push('<span style="color:var(--cand)">' + diag.phy_errors + ' errors</span>');
+    if (diag.phy_errors > 0) parts.push('<span style="color:var(--cand)">' + esc(t('metrics.hdmi.errors', '{n} errors', { n: diag.phy_errors })) + '</span>');
   }
   if (parts.length) {
     el.innerHTML = parts.join(' &middot; ');
@@ -2815,7 +2826,7 @@ async function loadHdmi() {
     const r = await fetch(api('/api/hdmi'), { cache: 'no-store' });
     const d = await r.json();
     const act = d.inputs.find(i => i.active);
-    q('hdmi-cur').textContent = act ? ': ' + act.label : ': no active input';
+    q('hdmi-cur').textContent = ': ' + (act ? act.label : t('metrics.hdmi.noInput', 'no active input'));
     q('hdmi-grid').innerHTML = d.inputs.map(i => {
       const s = i.signal;
       /* The resolution is the headline; the link figures sit under it. Both
@@ -2824,8 +2835,8 @@ async function loadHdmi() {
       const mode = s
         ? [s.resolution ? s.resolution.replace('x', '×') : null,
            s.refreshHz ? s.refreshHz + ' Hz' : null,
-           s.interlaced ? 'interlaced' : null].filter(Boolean).join(' · ')
-        : 'Device seen, no signal';
+           s.interlaced ? t('metrics.hdmi.interlaced', 'interlaced') : null].filter(Boolean).join(' · ')
+        : t('metrics.hdmi.noSignal', 'Device seen, no signal');
       const link = s
         ? [s.colorDepth, s.pixelClockMhz ? s.pixelClockMhz + ' MHz' : null]
             .filter(Boolean).join(' · ')
@@ -2838,7 +2849,7 @@ async function loadHdmi() {
                `<span class="pn num">${i.port}</span></div></div>`;
       }
       const cls = i.active ? 'port live' : 'port seen';
-      const state = i.active ? 'Active' : 'Idle';
+      const state = i.active ? t('metrics.hdmi.active', 'Active') : t('metrics.hdmi.idle', 'Idle');
       return `<div class="${cls}">` +
              `<div class="ptop"><span class="pn num">${i.port}</span>` +
              `<span class="pst">${state}</span></div>` +
@@ -2847,7 +2858,7 @@ async function loadHdmi() {
              `</div>`;
     }).join('');
   } catch (e) {
-    q('hdmi-grid').innerHTML = `<div class="sub">Could not read HDMI state — ${e.message}</div>`;
+    q('hdmi-grid').innerHTML = `<div class="sub">${esc(t('metrics.hdmi.failed', 'Could not read HDMI state \u2014 {error}', { error: e.message }))}</div>`;
   }
 }
 
@@ -2864,14 +2875,14 @@ async function loadProcesses() {
     const r = await fetch(api('/api/processes'), { cache: 'no-store' });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'failed');
-    q('proc-cur').textContent =
-      `${d.count} running · ${d.totalMb.toLocaleString()} MB resident`;
+    q('proc-cur').textContent = t('metrics.processes.summary', '{count} running · {mb} MB resident',
+      { count: d.count, mb: d.totalMb.toLocaleString() });
     q('proc-list').innerHTML = d.top.map(p =>
       `<div class="proc"><div class="p-name">${esc(p.name)}</div>` +
       `<div class="p-mb">${p.mb.toFixed(1)} MB</div></div>`).join('');
   } catch (e) {
     q('proc-list').innerHTML =
-      `<div class="sub">Could not read the process list — ${e.message}</div>`;
+      `<div class="sub">${esc(t('metrics.processes.failed', 'Could not read the process list \u2014 {error}', { error: e.message }))}</div>`;
   }
 }
 
@@ -2883,20 +2894,20 @@ async function loadCpu() {
   // one must not have a second stacked behind it.
   if (cpuInFlight) return;
   cpuInFlight = true;
-  if (!q('cpu-list').firstChild) q('cpu-list').innerHTML = '<div class="sub">Measuring\u2026</div>';
+  if (!q('cpu-list').firstChild) q('cpu-list').innerHTML = `<div class="sub">${esc(t('metrics.cpu.measuring', 'Measuring\u2026'))}</div>`;
   try {
     const r = await fetch(api('/api/cpu'), { cache: 'no-store' });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'failed');
-    q('cpu-cur').textContent = `${d.busy.toFixed(1)}% busy · ${d.active} active`;
+    q('cpu-cur').textContent = t('metrics.cpu.summary', '{busy}% busy · {active} active', { busy: d.busy.toFixed(1), active: d.active });
     q('cpu-list').innerHTML = d.top.length
       ? d.top.map(p =>
           `<div class="proc"><div class="p-name">${esc(p.name)}</div>` +
           `<div class="p-mb">${p.pct.toFixed(1)}%</div></div>`).join('')
-      : '<div class="sub">Nothing used any CPU over the sample.</div>';
+      : `<div class="sub">${esc(t('metrics.cpu.idle', 'Nothing used any CPU over the sample.'))}</div>`;
   } catch (e) {
     q('cpu-list').innerHTML =
-      `<div class="sub">Could not measure CPU usage — ${e.message}</div>`;
+      `<div class="sub">${esc(t('metrics.cpu.failed', 'Could not measure CPU usage \u2014 {error}', { error: e.message }))}</div>`;
   } finally {
     cpuInFlight = false;
   }

@@ -42,10 +42,13 @@ PAGES = ['ui.html', 'dashboard.html', 'setup.html', 'setup-phone.html']
 I18N_JS = ASSETS / 'i18n.js'
 LANG_DIR = ASSETS / 'i18n'
 
-# Parts of pages whose visible text must all be keyed, by element id. A part is
-# added here once converted, so the check holds it there from then on.
+# Parts of pages whose visible text must all be keyed, by element id or, for an
+# element without one, by its tag as '<header>'. A part is added here once
+# converted, so the check holds it there from then on. Inside one, text that is
+# the same in every language - a product name, a unit - carries translate="no".
 CONVERTED = {
-    'ui.html': ['serverpane', 'svcpane', 'oledpane', 'advpane', 'sspane'],
+    'ui.html': ['<header>', 'tabs', 'tab-metrics', 'tab-control', 'serverpane', 'svcpane', 'oledpane',
+                'advpane', 'sspane', '<footer>'],
 }
 
 KEY_RE = re.compile(r'^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)*$')
@@ -78,7 +81,7 @@ class Markup(html.parser.HTMLParser):
     def __init__(self, name, scopes):
         super().__init__(convert_charrefs=True)
         self.name, self.scopes = name, set(scopes)
-        self.stack = []          # [tag, keyed, in_scope, id]
+        self.stack = []          # [tag, keyed, in_scope, id, untranslated]
         self.keyed = None        # [key, text parts, line, has child element]
         self.in_code = 0
         self.keyed_ids = {}
@@ -87,7 +90,7 @@ class Markup(html.parser.HTMLParser):
         return '%s:%d' % (self.name, self.getpos()[0])
 
     def in_scope(self):
-        return any(entry[2] for entry in self.stack)
+        return any(entry[2] for entry in self.stack) and not any(entry[4] for entry in self.stack)
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -95,7 +98,10 @@ class Markup(html.parser.HTMLParser):
             self.in_code += 1
         if self.keyed is not None:
             self.keyed[3] = True
-        scope = a.get('id') in self.scopes or self.in_scope()
+        scope = a.get('id') in self.scopes or '<%s>' % tag in self.scopes or self.in_scope()
+        untranslated = a.get('translate') == 'no'
+        if untranslated:
+            scope = False
         for attr in TEXT_ATTRS:
             val = a.get(attr)
             key = a.get('data-t-' + attr)
@@ -108,7 +114,7 @@ class Markup(html.parser.HTMLParser):
             if a.get('id'):
                 self.keyed_ids[a['id']] = self.where()
         if tag not in VOID:
-            self.stack.append([tag, 'data-t' in a, scope, a.get('id')])
+            self.stack.append([tag, 'data-t' in a, scope, a.get('id'), untranslated])
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -244,7 +250,8 @@ for page in PAGES:
     src = path.read_text(encoding='utf-8')
     parser = Markup(page, CONVERTED.get(page, []))
     parser.feed(src)
-    missing_scopes = [s for s in CONVERTED.get(page, []) if 'id="%s"' % s not in src]
+    missing_scopes = [s for s in CONVERTED.get(page, [])
+                      if ('<%s' % s.strip('<>') if s.startswith('<') else 'id="%s"' % s) not in src]
     for s in missing_scopes:
         problems.append('%s: converted part #%s no longer exists' % (page, s))
     # Only a page that loads the helper can call t(); its other scripts are left be.
