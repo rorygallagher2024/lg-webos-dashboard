@@ -14,8 +14,13 @@ var stored = {
   option: { livePromotion: 'off' }
 };
 var reads = 0, writes = [], cleared = 0;
+var described = {};
 lgs.init({
-  lunaCached: function (uri, payload, ttl, cb) { reads++; cb({ returnValue: true, settings: stored[payload.category] || {} }); },
+  lunaCached: function (uri, payload, ttl, cb) {
+    if (/Desc$/.test(uri)) return cb({ returnValue: true, results: described[payload.category] || [] });
+    reads++;
+    cb({ returnValue: true, settings: stored[payload.category] || {} });
+  },
   luna: function (uri, payload, cb) { writes.push(payload); cb({ returnValue: true }); },
   clearLunaCache: function () { cleared++; }
 });
@@ -61,10 +66,36 @@ assert.deepEqual(writes.slice(1), [
 ]);
 console.log('  ✓ choices and numbers write only values the setting takes');
 
-// 4. Only rows in the table can be written
+// 4. Choices and ranges follow what the TV describes; text numbers stay text
+stored.sound = { soundMode: 'standard', audioBalance: '0' };
+described.sound = [
+  { key: 'soundMode', values: { arrayExt: [{ value: 'standard' }, { value: 'movie' }, { value: 'news', visible: false }] } },
+  { key: 'audioBalance', values: { min: -50, max: 50 } }
+];
+lgs.collect(['sound'], function (r) {
+  var by = {};
+  r.rows.forEach(function (x) { by[x.id] = x; });
+  assert.deepEqual(by.soundMode.choices.map(function (c) { return c.value; }), ['standard', 'movie']);
+  assert.strictEqual(by.audioBalance.value, 0);
+});
+lgs.set('audioBalance', -5, function (r) { assert.strictEqual(r.ok, true); });
+assert.deepEqual(writes[writes.length - 1], { category: 'sound', settings: { audioBalance: '-5' } });
+console.log('  ✓ choices are the TV\'s own, and numbers kept as text are written as text');
+
+// A value set outside the list is kept, by its own name
+stored.sound.soundOutput = 'wisa_speaker';
+lgs.collect(['sound'], function (r) {
+  var out = r.rows.filter(function (x) { return x.id === 'soundOutput'; })[0];
+  var last = out.choices[out.choices.length - 1];
+  assert.deepEqual(last, { value: 'wisa_speaker', label: 'wisa_speaker' });
+  assert.strictEqual(out.value, 'wisa_speaker');
+});
+console.log('  ✓ a value outside the list is shown by its own name');
+
+// 5. Only rows in the table can be written
 lgs.set('systemPin', true, function (r) {
   assert.strictEqual(r.ok, false);
-  assert.strictEqual(writes.length, 3);
+  assert.strictEqual(writes.length, 4);
   console.log('  ✓ anything outside the table is refused');
 });
 

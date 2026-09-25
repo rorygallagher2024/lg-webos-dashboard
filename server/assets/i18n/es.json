@@ -67,6 +67,10 @@
   "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve a encenderse más rápido. LG lo llama Quick Start+.",
   "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back on faster. LG calls this Quick Start+."
  },
+ "adv.sound": {
+  "text": "Sonido",
+  "from": "Sound"
+ },
  "adv.standbyLight": {
   "text": "Luz en espera",
   "from": "Standby light"
@@ -686,6 +690,14 @@
  "header.brand.oled": {
   "text": "LG OLED TV",
   "from": "LG OLED TV"
+ },
+ "lgs.left": {
+  "text": "Izquierda {n}",
+  "from": "Left {n}"
+ },
+ "lgs.right": {
+  "text": "Derecha {n}",
+  "from": "Right {n}"
  },
  "metrics.ambient": {
   "text": "Ambiente",
@@ -2375,6 +2387,22 @@
   "text": "Ajusta el sonido al juego en curso: efectos, voces claras y sonido envolvente.",
   "from": "Sets the sound for the game being played: effects, clear voices and surround."
  },
+ "srv.lgs.audioBalance": {
+  "text": "Balance",
+  "from": "Balance"
+ },
+ "srv.lgs.audioBalance.desc": {
+  "text": "Entre los altavoces izquierdo y derecho de la TV, y solo esos. En 0, los dos suenan al mismo nivel.",
+  "from": "Between the left and right TV speakers, and only those. At 0 both play at the same level."
+ },
+ "srv.lgs.autoVolume": {
+  "text": "Volumen automático",
+  "from": "Automatic volume"
+ },
+ "srv.lgs.autoVolume.desc": {
+  "text": "Mantiene el nivel de volumen al cambiar de canal. LG lo llama Automatic Volume Adjustment.",
+  "from": "Keeps the volume level when switching channels. LG calls this Automatic Volume Adjustment."
+ },
  "srv.lgs.blackStabilizer": {
   "text": "Estabilizador de negro",
   "from": "Black stabilizer"
@@ -2506,6 +2534,122 @@
  "srv.lgs.screenSaverAd.desc": {
   "text": "Anuncios que algunas apps, como LG Channels, muestran en el salvapantallas. LG lo llama Screen Saver Promotion.",
   "from": "Adverts that some apps, such as LG Channels, show in the screen saver. LG calls this Screen Saver Promotion."
+ },
+ "srv.lgs.simplinkAutoPowerOn": {
+  "text": "Sincronización de encendido",
+  "from": "Auto power sync"
+ },
+ "srv.lgs.simplinkAutoPowerOn.desc": {
+  "text": "Al apagar la TV se apagan los dispositivos conectados, y al encender un dispositivo se enciende la TV.",
+  "from": "Switching the TV off switches connected devices off, and switching a device on switches the TV on."
+ },
+ "srv.lgs.simplinkEnable": {
+  "text": "SIMPLINK (HDMI-CEC)",
+  "from": "SIMPLINK (HDMI-CEC)"
+ },
+ "srv.lgs.simplinkEnable.desc": {
+  "text": "Permite que el mando de la TV controle los dispositivos conectados por HDMI, como una barra de sonido o una consola.",
+  "from": "Lets the TV remote control devices connected over HDMI, such as a soundbar or console."
+ },
+ "srv.lgs.soundMode": {
+  "text": "Modo de sonido",
+  "from": "Sound mode"
+ },
+ "srv.lgs.soundMode.aiSound": {
+  "text": "AI Sound",
+  "from": "AI Sound"
+ },
+ "srv.lgs.soundMode.aiSoundPlus": {
+  "text": "AI Sound Pro",
+  "from": "AI Sound Pro"
+ },
+ "srv.lgs.soundMode.desc": {
+  "text": "Cómo ajusta la TV su sonido, solo en sus propios altavoces. AI Sound Pro lo adapta por sí solo a lo que se está viendo.",
+  "from": "How the TV tunes its sound, through its own speakers only. AI Sound Pro adjusts it to what is on by itself."
+ },
+ "srv.lgs.soundMode.game": {
+  "text": "Game Optimizer",
+  "from": "Game Optimizer"
+ },
+ "srv.lgs.soundMode.movie": {
+  "text": "Cine",
+  "from": "Cinema"
+ },
+ "srv.lgs.soundMode.music": {
+  "text": "Música",
+  "from": "Music"
+ },
+ "srv.lgs.soundMode.news": {
+  "text": "Voz clara",
+  "from": "Clear Voice"
+ },
+ "srv.lgs.soundMode.sports": {
+  "text": "Deportes",
+  "from": "Sports"
+ },
+ "srv.lgs.soundMode.standard": {
+  "text": "Estándar",
+  "from": "Standard"
+ },
+ "srv.lgs.soundOutput": {
+  "text": "Salida de sonido",
+  "from": "Sound output"
+ },
+ "srv.lgs.soundOutput.btSoundbar": {
+  "text": "Dispositivo Bluetooth",
+  "from": "Bluetooth device"
+ },
+ "srv.lgs.soundOutput.desc": {
+  "text": "Por dónde reproduce la TV el sonido. El modo de sonido y el balance solo se aplican a los altavoces de la TV.",
+  "from": "Where the TV plays its sound. Sound mode and balance apply only to the TV speakers."
+ },
+ "srv.lgs.soundOutput.externalArc": {
+  "text": "Dispositivo HDMI (ARC)",
+  "from": "HDMI (ARC) device"
+ },
+ "srv.lgs.soundOutput.externalOptical": {
+  "text": "Dispositivo de salida óptica",
+  "from": "Optical out device"
+ },
+ "srv.lgs.soundOutput.headphone": {
+  "text": "Auriculares con cable",
+  "from": "Wired headphones"
+ },
+ "srv.lgs.soundOutput.tvSpeaker": {
+  "text": "Altavoces de la TV",
+  "from": "TV speakers"
+ },
+ "srv.lgs.soundOutput.tvSpeakerBluetooth": {
+  "text": "Dispositivo Bluetooth y altavoces de la TV",
+  "from": "Bluetooth device and TV speakers"
+ },
+ "srv.lgs.soundOutput.tvSpeakerExternalArc": {
+  "text": "Dispositivo HDMI (ARC) y altavoces de la TV",
+  "from": "HDMI (ARC) device and TV speakers"
+ },
+ "srv.lgs.soundOutput.tvSpeakerHeadphone": {
+  "text": "Auriculares con cable y altavoces de la TV",
+  "from": "Wired headphones and TV speakers"
+ },
+ "srv.lgs.soundOutputDigital": {
+  "text": "Salida de sonido digital",
+  "from": "Digital sound output"
+ },
+ "srv.lgs.soundOutputDigital.auto": {
+  "text": "Automático",
+  "from": "Auto"
+ },
+ "srv.lgs.soundOutputDigital.desc": {
+  "text": "El audio que se envía a una barra de sonido o un receptor por HDMI ARC u óptico. Pass Through envía Dolby y DTS tal cual; PCM los convierte en estéreo simple.",
+  "from": "The audio sent to a soundbar or receiver over HDMI ARC or optical. Pass Through sends Dolby and DTS as they are; PCM turns them into plain stereo."
+ },
+ "srv.lgs.soundOutputDigital.passThrough": {
+  "text": "Pass Through",
+  "from": "Pass Through"
+ },
+ "srv.lgs.soundOutputDigital.pcm": {
+  "text": "PCM",
+  "from": "PCM"
  },
  "srv.lgs.whiteStabilizer": {
   "text": "Estabilizador de blanco",

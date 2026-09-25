@@ -729,6 +729,12 @@ function handleRequest(req, res) {
     });
   }
 
+  // Rows of lgsettings.js for the dashboards: ?section=sound,devices.
+  if (pathname === '/api/lgsettings') {
+    var secs = String(u.query.section || '').split(',').filter(Boolean);
+    return lgSettingsModule.collect(secs, function (r) { send(res, 200, JSON.stringify(r)); });
+  }
+
   // Polled once a second while the Game tab is open; see game.js. The input's
   // pipeline keeps running, and reporting, behind an app, so a reading counts
   // only while that input is the app on screen.
@@ -860,7 +866,16 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/stats') {
-    return telemetryModule.collectStats(function (s) { send(res, 200, JSON.stringify(s)); });
+    return telemetryModule.collectStats(function (s) {
+      if (u.query.with !== 'settings') return send(res, 200, JSON.stringify(s));
+      // The TV dashboard's System page, which reads one endpoint, also lists
+      // the sound and SIMPLINK settings. Copied, since s is telemetry's cache.
+      lgSettingsModule.collect(['sound', 'devices'], function (ls) {
+        var copy = JSON.parse(JSON.stringify(s));
+        copy.lgSettings = ls.rows;
+        send(res, 200, JSON.stringify(copy));
+      });
+    });
   }
 
   /* Reports what is known, and never checks on its own: the dashboard polls
