@@ -369,8 +369,12 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 /* The wear figures and the switches that decide how hard the panel is worked,
    side by side - they are two halves of the same question. */
 .oled-split{display:grid;grid-template-columns:1fr;gap:38px}
-/* The frame rate is the one figure on the Game tab worth reading from the sofa. */
-.game-fps{font-size:clamp(96px,16vw,210px);line-height:.85;font-variant-numeric:tabular-nums}
+/* The frame rate is the one figure on the Game tab worth reading from the sofa.
+   Sized to its column, which is under 300px wide beside the settings, so three
+   digits and the unit fit; the vw size is for browsers without container units. */
+#gamepane .oled-wear{container-type:inline-size}
+.game-fps{font-size:clamp(64px,7vw,120px);font-size:clamp(64px,34cqw,150px);line-height:.85;
+          font-variant-numeric:tabular-nums;white-space:nowrap}
 .game-fps em{font-size:.2em}
 .game-fps.empty{font-size:clamp(52px,9vw,90px)}
 .game-step{display:flex;align-items:center;gap:10px}
@@ -2682,7 +2686,8 @@ async function loadGame() {
   try { d = await (await fetch(api('/api/game'), { cache: 'no-store' })).json(); } catch (e) { return; }
   if (q('tab-btn-game')) q('tab-btn-game').hidden = !d.available;
   if (!d.available) return;
-  const where = d.input ? inputName(d.input.toLowerCase()) : '';
+  // LG reports "none" while the TV is not on an input it games on.
+  const where = d.input && d.input !== 'none' ? inputName(d.input.toLowerCase()) : '';
   q('gm-scope').textContent = (where ? t('game.scope', 'LG keeps these for each input and genre. Showing {input}.', { input: where }) : '') +
     (d.pictureMode && d.pictureMode !== 'game' ? ' ' + t('game.notGameMode', 'They apply while the picture mode is Game Optimizer.') : '');
   q('game-rows').innerHTML = d.rows.map(r => {
