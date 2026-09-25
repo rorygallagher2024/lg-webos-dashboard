@@ -6,6 +6,12 @@
  * with its label; for a number, the range. store: 'string' is for a number
  * LG keeps as text, as it does the sound settings.
  *
+ * port and column place an HDMI input's rows in the dashboard's table.
+ *
+ * greyable: LG greys out an HDMI input's settings while another input is on
+ * screen, and these follow that. It greys other settings too - sound mode
+ * while sound is not on the TV speakers - which stay changeable here.
+ *
  * unless: another key in the same category that, where the TV has it, takes
  * this row's place - a C2 keeps one Deep Colour for the input on screen, and
  * still reports the per-port keys a B8 uses, set to off and unused.
@@ -142,7 +148,7 @@ var ROWS = [
     desc: msg('srv.lgs.eArcSupport.desc', 'Sends lossless and Dolby Atmos audio to a soundbar or receiver on the HDMI (eARC) input, where both support it.') },
 
   // HDMI inputs. Deep Colour on a C2 is one setting, for the input on screen.
-  { id: 'deepColor', section: 'hdmi', category: 'other', key: 'uhdDeepColor', type: 'choice',
+  { id: 'deepColor', section: 'hdmi', column: 'deepColor', greyable: true, category: 'other', key: 'uhdDeepColor', type: 'choice',
     choices: [
       { value: 'off', label: msg('srv.lgs.deepColor.off', 'Off') },
       { value: 'on', label: msg('srv.lgs.deepColor.on', 'On') },
@@ -152,40 +158,40 @@ var ROWS = [
     ],
     title: msg('srv.lgs.deepColor', 'HDMI Deep Colour'),
     desc: msg('srv.lgs.deepColor.desc', 'For the input on screen. Lets it take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change, and turning it off also turns off Game Optimizer for that input.') },
-  { id: 'deepColorHDMI1', section: 'hdmi', category: 'other', key: 'uhdDeepColorHDMI1', on: 'on', off: 'off', unless: 'uhdDeepColor',
+  { id: 'deepColorHDMI1', section: 'hdmi', port: 1, column: 'deepColor', greyable: true, category: 'other', key: 'uhdDeepColorHDMI1', on: 'on', off: 'off', unless: 'uhdDeepColor',
     title: msg('srv.lgs.deepColorHdmi1', 'HDMI 1 Deep Colour'),
     desc: msg('srv.lgs.deepColorHdmi.desc', 'Lets the input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change.') },
-  { id: 'deepColorHDMI2', section: 'hdmi', category: 'other', key: 'uhdDeepColorHDMI2', on: 'on', off: 'off', unless: 'uhdDeepColor',
+  { id: 'deepColorHDMI2', section: 'hdmi', port: 2, column: 'deepColor', greyable: true, category: 'other', key: 'uhdDeepColorHDMI2', on: 'on', off: 'off', unless: 'uhdDeepColor',
     title: msg('srv.lgs.deepColorHdmi2', 'HDMI 2 Deep Colour'),
     desc: msg('srv.lgs.deepColorHdmi.desc', 'Lets the input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change.') },
-  { id: 'deepColorHDMI3', section: 'hdmi', category: 'other', key: 'uhdDeepColorHDMI3', on: 'on', off: 'off', unless: 'uhdDeepColor',
+  { id: 'deepColorHDMI3', section: 'hdmi', port: 3, column: 'deepColor', greyable: true, category: 'other', key: 'uhdDeepColorHDMI3', on: 'on', off: 'off', unless: 'uhdDeepColor',
     title: msg('srv.lgs.deepColorHdmi3', 'HDMI 3 Deep Colour'),
     desc: msg('srv.lgs.deepColorHdmi.desc', 'Lets the input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change.') },
-  { id: 'deepColorHDMI4', section: 'hdmi', category: 'other', key: 'uhdDeepColorHDMI4', on: 'on', off: 'off', unless: 'uhdDeepColor',
+  { id: 'deepColorHDMI4', section: 'hdmi', port: 4, column: 'deepColor', greyable: true, category: 'other', key: 'uhdDeepColorHDMI4', on: 'on', off: 'off', unless: 'uhdDeepColor',
     title: msg('srv.lgs.deepColorHdmi4', 'HDMI 4 Deep Colour'),
     desc: msg('srv.lgs.deepColorHdmi.desc', 'Lets the input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change.') },
-  { id: 'audioFormatHDMI1', section: 'hdmi', category: 'sound', key: 'inputAudioFormatHDMI1', type: 'choice',
+  { id: 'audioFormatHDMI1', section: 'hdmi', port: 1, column: 'audioFormat', greyable: true, category: 'sound', key: 'inputAudioFormatHDMI1', type: 'choice',
     choices: [
       { value: 'bitstream', label: msg('srv.lgs.audioFormat.bitstream', 'Bitstream') },
       { value: 'pcm', label: msg('srv.lgs.audioFormat.pcm', 'PCM') }
     ],
     title: msg('srv.lgs.audioFormatHdmi1', 'HDMI 1 audio format'),
     desc: msg('srv.lgs.audioFormatHdmi.desc', 'What the TV asks the device on this input to send. Bitstream passes Dolby Atmos and DTS on to a soundbar or receiver; PCM asks for plain audio.') },
-  { id: 'audioFormatHDMI2', section: 'hdmi', category: 'sound', key: 'inputAudioFormatHDMI2', type: 'choice',
+  { id: 'audioFormatHDMI2', section: 'hdmi', port: 2, column: 'audioFormat', greyable: true, category: 'sound', key: 'inputAudioFormatHDMI2', type: 'choice',
     choices: [
       { value: 'bitstream', label: msg('srv.lgs.audioFormat.bitstream', 'Bitstream') },
       { value: 'pcm', label: msg('srv.lgs.audioFormat.pcm', 'PCM') }
     ],
     title: msg('srv.lgs.audioFormatHdmi2', 'HDMI 2 audio format'),
     desc: msg('srv.lgs.audioFormatHdmi.desc', 'What the TV asks the device on this input to send. Bitstream passes Dolby Atmos and DTS on to a soundbar or receiver; PCM asks for plain audio.') },
-  { id: 'audioFormatHDMI3', section: 'hdmi', category: 'sound', key: 'inputAudioFormatHDMI3', type: 'choice',
+  { id: 'audioFormatHDMI3', section: 'hdmi', port: 3, column: 'audioFormat', greyable: true, category: 'sound', key: 'inputAudioFormatHDMI3', type: 'choice',
     choices: [
       { value: 'bitstream', label: msg('srv.lgs.audioFormat.bitstream', 'Bitstream') },
       { value: 'pcm', label: msg('srv.lgs.audioFormat.pcm', 'PCM') }
     ],
     title: msg('srv.lgs.audioFormatHdmi3', 'HDMI 3 audio format'),
     desc: msg('srv.lgs.audioFormatHdmi.desc', 'What the TV asks the device on this input to send. Bitstream passes Dolby Atmos and DTS on to a soundbar or receiver; PCM asks for plain audio.') },
-  { id: 'audioFormatHDMI4', section: 'hdmi', category: 'sound', key: 'inputAudioFormatHDMI4', type: 'choice',
+  { id: 'audioFormatHDMI4', section: 'hdmi', port: 4, column: 'audioFormat', greyable: true, category: 'sound', key: 'inputAudioFormatHDMI4', type: 'choice',
     choices: [
       { value: 'bitstream', label: msg('srv.lgs.audioFormat.bitstream', 'Bitstream') },
       { value: 'pcm', label: msg('srv.lgs.audioFormat.pcm', 'PCM') }
@@ -224,7 +230,9 @@ function rowById(id) {
 // desc: what the TV's settings service describes for the key, if it was asked.
 function rowValue(r, v, desc) {
   var out = { id: r.id, section: r.section, type: r.type || 'switch', title: r.title, desc: r.desc };
-  if (desc && desc.active === false) out.active = false;
+  if (r.port) out.port = r.port;
+  if (r.column) out.column = r.column;
+  if (r.greyable && desc && desc.active === false) out.active = false;
   if (out.type === 'switch') out.on = v === r.on;
   else out.value = r.store === 'string' ? Number(v) : v;
   if (r.choices) {
@@ -310,14 +318,13 @@ function set(id, value, cb) {
   var settings = {};
   settings[r.key] = stored;
   /*
-   * LG's menu greys out a setting it will not change now, such as an HDMI
-   * input's audio format while another input is on screen, but its settings
-   * service stores a write regardless (a C2 did, on webOS 22). So the greying
-   * is checked here, fresh, and honoured.
+   * LG's menu greys out an HDMI input's settings while another input is on
+   * screen, but its settings service stores a write regardless (a C2 did, on
+   * webOS 22). So for those the greying is checked here, fresh, and honoured.
    */
   luna('com.webos.service.settings/getSystemSettingDesc', { category: r.category, keys: [r.key] }, function (d) {
     var x = d && d.results && d.results[0];
-    if (x && x.ui && x.ui.active === false) {
+    if (r.greyable && x && x.ui && x.ui.active === false) {
       return cb({ ok: false, error: msg('lgs.inactive', 'Not available with the TV’s current input or sound output.') });
     }
     luna('com.webos.service.settings/setSystemSettings', { category: r.category, settings: settings }, function (res) {

@@ -695,6 +695,34 @@
   "text": "LG OLED TV",
   "from": "LG OLED TV"
  },
+ "lgs.hdmi.audioFormat": {
+  "text": "Formato de audio",
+  "from": "Audio format"
+ },
+ "lgs.hdmi.deepColor": {
+  "text": "Deep Colour",
+  "from": "Deep Colour"
+ },
+ "lgs.hdmi.input": {
+  "text": "Entrada",
+  "from": "Input"
+ },
+ "lgs.hdmi.intro.audioFormat": {
+  "text": "El formato de audio decide si Dolby Atmos y DTS llegan a una barra de sonido o un receptor: Bitstream los deja pasar, PCM pide audio simple.",
+  "from": "Audio format decides whether Dolby Atmos and DTS reach a soundbar or receiver: Bitstream passes them on, PCM asks for plain audio."
+ },
+ "lgs.hdmi.intro.deepColor": {
+  "text": "Deep Colour permite que una entrada reciba 4K HDR y fotogramas altos. La imagen puede cortarse un momento mientras la TV y el dispositivo acuerdan un cambio.",
+  "from": "Deep Colour lets an input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree a change."
+ },
+ "lgs.hdmi.intro.gameOptimizer": {
+  "text": "Desactivarlo también desactiva Game Optimizer en esa entrada.",
+  "from": "Turning it off also turns off Game Optimizer for that input."
+ },
+ "lgs.hdmi.intro.onScreen": {
+  "text": "Como en el propio menú de LG, solo se puede cambiar la entrada que está en pantalla.",
+  "from": "As in LG’s own menu, only the input on screen can be changed."
+ },
  "lgs.inactive": {
   "text": "No disponible con la entrada o la salida de sonido actuales de la TV.",
   "from": "Not available with the TV’s current input or sound output."
