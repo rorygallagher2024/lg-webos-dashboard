@@ -143,6 +143,9 @@ var ROWS = [
     title: msg('srv.lgs.autoVolume', 'Automatic volume'),
     desc: msg('srv.lgs.autoVolume.desc', 'Keeps the volume level when switching channels. LG calls this Automatic Volume Adjustment.') },
 
+  { id: 'btSpeakerMode', section: 'sound', category: 'general', key: 'blueToothSpeakerMode', on: 'on', off: 'off',
+    title: msg('srv.lgs.btSpeakerMode', 'Bluetooth speaker mode'),
+    desc: msg('srv.lgs.btSpeakerMode.desc', 'Lets phones in Bluetooth range connect and play music through the TV, even while it is switched off. LG calls this Bluetooth Speaker Mode.') },
   { id: 'eArcSupport', section: 'sound', category: 'sound', key: 'eArcSupport', on: 'on', off: 'off',
     title: msg('srv.lgs.eArcSupport', 'eARC'),
     desc: msg('srv.lgs.eArcSupport.desc', 'Sends lossless and Dolby Atmos audio to a soundbar or receiver on the HDMI (eARC) input, where both support it.') },
