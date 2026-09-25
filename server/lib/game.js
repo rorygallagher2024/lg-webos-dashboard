@@ -3,8 +3,9 @@
  *
  * utp.extinputs/bind returns the pipeline of the input on screen, and
  * getVRRInfo on that pipeline reports the frame rate once a second. The rate is
- * only real while the source is using VRR: with a fixed-rate source a C2
- * reports frameRate 0 and vrrType "off".
+ * the game's own while the source is using VRR; otherwise it is the signal's
+ * fixed rate (a console at 120 Hz with VRR off reads 120), and 0 with nothing
+ * on the input.
  *
  * Both subscriptions are held only while a dashboard is asking, and dropped
  * IDLE_MS after the last request, so nothing is bound to the input otherwise.

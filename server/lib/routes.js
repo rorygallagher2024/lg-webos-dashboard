@@ -729,9 +729,15 @@ function handleRequest(req, res) {
     });
   }
 
-  // Polled once a second while the Game tab is open; see game.js.
+  // Polled once a second while the Game tab is open; see game.js. The input's
+  // pipeline keeps running, and reporting, behind an app, so a reading counts
+  // only while that input is the app on screen.
   if (pathname === '/api/game/fps') {
-    return send(res, 200, JSON.stringify({ ok: true, fps: gameModule.frameRate() }));
+    var fps = gameModule.frameRate();
+    return lunaFn('com.webos.applicationManager/getForegroundAppInfo', {}, function (fg) {
+      var onScreen = !!(fps.port && fg && fg.appId === 'com.webos.app.' + fps.port.toLowerCase());
+      send(res, 200, JSON.stringify({ ok: true, fps: onScreen ? fps : { frameRate: 0, vrrType: 'off', port: null } }));
+    });
   }
 
   if (pathname === '/api/privacy') {

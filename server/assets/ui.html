@@ -1747,8 +1747,8 @@ function row(k, val, pct, sub, warn) {
   q('row-' + k).classList.toggle('hi', pct >= warn);
 }
 
-// For the Game tab, which shows the signal's own rate when there is no VRR.
-let lastSignal = null, lastInputNames = {};
+// For the Game tab, which names inputs as the TV does.
+let lastInputNames = {};
 
 async function tick() {
   try {
@@ -1843,7 +1843,6 @@ async function tick() {
     }
     const modeBadge = pic.mode ? `<span class="stream-mode">${esc(pic.mode)}</span>` : '';
     const resStr = d.signal ? esc(d.signal) : '';
-    lastSignal = d.signal || null;
     lastInputNames = d.inputs || {};
 
     const primList = [resStr, drBadge, modeBadge].filter(Boolean);
@@ -2730,7 +2729,8 @@ async function pollFps() {
   try { d = await (await fetch(api('/api/game/fps'), { cache: 'no-store' })).json(); } catch (e) { return; }
   const f = (d && d.fps) || {};
   const vrr = f.vrrType && f.vrrType !== 'off';
-  const hz = lastSignal && /@\s*(\d+)/.exec(lastSignal);
+  // Without VRR the TV's reading is the signal's fixed rate, not the game's.
+  const hz = !vrr && f.frameRate > 0 ? [null, Math.round(f.frameRate)] : null;
   if (vrr && f.frameRate > 0) {
     q('gm-lbl').textContent = t('game.frameRate', 'Frame rate');
     q('gm-fps').textContent = Math.round(f.frameRate);
