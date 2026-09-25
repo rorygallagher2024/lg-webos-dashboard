@@ -7,6 +7,7 @@
  * Strict ES5 for Node 0.12.2 on webOS 4.
  */
 
+var msg = require('./say').msg;
 var fs = require('fs');
 var path = require('path');
 var execFile = require('child_process').execFile;
@@ -725,7 +726,7 @@ function collectCpuProcesses(cb, retried) {
 
     var elapsed = second.total - first.total;
     if (elapsed <= 0) {
-      if (retried) return cb({ ok: false, error: 'the CPU counters did not move' });
+      if (retried) return cb({ ok: false, error: msg('srv.cpu.stuck', 'the CPU counters did not move') });
       return collectCpuProcesses(cb, true);
     }
 
@@ -753,7 +754,7 @@ function collectCpuProcesses(cb, retried) {
 
 function collectProcesses(cb) {
   execFile('/bin/ps', ['-eo', 'rss,comm,args'], { timeout: 4000, maxBuffer: 1024 * 1024 }, function (err, stdout) {
-    if (err) return cb({ ok: false, error: 'could not read process list' });
+    if (err) return cb({ ok: false, error: msg('srv.processes.failed', 'could not read process list') });
     var lines = String(stdout || '').split('\n'), rows = [], total = 0, count = 0;
     for (var i = 0; i < lines.length; i++) {
       var m = lines[i].match(/^\s*(\d+)\s+(\S+)\s+(\S.*?)\s*$/);

@@ -34,6 +34,8 @@ var stateModule = require('./lib/state');
 var mqttStateModule = require('./lib/mqtt-state');
 var notifications = require('./lib/notifications');
 var lunaTransport = require('./lib/luna');
+var say = require('./lib/say');
+var msg = say.msg;
 var luna = lunaTransport.call;
 var zeroBuffer = MiniMQTT.zeroBuffer;
 
@@ -272,19 +274,19 @@ function clearLunaCache() { lunaCache = {}; }
  * on screen and the source kept reading as though something were displayed.
  */
 var POWER_STATES = {
-  'active':          ['On',          true,  true],
-  'on':              ['On',          true,  true],
-  'screenoff':       ['Screen off',  true,  false],
-  'screensaver':     ['Screen Saver',true,  true],
-  'activestandby':   ['Standby',     false, false],
-  'standby':         ['Standby',     false, false],
-  'suspend':         ['Standby',     false, false],
-  'preparesuspend':  ['Standby',     false, false],
-  'requestpoweroff': ['Off',         false, false],
-  'poweroff':        ['Off',         false, false],
-  'off':             ['Off',         false, false],
-  'prepared':        ['Starting up', true,  false],
-  'processing':      ['Standby',     false, false]
+  'active':          [msg('srv.power.on', 'On'),          true,  true],
+  'on':              [msg('srv.power.on', 'On'),          true,  true],
+  'screenoff':       [msg('srv.power.screenOff', 'Screen off'),  true,  false],
+  'screensaver':     [msg('srv.power.screenSaver', 'Screen Saver'),true,  true],
+  'activestandby':   [msg('srv.power.standby', 'Standby'),     false, false],
+  'standby':         [msg('srv.power.standby', 'Standby'),     false, false],
+  'suspend':         [msg('srv.power.standby', 'Standby'),     false, false],
+  'preparesuspend':  [msg('srv.power.standby', 'Standby'),     false, false],
+  'requestpoweroff': [msg('srv.power.off', 'Off'),         false, false],
+  'poweroff':        [msg('srv.power.off', 'Off'),         false, false],
+  'off':             [msg('srv.power.off', 'Off'),         false, false],
+  'prepared':        [msg('srv.power.starting', 'Starting up'), true,  false],
+  'processing':      [msg('srv.power.standby', 'Standby'),     false, false]
 };
 
 /*
@@ -479,7 +481,7 @@ var ENERGY_SAVING_VALUES = ['auto', 'off', 'min', 'med', 'max', 'screen_off'];
 var LOGO_DIMMING_VALUES = ['off', 'light', 'strong'];
 
 function doControl(action, value, cb) {
-  if (!CONFIG.allowControl) return cb({ ok: false, error: 'controls disabled in config' });
+  if (!CONFIG.allowControl) return cb({ ok: false, error: msg('srv.controlsOff', 'controls disabled in config') });
 
   var origCb = cb;
   cb = function (r) {
@@ -773,7 +775,7 @@ function doControl(action, value, cb) {
      */
     case 'alwaysReadyOffStart':
       var offHour = parseInt(String(value).split(':')[0], 10);
-      if (!(offHour >= 0 && offHour <= 23)) return cb({ ok: false, error: 'the start must be an hour from 0 to 23' });
+      if (!(offHour >= 0 && offHour <= 23)) return cb({ ok: false, error: msg('srv.arOff.badHour', 'the start must be an hour from 0 to 23') });
       return luna('com.webos.service.settings/setSystemSettings',
                   { category: 'general', settings: {
                     alwaysOnDisableStartHour: String(offHour), alwaysOnDisableStartMinute: '0',
@@ -881,7 +883,7 @@ function doControl(action, value, cb) {
      * without powerOn.
      */
     case 'powerOn':
-      if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
+      if (!CONFIG.allowPower) return cb({ ok: false, error: msg('srv.powerOff', 'power actions disabled (set allowPower)') });
       var isOn = function (next) {
         setTimeout(function () {
           luna('com.webos.service.tvpower/power/getPowerState', {}, function (st) {
@@ -902,7 +904,7 @@ function doControl(action, value, cb) {
       });
 
     case 'powerOff':
-      if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
+      if (!CONFIG.allowPower) return cb({ ok: false, error: msg('srv.powerOff', 'power actions disabled (set allowPower)') });
       return luna('com.webos.service.tvpower/power/powerOff', { reason: 'remoteKey' },
                   function (r) {
                     if (r && r.returnValue) return cb({ ok: true });
@@ -927,7 +929,7 @@ function doControl(action, value, cb) {
      * Reply first - this process is about to go down with the system.
      */
     case 'reboot':
-      if (!CONFIG.allowPower) return cb({ ok: false, error: 'power actions disabled (set allowPower)' });
+      if (!CONFIG.allowPower) return cb({ ok: false, error: msg('srv.powerOff', 'power actions disabled (set allowPower)') });
       cb({ ok: true, note: 'rebooting' });
       return setTimeout(function () {
         execFile('/bin/sh', ['-c', 'sync; /sbin/reboot'], function () {});
@@ -1009,6 +1011,9 @@ function assetPath(rel) {
   }
   return null;
 }
+
+// Translations sit beside the pages, which load the same files.
+say.init(path.join(path.dirname(assetPath('i18n.js') || path.join(ASSET_DIRS[0], 'i18n.js')), 'i18n'));
 
 /*
  * The address a phone on the same network can reach this server at. The TV app
@@ -1147,7 +1152,7 @@ function startHandoff(cb) {
           return send(res, 400, JSON.stringify({ ok: false, error: v.errors.join('; ') }));
         }
         writeSettings(v.value, function (err) {
-          if (err) return send(res, 500, JSON.stringify({ ok: false, error: 'could not save the settings' }));
+          if (err) return send(res, 500, JSON.stringify({ ok: false, error: msg('srv.saveSettingsFailed', 'could not save the settings') }));
           console.log('setup: Home Assistant broker set from a phone, restarting to connect');
           send(res, 200, JSON.stringify({ ok: true }));
           stopHandoff();                     // the code is spent
@@ -1397,6 +1402,7 @@ function updateSummary() {
 }
 
 function send(res, code, body, type) {
+  if (!type || type.indexOf('application/json') === 0) body = say.translateBody(body, res.glasshouseLang);
   /*
    * No Access-Control-Allow-Origin. The telemetry includes what is currently
    * playing, the model, panel hours and usage, and a wildcard here let any
@@ -1589,6 +1595,7 @@ function readJsonBody(req, res, cb) {
 var server = http.createServer(function (req, res) {
   var u = url.parse(req.url, true);
   var pathname = u.pathname;
+  /** @type {any} */ (res).glasshouseLang = say.langOf(req);
 
   if (pathname === '/' || pathname === '/index.html') {
     if (UI_HTML) {
@@ -1699,13 +1706,13 @@ var server = http.createServer(function (req, res) {
         return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
       }
       if (!CONFIG.allowControl && a.action !== 'done') {
-        return send(res, 403, JSON.stringify({ ok: false, error: 'controls disabled in config' }));
+        return send(res, 403, JSON.stringify({ ok: false, error: msg('srv.controlsOff', 'controls disabled in config') }));
       }
       if (a.action === 'network') {
         var open = !!a.open;
         if (open === networkOpen()) return send(res, 200, JSON.stringify({ ok: true, restarting: false }));
         return setNetworkAccess(open, function (err) {
-          if (err) return send(res, 500, JSON.stringify({ ok: false, error: 'could not save the setting' }));
+          if (err) return send(res, 500, JSON.stringify({ ok: false, error: msg('srv.saveSettingFailed.plain', 'could not save the setting') }));
           console.log('setup: dashboard ' + (open ? 'opened to the network' : 'closed to this TV') + ', restarting');
           send(res, 200, JSON.stringify({ ok: true, restarting: true }));
           setTimeout(function () { restartSelf(); }, 250);
@@ -1713,7 +1720,7 @@ var server = http.createServer(function (req, res) {
       }
       if (a.action === 'alwaysReady') {
         return doControl('alwaysReady', !!a.on, function (r) {
-          send(res, r && r.ok ? 200 : 500, JSON.stringify(r && r.ok ? { ok: true } : { ok: false, error: 'the TV would not change it' }));
+          send(res, r && r.ok ? 200 : 500, JSON.stringify(r && r.ok ? { ok: true } : { ok: false, error: msg('srv.tvRefused', 'the TV would not change it') }));
         });
       }
       if (a.action === 'handoff') {
@@ -1965,7 +1972,7 @@ var server = http.createServer(function (req, res) {
   if (pathname === '/api/settings' && req.method === 'POST') {
     if (!authed(u.query, req)) return send(res, 401, JSON.stringify({ ok: false, error: 'unauthorized' }));
     if (!CONFIG.allowControl) {
-      return send(res, 403, JSON.stringify({ ok: false, error: 'controls disabled in config' }));
+      return send(res, 403, JSON.stringify({ ok: false, error: msg('srv.controlsOff', 'controls disabled in config') }));
     }
     var sctype = String(req.headers['content-type'] || '').toLowerCase();
     if (sctype.indexOf('application/json') !== 0) {
@@ -2546,7 +2553,7 @@ function setupHomeAssistant() {
   /* A socket error destroys the socket, so 'close' follows it. The error text
      is the part worth reporting, so it stands until the next connect. */
   mqttClient.on('close', function() {
-    if (MQTT_STATUS.state !== 'error') mqttStatus('connecting', 'connection dropped, retrying');
+    if (MQTT_STATUS.state !== 'error') mqttStatus('connecting', msg('srv.mqtt.dropped', 'connection dropped, retrying'));
   });
 
   process.on('SIGTERM', function() {

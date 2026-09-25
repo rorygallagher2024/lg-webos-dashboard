@@ -90,7 +90,32 @@
     }
   }
 
+  /*
+   * Messages from the server - errors, and names such as a screen saver's -
+   * come back in the page's language when it says which it is on its own
+   * requests. English says nothing, and the server answers in English.
+   */
+  function tellServer() {
+    if (lang === 'en') return;
+    var send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function () {
+      try { this.setRequestHeader('X-Glasshouse-Lang', lang); } catch (e) {}
+      return send.apply(this, arguments);
+    };
+    if (root.fetch && root.Headers) {
+      var fetch = root.fetch;
+      root.fetch = function (input, init) {
+        init = init || {};
+        var headers = new root.Headers(init.headers || (input && input.headers) || {});
+        headers.set('X-Glasshouse-Lang', lang);
+        init.headers = headers;
+        return fetch.call(this, input, init);
+      };
+    }
+  }
+
   load();
+  tellServer();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { apply(); });
   } else {

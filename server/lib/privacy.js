@@ -1,4 +1,5 @@
 // Strict ES5 - node v0.12.2 on webOS 4 (LG OLED B8) has no ES6 support.
+var msg = require('./say').msg;
 var fs = require('fs');
 var execFile = require('child_process').execFile;
 
@@ -94,37 +95,35 @@ var HBC_BLOCK_UPDATES_FLAG = '/var/luna/preferences/webosbrew_block_updates';
 var HBC_UPDATE_HOSTS = ['snu.lge.com', 'su-dev.lge.com', 'su.lge.com', 'su-ssl.lge.com'];
 
 var CONSENT_LABELS = {
-  acrAllowed:              ['Screen content recognition', 'Lets LG identify what is on your screen to profile your viewing'],
-  acrGdprAllowed:          ['Screen recognition (GDPR consent)', 'The EU consent record for screen content recognition'],
-  acrAdAllowed:            ['Ads based on what you watch', 'Uses recognised screen content to target advertising'],
-  customAdAllowed:         ['Personalised advertising', 'Tailors the ads shown on your TV to you'],
-  customadsAllowed:        ['Personalised advertising (secondary flag)', 'A second personalised-advertising consent record'],
-  cookiesAllowed:          ['Advertising cookies', 'Stores cookies used for ad tracking'],
-  thirdPartySharingAllowed:['Sharing your data with other companies', 'Passes your usage data to third parties'],
-  additionalDataAllowed:   ['Additional usage data', 'Extra analytics beyond what the TV needs to work'],
-  remoteDiagAllowed:       ['Remote diagnostics upload', 'Lets LG collect and upload diagnostic reports from your TV'],
-  voiceAllowed:            ['Voice recordings', 'Allows voice data to be collected and processed'],
-  voice2Allowed:           ['Voice recordings (secondary flag)', 'A second voice-data consent record']
+  acrAllowed:              [msg('srv.consent.acrAllowed', 'Screen content recognition'), msg('srv.consent.acrAllowed.detail', 'Lets LG identify what is on your screen to profile your viewing')],
+  acrGdprAllowed:          [msg('srv.consent.acrGdprAllowed', 'Screen recognition (GDPR consent)'), msg('srv.consent.acrGdprAllowed.detail', 'The EU consent record for screen content recognition')],
+  acrAdAllowed:            [msg('srv.consent.acrAdAllowed', 'Ads based on what you watch'), msg('srv.consent.acrAdAllowed.detail', 'Uses recognised screen content to target advertising')],
+  customAdAllowed:         [msg('srv.consent.customAdAllowed', 'Personalised advertising'), msg('srv.consent.customAdAllowed.detail', 'Tailors the ads shown on your TV to you')],
+  customadsAllowed:        [msg('srv.consent.customadsAllowed', 'Personalised advertising (secondary flag)'), msg('srv.consent.customadsAllowed.detail', 'A second personalised-advertising consent record')],
+  cookiesAllowed:          [msg('srv.consent.cookiesAllowed', 'Advertising cookies'), msg('srv.consent.cookiesAllowed.detail', 'Stores cookies used for ad tracking')],
+  thirdPartySharingAllowed:[msg('srv.consent.thirdPartySharingAllowed', 'Sharing your data with other companies'), msg('srv.consent.thirdPartySharingAllowed.detail', 'Passes your usage data to third parties')],
+  additionalDataAllowed:   [msg('srv.consent.additionalDataAllowed', 'Additional usage data'), msg('srv.consent.additionalDataAllowed.detail', 'Extra analytics beyond what the TV needs to work')],
+  remoteDiagAllowed:       [msg('srv.consent.remoteDiagAllowed', 'Remote diagnostics upload'), msg('srv.consent.remoteDiagAllowed.detail', 'Lets LG collect and upload diagnostic reports from your TV')],
+  voiceAllowed:            [msg('srv.consent.voiceAllowed', 'Voice recordings'), msg('srv.consent.voiceAllowed.detail', 'Allows voice data to be collected and processed')],
+  voice2Allowed:           [msg('srv.consent.voice2Allowed', 'Voice recordings (secondary flag)'), msg('srv.consent.voice2Allowed.detail', 'A second voice-data consent record')]
 };
 
 var CONSENT_LOCKED = {
-  generalTermsAllowed: 'Acceptance of the terms themselves.',
-  networkAllowed:      'Acceptance of network use.',
-  firstUseAllowed:     'Part of first-boot setup.',
-  allAllowed:          'The Select-All. Read-only because whether writing it cascades to the ' +
-                       'other flags is untested.'
+  generalTermsAllowed: msg('srv.consent.locked.generalTerms', 'Acceptance of the terms themselves.'),
+  networkAllowed:      msg('srv.consent.locked.network', 'Acceptance of network use.'),
+  firstUseAllowed:     msg('srv.consent.locked.firstUse', 'Part of first-boot setup.'),
+  allAllowed:          msg('srv.consent.locked.all', 'The Select-All. Read-only because whether writing it cascades to the other flags is untested.')
 };
 
 var CONSENT_GROUPS = [
-  ['advertising', 'Advertising'],
-  ['watching',    'What the TV watches and hears'],
-  ['analytics',   'Analytics and sharing'],
-  ['services',    'LG services'],
-  ['unknown',     'No published description',
-   'The TV records these, but LG publishes nothing about them.'],
-  ['platform',    'Set on the TV itself',
-   'Acceptance records rather than collection choices. Changed in the TV\'s own menus, ' +
-   'under Settings \u203a General \u203a About This TV \u203a User Agreements.']
+  ['advertising', msg('srv.consent.group.advertising', 'Advertising')],
+  ['watching',    msg('srv.consent.group.watching', 'What the TV watches and hears')],
+  ['analytics',   msg('srv.consent.group.analytics', 'Analytics and sharing')],
+  ['services',    msg('srv.consent.group.services', 'LG services')],
+  ['unknown',     msg('srv.consent.group.unknown', 'No published description'),
+   msg('srv.consent.group.unknown.note', 'The TV records these, but LG publishes nothing about them.')],
+  ['platform',    msg('srv.consent.group.platform', 'Set on the TV itself'),
+   msg('srv.consent.group.platform.note', 'Acceptance records rather than collection choices. Changed in the TV\'s own menus, under Settings \u203a General \u203a About This TV \u203a User Agreements.')]
 ];
 
 var CONSENT_GROUP_OF = {
@@ -163,19 +162,19 @@ var CONSENT_GROUP_OF = {
  * the accepted terms to LG.
  */
 var CONSENT_BY_DOCUMENT = {
-  S_DPA: ['Sharing viewing data with data partners',
-          'Lets LG and Alphonso, its screen recognition partner, pass viewing and device information to other companies for ad measurement and analytics', 'analytics'],
+  S_DPA: [msg('srv.consent.dpa', 'Sharing viewing data with data partners'),
+          msg('srv.consent.dpa.detail', 'Lets LG and Alphonso, its screen recognition partner, pass viewing and device information to other companies for ad measurement and analytics'), 'analytics'],
   S_TAK: ['Who.Where.What?',
-          'LG\'s content discovery, run with TheTake: identifies people, places and products in what is on screen, using viewing information that can include captured images of it', 'watching'],
-  S_MKT: ['Marketing messages',
-          'Lets LG show marketing pop-ups and notifications on the TV: special offers and news about its content and services', 'advertising']
+          msg('srv.consent.tak.detail', 'LG\'s content discovery, run with TheTake: identifies people, places and products in what is on screen, using viewing information that can include captured images of it'), 'watching'],
+  S_MKT: [msg('srv.consent.mkt', 'Marketing messages'),
+          msg('srv.consent.mkt.detail', 'Lets LG show marketing pop-ups and notifications on the TV: special offers and news about its content and services'), 'advertising']
 };
 
 // Named from what reads them, where no agreement of their own names them.
 // adoverlay-service, which places ads over live TV, reads shoppingOnAllowed
 // with customadsAllowed and acrOnAllowed.
 var CONSENT_READ_BY = {
-  shoppingOnAllowed: 'Read by the service that places ads and offers over live TV, alongside personalised advertising'
+  shoppingOnAllowed: msg('srv.consent.shoppingOn.detail', 'Read by the service that places ads and offers over live TV, alongside personalised advertising')
 };
 
 function consentByDocument(key) {
@@ -186,20 +185,20 @@ function consentByDocument(key) {
 }
 
 var CONSENT_NAMES = {
-  networkAllowed:      'Network use',
-  marketingOnAllowed:  'Marketing',
-  shoppingOnAllowed:   'Shopping on live TV',
-  generalTermsAllowed: 'Terms of Use and Privacy Policy',
+  networkAllowed:      msg('srv.consent.name.networkAllowed', 'Network use'),
+  marketingOnAllowed:  msg('srv.consent.name.marketingOnAllowed', 'Marketing'),
+  shoppingOnAllowed:   msg('srv.consent.name.shoppingOnAllowed', 'Shopping on live TV'),
+  generalTermsAllowed: msg('srv.consent.name.generalTermsAllowed', 'Terms of Use and Privacy Policy'),
   chpAllowed:          'LG Channels',
-  acrOnAllowed:        'Screen recognition (master consent)',
-  allAllowed:          'Select All'
+  acrOnAllowed:        msg('srv.consent.name.acrOnAllowed', 'Screen recognition (master consent)'),
+  allAllowed:          msg('srv.consent.name.allAllowed', 'Select All')
 };
 
 var PRIVACY_DAEMONS = {
-  acr2:       ['Content recognition service', 'Identifies what is on screen', 'bus'],
-  admanager:  ['Advertising service', 'Fetches and displays ads on the TV', 'bus'],
-  uploadd:    ['Diagnostics uploader', 'Sends diagnostic data to LG', 'upstart'],
-  rdxd:       ['Diagnostics collector', 'Gathers crash and diagnostic reports', 'upstart']
+  acr2:       [msg('srv.daemon.acr2', 'Content recognition service'), msg('srv.daemon.acr2.detail', 'Identifies what is on screen'), 'bus'],
+  admanager:  [msg('srv.daemon.admanager', 'Advertising service'), msg('srv.daemon.admanager.detail', 'Fetches and displays ads on the TV'), 'bus'],
+  uploadd:    [msg('srv.daemon.uploadd', 'Diagnostics uploader'), msg('srv.daemon.uploadd.detail', 'Sends diagnostic data to LG'), 'upstart'],
+  rdxd:       [msg('srv.daemon.rdxd', 'Diagnostics collector'), msg('srv.daemon.rdxd.detail', 'Gathers crash and diagnostic reports'), 'upstart']
 };
 
 var SERVICES_FILE = '/var/lib/tvweb/services_stopped';
@@ -340,7 +339,7 @@ function setAdBlock(mode, cb) {
     if (mode === 'off') { if (fs.existsSync(ADBLOCK_FLAG_FILE)) fs.unlinkSync(ADBLOCK_FLAG_FILE); }
     else fs.writeFileSync(ADBLOCK_FLAG_FILE, mode, 'utf8');
   } catch (e) {
-    if (cb) cb({ ok: false, error: 'could not save the ad block setting: ' + e.message });
+    if (cb) cb({ ok: false, error: msg('srv.adblock.saveFailed', 'could not save the ad block setting: {error}', { error: e.message }) });
     return;
   }
   applyHostsTable(function (err) {
@@ -353,7 +352,7 @@ function setTvUpdatesBlocked(on, cb) {
     if (on) fs.writeFileSync(HBC_BLOCK_UPDATES_FLAG, '', 'utf8');
     else if (fs.existsSync(HBC_BLOCK_UPDATES_FLAG)) fs.unlinkSync(HBC_BLOCK_UPDATES_FLAG);
   } catch (e) {
-    if (cb) cb({ ok: false, error: 'could not save the update setting: ' + e.message });
+    if (cb) cb({ ok: false, error: msg('srv.tvUpdates.saveFailed', 'could not save the update setting: {error}', { error: e.message }) });
     return;
   }
   applyHostsTable(function (err) {
@@ -632,8 +631,8 @@ function collectPrivacy(cb) {
       if (eln && Array.isArray(eln.eulaList)) annotateConsent(out.consent, eln);
       luna('com.webos.service.acr/getACRSolutionStatus', {}, function (acr) {
         out.acr = {
-          label: 'Screen content recognition',
-          detail: 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.',
+          label: msg('srv.privacy.acr', 'Screen content recognition'),
+          detail: msg('srv.privacy.acr.detail', 'LG’s ACR captures what is on screen, from apps and HDMI alike, to work out what you watch and target ads at you.'),
           active: !!(acr && acr.ACRSolutionStatus)
         };
         luna('com.webos.service.acr/getVideoCaptureStatus', {}, function (cap) {
@@ -644,13 +643,12 @@ function collectPrivacy(cb) {
             var id = (adOk && ad.IFA) ? String(ad.IFA) : null;
             out.advertisingId = {
               available: adOk,
-              label: 'Advertising identifier',
-              detail: 'A unique ID your TV hands to advertisers so they can target ads at you. ' +
-                      'Resetting it breaks the link to your past activity.',
+              label: msg('srv.privacy.adid', 'Advertising identifier'),
+              detail: msg('srv.privacy.adid.detail', 'A unique ID your TV hands to advertisers so they can target ads at you. Resetting it breaks the link to your past activity.'),
               present: !!id,
               limitTracking: !!(ad && String(ad.LMT).toLowerCase() === 'on'),
-              limitTrackingLabel: 'Limit ad tracking',
-              limitTrackingDetail: 'When on, apps are asked not to use this ID to profile you.'
+              limitTrackingLabel: msg('srv.privacy.lmt', 'Limit ad tracking'),
+              limitTrackingDetail: msg('srv.privacy.lmt.detail', 'When on, apps are asked not to use this ID to profile you.')
             };
             out.adblock = {
               enabled: isAdBlockActive(),
@@ -696,25 +694,25 @@ function simpleSummary(p) {
 
   var watching = onIn('watching');
   if (p.acr && p.acr.active && writable) {
-    watching.push({ label: 'Content recognition is running', action: 'acr', value: false });
+    watching.push({ label: msg('srv.privacy.item.acr', 'Content recognition is running'), action: 'acr', value: false });
   }
   var ads = onIn('advertising');
   if (ad.available && !ad.limitTracking && writable) {
-    ads.push({ label: 'Limit ad tracking is off', action: 'limitAdTracking', value: true });
+    ads.push({ label: msg('srv.privacy.item.lmt', 'Limit ad tracking is off'), action: 'limitAdTracking', value: true });
   }
   if (mode === 'off') {
-    ads.push({ label: 'LG’s ad and tracking servers can be reached', action: 'setAdBlock', value: 'ads' });
+    ads.push({ label: msg('srv.privacy.item.adblock', 'LG’s ad and tracking servers can be reached'), action: 'setAdBlock', value: 'ads' });
   }
   var reports = onIn('analytics');
   (p.daemons || []).forEach(function (x) {
     // Only what is running: one that is merely allowed to start is not on.
-    if (!x.onDemand && x.stoppable && x.running) reports.push({ label: x.label + ' is running', service: x.name });
+    if (!x.onDemand && x.stoppable && x.running) reports.push({ label: msg('srv.privacy.item.running', '{name} is running', { name: x.label }), service: x.name });
   });
 
   var areas = [
-    { id: 'watching', name: 'Screen recognition', detail: 'LG identifying what you watch, to target ads at you.', items: watching },
-    { id: 'ads', name: 'Ad tracking', detail: 'Advertisers tracking the TV across apps, to target ads at you.', items: ads },
-    { id: 'reports', name: 'Usage reports', detail: 'Usage and diagnostic reports sent to LG, and data passed to other companies.', items: reports }
+    { id: 'watching', name: msg('srv.privacy.area.watching', 'Screen recognition'), detail: msg('srv.privacy.area.watching.detail', 'LG identifying what you watch, to target ads at you.'), items: watching },
+    { id: 'ads', name: msg('srv.privacy.area.ads', 'Ad tracking'), detail: msg('srv.privacy.area.ads.detail', 'Advertisers tracking the TV across apps, to target ads at you.'), items: ads },
+    { id: 'reports', name: msg('srv.privacy.area.reports', 'Usage reports'), detail: msg('srv.privacy.area.reports.detail', 'Usage and diagnostic reports sent to LG, and data passed to other companies.'), items: reports }
   ];
   var total = 0;
   areas.forEach(function (a) { total += a.items.length; });
@@ -751,12 +749,12 @@ function setLimitTracking(on, cb) {
   if (!luna) return cb({ ok: false, error: 'no luna wrapper' });
   luna('com.webos.settingsservice/setSystemSettings',
        { category: 'general', settings: { lmt: on ? 'on' : 'off' } }, function (r) {
-    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
+    if (!r || r.returnValue !== true) return cb({ ok: false, error: msg('srv.tvRefused', 'the TV would not change it') });
     luna('com.webos.service.admanager/getAdid', {}, function (ad) {
       clearCache();
       var now = !!(ad && String(ad.LMT).toLowerCase() === 'on');
       cb(now === !!on ? { ok: true, limitTracking: now }
-                      : { ok: false, error: 'the setting did not take' });
+                      : { ok: false, error: msg('srv.notTaken', 'the setting did not take') });
     });
   });
 }
@@ -776,11 +774,11 @@ function setConsent(ckey, cOn, cb) {
 
   luna('com.webos.settingsservice/getSystemSettings', { keys: ['eulaStatus'] }, function (r) {
     var cur = r && r.settings && r.settings.eulaStatus;
-    if (!cur || typeof cur !== 'object') return cb({ ok: false, error: 'could not read the consent flags' });
+    if (!cur || typeof cur !== 'object') return cb({ ok: false, error: msg('srv.consent.readFailed', 'could not read the consent flags') });
     if (!cur.hasOwnProperty(ckey)) return cb({ ok: false, error: 'no such consent flag: ' + ckey });
 
     readConsentDocs(function (eln) {
-      if (!eln) return cb({ ok: false, error: 'could not read the agreement documents' });
+      if (!eln) return cb({ ok: false, error: msg('srv.consent.docsFailed', 'could not read the agreement documents') });
       var plan = planConsent(ckey, cOn, cur, eln);
       if (!plan.changed.length) {
         clearCache();
@@ -801,7 +799,7 @@ function setConsent(ckey, cOn, cb) {
                       (applied ? '' : ' (accepted but not applied)'));
           cb(applied
             ? { ok: true, key: ckey, enabled: cOn, changed: true, alsoChanged: plan.changed.length - 1 }
-            : { ok: false, error: 'the TV accepted the change without applying it' });
+            : { ok: false, error: msg('srv.notApplied', 'the TV accepted the change without applying it') });
         });
       });
     });

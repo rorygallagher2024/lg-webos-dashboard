@@ -1,4 +1,5 @@
 // Strict ES5 - node v0.12.2 on webOS 4 (LG OLED B8) has no ES6 support.
+var msg = require('./say').msg;
 var fs = require('fs');
 
 var SERVICE_MENU_APP = 'com.webos.app.factorywin';
@@ -103,7 +104,7 @@ function setServiceMenuLock(locked, cb) {
   if (!luna) return cb({ ok: false, error: 'no luna wrapper' });
   luna('com.webos.settingsservice/setSystemSettings',
        { category: 'other', settings: { svcMenuFlag: !!locked } }, function (r) {
-    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
+    if (!r || r.returnValue !== true) return cb({ ok: false, error: msg('srv.tvRefused', 'the TV would not change it') });
     serviceMenuState(function (st) {
       cb({ ok: st.locked === !!locked, state: st,
            error: st.locked === !!locked ? undefined : 'the setting did not take' });
@@ -165,7 +166,7 @@ function setOledProtection(which, enabled, cb) {
   function afterWrite(r) {
     clearCache();
     if (!r || r.returnValue !== true) {
-      return cb({ ok: false, error: 'the TV would not change it' });
+      return cb({ ok: false, error: msg('srv.tvRefused', 'the TV would not change it') });
     }
     readOledProtections(function (state) {
       var now = state ? (which === 'gsr' ? state.gsr : state.tpc) : null;
@@ -181,7 +182,7 @@ function setOledProtection(which, enabled, cb) {
       return luna(OLED_SYSPROP + '/setProperties', prop, afterWrite);
     }
     if (oledProtVia !== 'epl') {
-      return cb({ ok: false, error: 'this TV does not offer the control' });
+      return cb({ ok: false, error: msg('srv.oled.notOffered', 'this TV does not offer the control') });
     }
     var method = (which === 'gsr') ? 'setGlobalStressReduction' : 'setTemporalPeakControl';
     luna(OLED_EPL + '/' + method, { enable: !!enabled }, afterWrite);

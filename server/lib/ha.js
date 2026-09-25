@@ -3,6 +3,7 @@
  * and discovery filtering for Node 0.12+ (strict ES5).
  */
 
+var msg = require('./say').msg;
 var INPUTS = { hdmi1: 1, hdmi2: 1, hdmi3: 1, hdmi4: 1, livetv: 1 };
 var INPUT_NAMES = { hdmi1: 'HDMI 1', hdmi2: 'HDMI 2', hdmi3: 'HDMI 3', hdmi4: 'HDMI 4', livetv: 'Live TV' };
 
@@ -56,11 +57,11 @@ var SOUND_OUTPUT_MAP = {
 };
 
 var HA_CATEGORIES = [
-  { id: 'controls', name: 'Controls & Media', desc: 'Power, volume, mute, playback buttons, apps, and input sources.' },
-  { id: 'oled', name: 'OLED Care', desc: 'Panel on-time, pixel refresher countdowns, and burn-in protections.' },
-  { id: 'video', name: 'Video & HDMI Signal', desc: 'Active picture mode, dynamic range, refresh rate, VRR, ALLM, and link mode.' },
-  { id: 'system', name: 'System & Telemetry', desc: 'CPU, RAM, swap, SoC temperature, network rates, and storage health.' },
-  { id: 'diagnostics', name: 'Diagnostics & Settings', desc: 'Remote battery, audio format, standby LED, sleep timer, and ad blocker.' }
+  { id: 'controls', name: msg('srv.ha.cat.controls', 'Controls & Media'), desc: msg('srv.ha.cat.controls.desc', 'Power, volume, mute, playback buttons, apps, and input sources.') },
+  { id: 'oled', name: msg('srv.ha.cat.oled', 'OLED Care'), desc: msg('srv.ha.cat.oled.desc', 'Panel on-time, pixel refresher countdowns, and burn-in protections.') },
+  { id: 'video', name: msg('srv.ha.cat.video', 'Video & HDMI Signal'), desc: msg('srv.ha.cat.video.desc', 'Active picture mode, dynamic range, refresh rate, VRR, ALLM, and link mode.') },
+  { id: 'system', name: msg('srv.ha.cat.system', 'System & Telemetry'), desc: msg('srv.ha.cat.system.desc', 'CPU, RAM, swap, SoC temperature, network rates, and storage health.') },
+  { id: 'diagnostics', name: msg('srv.ha.cat.diagnostics', 'Diagnostics & Settings'), desc: msg('srv.ha.cat.diagnostics.desc', 'Remote battery, audio format, standby LED, sleep timer, and ad blocker.') }
 ];
 
 var HA_ENTITIES = [

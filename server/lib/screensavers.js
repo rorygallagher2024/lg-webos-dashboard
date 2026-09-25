@@ -8,6 +8,7 @@
  * Strict ES5 for Node 0.12.2 on webOS 4.
  */
 
+var msg = require('./say').msg;
 var fs = require('fs');
 var path = require('path');
 var execFile = require('child_process').execFile;
@@ -25,36 +26,36 @@ var STOCK_TYPE_FILE = '/var/lib/tvweb/screensaver-stock-type';
 var SWITCH_POLL_MS = 3000;
 var SWITCH_SETTLE_MS = 5000;
 var SWITCH_TIMEOUT_MS = 150000;
-var SWITCHING_ERROR = 'The TV is still switching screen savers. Try again in a minute.';
+var SWITCHING_ERROR = msg('srv.saver.switching', 'The TV is still switching screen savers. Try again in a minute.');
 
 var SCREENSAVERS = {
   stock: {
-    label: 'LG default',
-    description: 'The screen saver the TV shipped with.'
+    label: msg('srv.saver.stock', 'LG default'),
+    description: msg('srv.saver.stock.desc', 'The screen saver the TV shipped with.')
   },
   clock: {
-    label: 'Clock',
-    description: 'A digital clock on black, moving to a new position every minute.',
+    label: msg('srv.saver.clock', 'Clock'),
+    description: msg('srv.saver.clock.desc', 'A digital clock on black, moving to a new position every minute.'),
     qml: 'screensavers/clock.qml'
   },
   starfield: {
-    label: 'Starfield',
-    description: 'A drifting cosmic starscape with occasional shooting stars.',
+    label: msg('srv.saver.starfield', 'Starfield'),
+    description: msg('srv.saver.starfield.desc', 'A drifting cosmic starscape with occasional shooting stars.'),
     qml: 'screensavers/starfield.qml'
   },
   fireworks: {
-    label: 'Fireworks',
-    description: 'Bursts of colour on black, a few seconds apart.',
+    label: msg('srv.saver.fireworks', 'Fireworks'),
+    description: msg('srv.saver.fireworks.desc', 'Bursts of colour on black, a few seconds apart.'),
     qml: 'screensavers/fireworks.qml'
   },
   bokeh: {
-    label: 'Bokeh',
-    description: 'Soft circles of light drifting in and out on black.',
+    label: msg('srv.saver.bokeh', 'Bokeh'),
+    description: msg('srv.saver.bokeh.desc', 'Soft circles of light drifting in and out on black.'),
     qml: 'screensavers/bokeh.qml'
   },
   vitals: {
-    label: 'Panel vitals',
-    description: "The TV's own readings - panel hours, pixel refresher countdown, temperature.",
+    label: msg('srv.saver.vitals', 'Panel vitals'),
+    description: msg('srv.saver.vitals.desc', 'The TV\'s own readings - panel hours, pixel refresher countdown, temperature.'),
     qml: 'screensavers/vitals.qml'
   }
 };
@@ -310,7 +311,7 @@ function setScreensaver(mode, level, cb) {
       writeScreensaverQml(src, level);
       fs.writeFileSync(path.join(SCREENSAVER_DIR, SCREENSAVER_MARKER), mode);
     } catch (e) {
-      return cb({ ok: false, error: 'could not stage the screen saver: ' + e.message });
+      return cb({ ok: false, error: msg('srv.saver.stageFailed', 'could not stage the screen saver: {error}', { error: e.message }) });
     }
 
     execFile('/bin/mount', ['--bind', SCREENSAVER_DIR, SCREENSAVER_APP_DIR], { timeout: 4000 }, function (err) {
@@ -380,22 +381,23 @@ function trigger(cb) {
         return cb({ ok: false, error: 'key injection not available' });
       }
       return injectKeyFn(keyBackVal, function (ok) {
-        cb(ok ? { ok: true } : { ok: false, error: 'could not reach the remote input device' });
+        cb(ok ? { ok: true } : { ok: false, error: msg('srv.saver.noRemote', 'could not reach the remote input device') });
       });
     }
 
     lunaFn('com.webos.applicationManager/getForegroundAppInfo', {}, function (fg) {
       var fgId = (fg && fg.appId) ? String(fg.appId).replace('com.webos.app.', '') : '';
       if (/^hdmi[1-4]$/.test(fgId) || fgId === 'livetv') {
-        return cb({ ok: false, error: 'the screen saver is only available from an app, not from ' + fgId });
+        return cb({ ok: false, error: msg('srv.saver.onlyInApps', 'the screen saver is only available from an app, not from {source}', { source: fgId }) });
       }
       lunaFn('com.webos.service.tvpower/power/turnOnScreenSaver', {}, function (r) {
         if (r && r.returnValue) return cb({ ok: true });
         cb({
           ok: false,
           error: (r && r.errorText)
-            ? 'the TV would not start a screen saver here: ' + r.errorText
-            : 'the TV would not start a screen saver from ' + (fgId || 'this source')
+            ? msg('srv.saver.refused', 'the TV would not start a screen saver here: {error}', { error: r.errorText })
+            : fgId ? msg('srv.saver.refusedFrom', 'the TV would not start a screen saver from {source}', { source: fgId })
+            : msg('srv.saver.refusedHere', 'the TV would not start a screen saver from this source')
         });
       });
     });

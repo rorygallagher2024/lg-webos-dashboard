@@ -8,6 +8,10 @@ Every string shown is written in English where it is used, with a key:
     <div data-t="server.updates">Server updates</div>
     t('server.install', 'Install v{version}', { version: v })
 
+and every message the server sends a page, in server/tvweb.js and server/lib:
+
+    error: msg('srv.update.busy', 'an update is already running')
+
 A translation in server/assets/i18n/<lang>.json holds the same key, the
 translated text and the English it was made from.
 
@@ -267,6 +271,40 @@ for page in PAGES:
     for el_id in rewritten_ids(code) & set(parser.keyed_ids):
         problems.append('%s: #%s is tagged data-t but the script rewrites it; key it in the script instead'
                         % (parser.keyed_ids[el_id], el_id))
+
+# The server's messages: the same rules, with msg() in place of t().
+SERVER = [ROOT / 'server' / 'tvweb.js'] + sorted((ROOT / 'server' / 'lib').glob('*.js'))
+for path in SERVER:
+    src = path.read_text(encoding='utf-8')
+    if not re.search(r"require\('\./(?:lib/)?say'\)", src):
+        continue
+    name = str(path.relative_to(ROOT))
+    code = strip_code(src)
+    for m in re.finditer(r'(?<![\w$.])msg\(', code):
+        where = '%s:%d' % (name, 1 + src.count('\n', 0, m.start()))
+        i = m.end()
+        while code[i].isspace():
+            i += 1
+        key = js_string(src, i)
+        if not key:
+            problems.append('%s: msg() needs a literal key' % where)
+            continue
+        j = key[1]
+        while src[j].isspace():
+            j += 1
+        if src[j] != ',':
+            problems.append("%s: msg('%s') needs its English as the second argument" % (where, key[0]))
+            continue
+        j += 1
+        while src[j].isspace():
+            j += 1
+        english = js_string(src, j)
+        if not english:
+            problems.append("%s: msg('%s', ...) needs literal English" % (where, key[0]))
+            continue
+        note(key[0], english[0], where)
+    for m in re.finditer(r'(?:\b(?:const|let|var)\s+msg\s*=(?!\s*(?:say\.msg|require))|\(\s*msg\s*[,)]|function\s*\w*\s*\(\s*msg\s*[,)])', code):
+        problems.append('%s:%d: a local named msg hides msg()' % (name, 1 + src.count('\n', 0, m.start())))
 
 for key, texts in sorted(uses.items()):
     if len(texts) > 1:

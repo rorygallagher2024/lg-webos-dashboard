@@ -1,5 +1,6 @@
 'use strict';
 
+var msg = require('./say').msg;
 var fs = require('fs');
 var path = require('path');
 var execFile = require('child_process').execFile;
@@ -8,83 +9,83 @@ var CATALOG = [
   {
     id: 'mycar',
     bin: 'com.webos.service.mycar',
-    title: 'Car-to-Home Telematics',
+    title: msg('srv.service.mycar', 'Car-to-Home Telematics'),
     unit: 'com.webos.service.mycar.service',
     upstart: null,
-    badge: '2.1 MB RAM',
-    desc: 'Hyundai/Kia Bluelink vehicle status listener in Home Dashboard. Unnecessary unless linking a connected vehicle.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '2.1' }),
+    desc: msg('srv.service.mycar.desc', 'Hyundai/Kia Bluelink vehicle status listener in Home Dashboard. Unnecessary unless linking a connected vehicle.')
   },
   {
     id: 'camera',
     bin: 'com.webos.service.camera2',
-    title: 'USB Camera Listener',
+    title: msg('srv.service.camera', 'USB Camera Listener'),
     unit: 'com.webos.service.camera.service',
     upstart: null,
-    badge: '2.5 MB RAM',
-    desc: 'Background USB webcam detection daemon. Unnecessary unless a USB webcam is physically attached.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '2.5' }),
+    desc: msg('srv.service.camera.desc', 'Background USB webcam detection daemon. Unnecessary unless a USB webcam is physically attached.')
   },
   {
     id: 'uploadd',
     bin: 'uploadd',
-    title: 'Telemetry & Diagnostics Uploader',
+    title: msg('srv.service.uploadd', 'Telemetry & Diagnostics Uploader'),
     unit: 'uploadd.service',
     upstart: 'uploadd',
-    badge: 'Telemetry',
-    desc: 'Uploads crash logs, diagnostic traces, and usage telemetry to LG servers.'
+    badge: msg('srv.service.badge.telemetry', 'Telemetry'),
+    desc: msg('srv.service.uploadd.desc', 'Uploads crash logs, diagnostic traces, and usage telemetry to LG servers.')
   },
   {
     id: 'rdxd',
     bin: 'rdxd',
-    title: 'Remote Diagnostics Daemon',
+    title: msg('srv.service.rdxd', 'Remote Diagnostics Daemon'),
     unit: 'rdxd.service',
     upstart: 'rdxd',
-    badge: 'Flash writes',
-    desc: 'Continuously logs diagnostic traces, core dumps, and event data to internal flash memory.'
+    badge: msg('srv.service.badge.flashWrites', 'Flash writes'),
+    desc: msg('srv.service.rdxd.desc', 'Continuously logs diagnostic traces, core dumps, and event data to internal flash memory.')
   },
   {
     id: 'crashreportd',
     bin: 'crashreportd',
-    title: 'Jira Crash Reporter',
+    title: msg('srv.service.crashreportd', 'Jira Crash Reporter'),
     unit: null,
     upstart: 'crashreportd',
-    badge: 'Telemetry',
-    desc: 'Background daemon on older webOS versions that generates automated crash reports.'
+    badge: msg('srv.service.badge.telemetry', 'Telemetry'),
+    desc: msg('srv.service.crashreportd.desc', 'Background daemon on older webOS versions that generates automated crash reports.')
   },
   {
     id: 'contentminer',
     bin: 'contentminer',
-    title: 'ACR Content Miner',
+    title: msg('srv.service.contentminer', 'ACR Content Miner'),
     unit: 'contentminer.service',
     upstart: null,
-    badge: '4.2 MB RAM',
-    desc: 'Scans and indexes on-screen audio/video content for advertising and viewing habit telemetry.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '4.2' }),
+    desc: msg('srv.service.contentminer.desc', 'Scans and indexes on-screen audio/video content for advertising and viewing habit telemetry.')
   },
   {
     id: 'nudge',
     bin: 'nudge',
-    title: 'LG Promotions & Tips Popups',
+    title: msg('srv.service.nudge', 'LG Promotions & Tips Popups'),
     unit: 'nudge.service',
     upstart: null,
-    badge: '3.1 MB RAM',
-    desc: 'Pushes marketing notifications, promotional popups, and feature tips to the TV interface.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '3.1' }),
+    desc: msg('srv.service.nudge.desc', 'Pushes marketing notifications, promotional popups, and feature tips to the TV interface.')
   },
   {
     id: 'alwaysready',
     bin: 'alwaysready',
-    title: 'Always Ready Ambient Mode',
+    title: msg('srv.service.alwaysready', 'Always Ready Ambient Mode'),
     unit: 'alwaysready.service',
     upstart: null,
-    badge: '3.1 MB RAM',
-    desc: 'Background wallpaper and ambient widget listener when the screen is in standby.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '3.1' }),
+    desc: msg('srv.service.alwaysready.desc', 'Background wallpaper and ambient widget listener when the screen is in standby.')
   },
   {
     id: 'remotelogger',
     bin: 'remotelogger',
-    title: 'Remote Logging Daemon',
+    title: msg('srv.service.remotelogger', 'Remote Logging Daemon'),
     unit: 'remotelogger.service',
     upstart: 'remotelogger',
-    badge: '1.7 MB RAM',
-    desc: 'Ships system log messages to remote servers.'
+    badge: msg('srv.service.badge.ram', '{mb} MB RAM', { mb: '1.7' }),
+    desc: msg('srv.service.remotelogger.desc', 'Ships system log messages to remote servers.')
   }
 ];
 
@@ -383,7 +384,7 @@ function toggleService(id, disabled, cb) {
   var systemctl = getSystemctl();
   var initctl = getInitctl();
   if (!systemctl && !initctl) {
-    return cb({ ok: false, error: 'Service management is not supported on this platform' });
+    return cb({ ok: false, error: msg('srv.service.unsupported', 'Service management is not supported on this platform') });
   }
 
   var list = readDisabledList();

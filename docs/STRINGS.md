@@ -55,8 +55,28 @@ key.
   markup until the script fills it.
 - **No local variable named `t`** in a page that loads `/assets/i18n.js`. It
   would hide `t()` in that function.
-- **Messages from the server** still arrive in English. They are not translated
-  yet.
+
+## Messages from the server
+
+Text the server sends a page - an error, a screen saver's name, an agreement's
+description - is written with `msg()`, from `server/lib/say.js`:
+
+```js
+error: msg('srv.update.busy', 'an update is already running')
+error: msg('srv.saver.stageFailed', 'could not stage the screen saver: {error}', { error: e.message })
+```
+
+`msg()` returns the English, so the server, Home Assistant, MQTT and the log
+all carry on in English. When a page is in another language it says so on its
+requests, and the server swaps the messages in its answer for their
+translations, from the same file the page uses. Only fields a page shows are
+changed - `error`, `label`, `detail` and the rest of `DISPLAY_FIELDS` in
+`say.js` - and only strings `msg()` made, so a raw value that reads the same as
+a message is left alone.
+
+Errors a page cannot cause, such as a malformed request, stay in English
+without `msg()`. Names that come from the TV itself, such as its picture modes
+and inputs, are shown as the TV gives them.
 
 ## Converting part of a page
 

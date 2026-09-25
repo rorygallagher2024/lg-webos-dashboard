@@ -10,6 +10,7 @@
  * Strict ES5 for Node 0.12.2 on webOS 4 (LG OLED B8).
  */
 
+var msg = require('./say').msg;
 var fs = require('fs');
 var path = require('path');
 var execFile = require('child_process').execFile;
@@ -193,7 +194,7 @@ function isTileHidingEnabled() {
 
 function setTileHidingEnabled(enabled, cb) {
   if (!configObj || !configObj.allowControl) {
-    if (cb) cb({ ok: false, error: 'Control is disabled in server configuration' });
+    if (cb) cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
     return;
   }
   enabled = !!enabled;
@@ -562,13 +563,13 @@ function getApps(cb) {
  */
 function hideTile(appId, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   if (!appId || typeof appId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(appId)) {
     return cb({ ok: false, error: 'Invalid app ID format' });
   }
   if (isProtected(appId)) {
-    return cb({ ok: false, error: 'Protected core system app cannot be hidden' });
+    return cb({ ok: false, error: msg('srv.apps.protectedHide', 'Protected core system app cannot be hidden') });
   }
 
   var tgts = findAllAppinfoPaths(appId);
@@ -635,7 +636,7 @@ function hideTile(appId, cb) {
  */
 function unhideTile(appId, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   if (!appId || typeof appId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(appId)) {
     return cb({ ok: false, error: 'Invalid app ID format' });
@@ -664,7 +665,7 @@ function unhideTile(appId, cb) {
  */
 function unhideAllTiles(cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
 
   var hiddenMap = readHiddenAppsList();
@@ -741,12 +742,12 @@ function findSavedPage(lpId, cb) {
  */
 function editSavedPage(launchPointId, title, address, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   var lpId = String(launchPointId || '');
   var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
   if (!lpId) return cb({ ok: false, error: 'missing page' });
-  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
+  if (name.length > 60) return cb({ ok: false, error: msg('srv.apps.nameTooLong', 'names are limited to 60 characters') });
   var target = null;
   if (address != null && String(address).trim()) {
     target = pageUrl(address);
@@ -754,7 +755,7 @@ function editSavedPage(launchPointId, title, address, cb) {
   }
 
   findSavedPage(lpId, function (lp) {
-    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+    if (!lp) return cb({ ok: false, error: msg('srv.apps.pageGone', 'that saved page is no longer on the TV') });
     var originals = readPageTitles();
     if (!name) {
       name = originals.hasOwnProperty(lpId) ? originals[lpId] : lp.title;
@@ -770,7 +771,7 @@ function editSavedPage(launchPointId, title, address, cb) {
       change.params = params;
     }
     lunaFn('com.webos.applicationManager/updateLaunchPoint', change, function (u) {
-      if (!u || u.returnValue !== true) return cb({ ok: false, error: 'the TV would not change it' });
+      if (!u || u.returnValue !== true) return cb({ ok: false, error: msg('srv.tvRefused', 'the TV would not change it') });
       try { fs.writeFileSync(PAGE_TITLES_FILE, JSON.stringify(originals), 'utf8'); } catch (e) {}
       cb({ ok: true, title: name, address: target ? target.url : undefined });
     });
@@ -782,15 +783,15 @@ function editSavedPage(launchPointId, title, address, cb) {
  */
 function addSavedPage(address, title, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   var target = pageUrl(address);
   if (!target) return cb({ ok: false, error: BAD_ADDRESS });
   var name = String(title == null ? '' : title).replace(/\s+/g, ' ').trim() || target.host;
-  if (name.length > 60) return cb({ ok: false, error: 'names are limited to 60 characters' });
+  if (name.length > 60) return cb({ ok: false, error: msg('srv.apps.nameTooLong', 'names are limited to 60 characters') });
   lunaFn('com.webos.applicationManager/addLaunchPoint',
          { id: BROWSER_ID, title: name, params: { target: target.url } }, function (r) {
-    if (!r || r.returnValue !== true) return cb({ ok: false, error: 'the TV would not add it' });
+    if (!r || r.returnValue !== true) return cb({ ok: false, error: msg('srv.apps.addRefused', 'the TV would not add it') });
     cb({ ok: true, launchPointId: r.launchPointId, title: name });
   });
 }
@@ -801,14 +802,14 @@ function addSavedPage(address, title, cb) {
  */
 function removeSavedPage(launchPointId, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   var lpId = String(launchPointId || '');
   if (!lpId) return cb({ ok: false, error: 'missing page' });
   findSavedPage(lpId, function (lp) {
-    if (!lp) return cb({ ok: false, error: 'that saved page is no longer on the TV' });
+    if (!lp) return cb({ ok: false, error: msg('srv.apps.pageGone', 'that saved page is no longer on the TV') });
     lunaFn('com.webos.applicationManager/removeLaunchPoint', { launchPointId: lpId }, function (x) {
-      if (!x || x.returnValue !== true) return cb({ ok: false, error: 'the TV would not remove it' });
+      if (!x || x.returnValue !== true) return cb({ ok: false, error: msg('srv.apps.removeRefused', 'the TV would not remove it') });
       var originals = readPageTitles();
       if (originals.hasOwnProperty(lpId)) {
         delete originals[lpId];
@@ -821,13 +822,13 @@ function removeSavedPage(launchPointId, cb) {
 
 function uninstallApp(appId, cb) {
   if (!configObj || !configObj.allowControl) {
-    return cb({ ok: false, error: 'Control is disabled in server configuration' });
+    return cb({ ok: false, error: msg('srv.controlsOff.apps', 'Control is disabled in server configuration') });
   }
   if (!appId || typeof appId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(appId)) {
     return cb({ ok: false, error: 'Invalid app ID format' });
   }
   if (isProtected(appId)) {
-    return cb({ ok: false, error: 'Protected core application cannot be uninstalled' });
+    return cb({ ok: false, error: msg('srv.apps.protectedUninstall', 'Protected core application cannot be uninstalled') });
   }
   if (!lunaFn) {
     return cb({ ok: false, error: 'Luna service not available' });

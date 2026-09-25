@@ -1,4 +1,5 @@
 // Strict ES5 - node v0.12.2 on webOS 4 (LG OLED B8) has no ES6 support.
+var msg = require('./say').msg;
 var fs = require('fs');
 var path = require('path');
 var zlib = require('zlib');
@@ -273,7 +274,7 @@ function scheduleUpdateChecks(firstMs) {
 function setAutoCheck(on, cb) {
   if (!writeSettingsFn) return cb({ ok: false, error: 'no writeSettings handler configured' });
   writeSettingsFn({ update: { check: on } }, function (err) {
-    if (err) return cb({ ok: false, error: 'could not save the setting: ' + err.message });
+    if (err) return cb({ ok: false, error: msg('srv.saveSettingFailed', 'could not save the setting: {error}', { error: err.message }) });
     config.update = config.update || {};
     config.update.check = on;
     scheduleUpdateChecks(0);
@@ -337,11 +338,11 @@ function isExecutable(rel) {
 }
 
 function installUpdate(cb) {
-  if (UPDATE.busy) return cb({ ok: false, error: 'an update is already running' });
-  if (viaHomebrewChannel()) return cb({ ok: false, error: 'updates for this install come from the Homebrew Channel' });
+  if (UPDATE.busy) return cb({ ok: false, error: msg('srv.update.busy', 'an update is already running') });
+  if (viaHomebrewChannel()) return cb({ ok: false, error: msg('srv.update.viaHbc', 'updates for this install come from the Homebrew Channel') });
 
   if (fs.existsSync(path.join(installDir, '..', '.git'))) {
-    return cb({ ok: false, error: 'this is a git checkout - update it with git, not from here' });
+    return cb({ ok: false, error: msg('srv.update.gitCheckout', 'this is a git checkout - update it with git, not from here') });
   }
 
   UPDATE.busy = true;
@@ -350,19 +351,19 @@ function installUpdate(cb) {
     if (publishUpdateFn) publishUpdateFn();
     cb(r);
   };
-  var fail = function (msg) {
-    setUpdateState('error', msg);
-    console.error('update: ' + msg);
-    rmrf(stageDir, function () { done({ ok: false, error: msg }); });
+  var fail = function (reason) {
+    setUpdateState('error', reason);
+    console.error('update: ' + reason);
+    rmrf(stageDir, function () { done({ ok: false, error: reason }); });
   };
 
   checkForUpdate(true, function (err) {
     if (err) return done({ ok: false, error: err.message });
     var ver = UPDATE.latest;
-    if (!ver) return done({ ok: false, error: 'no release information yet - check first' });
+    if (!ver) return done({ ok: false, error: msg('srv.update.noInfo', 'no release information yet - check first') });
     if (!verNewer(ver, currentVersion)) {
       return done({ ok: true, updated: false, installed: currentVersion, latest: ver,
-                    note: 'already on the latest release' });
+                    note: msg('srv.update.latest', 'already on the latest release') });
     }
 
     setUpdateState('downloading');
@@ -448,16 +449,16 @@ function installUpdate(cb) {
 }
 
 function rollbackUpdate(cb) {
-  if (viaHomebrewChannel()) return cb({ ok: false, error: 'updates for this install come from the Homebrew Channel' });
+  if (viaHomebrewChannel()) return cb({ ok: false, error: msg('srv.update.viaHbc', 'updates for this install come from the Homebrew Channel') });
   var was = rollbackVersion();
-  if (!was) return cb({ ok: false, error: 'nothing to roll back to' });
+  if (!was) return cb({ ok: false, error: msg('srv.update.noRollback', 'nothing to roll back to') });
   var files = listFiles(prevDir);
   for (var i = 0; i < files.length; i++) {
     try {
       installFile(path.join(prevDir, files[i]), path.join(installDir, files[i]),
                   isExecutable(files[i]));
     } catch (e) {
-      return cb({ ok: false, error: 'could not restore ' + files[i] + ': ' + e.message });
+      return cb({ ok: false, error: msg('srv.update.restoreFailed', 'could not restore {file}: {error}', { file: files[i], error: e.message }) });
     }
   }
   console.log('update: rolled back to v' + was + ' (' + files.length + ' files)');

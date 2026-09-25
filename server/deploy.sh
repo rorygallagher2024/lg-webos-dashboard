@@ -63,7 +63,7 @@ assets/screensavers/clock.qml assets/screensavers/fireworks.qml \
 assets/screensavers/starfield.qml assets/screensavers/vitals.qml assets/screensavers/star.png \
 assets/screensavers/bokeh.qml assets/screensavers/bokeh.png \
 lib/mqtt.js lib/ha.js lib/updater.js lib/privacy.js lib/oled.js lib/screensavers.js lib/telemetry.js \
-lib/apps.js lib/luna.js lib/state.js lib/mqtt-state.js lib/notifications.js lib/services.js"
+lib/apps.js lib/luna.js lib/state.js lib/mqtt-state.js lib/notifications.js lib/services.js lib/say.js"
 
 for t in tar base64 fold; do
   command -v "$t" >/dev/null 2>&1 && continue
