@@ -282,6 +282,8 @@ for path in SERVER:
     name = str(path.relative_to(ROOT))
     code = strip_code(src)
     for m in re.finditer(r'(?<![\w$.])msg\(', code):
+        if code[:m.start()].endswith('function '):
+            continue   # say.js's definition of msg()
         where = '%s:%d' % (name, 1 + src.count('\n', 0, m.start()))
         i = m.end()
         while code[i].isspace():
