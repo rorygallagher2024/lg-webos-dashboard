@@ -1266,9 +1266,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <div class="pv-note" id="ps-keep" hidden></div>
   </div>
 
-  <div class="pv-sec adv-sec" id="pv-promo-sec" hidden data-t="pv.promotions">LG ads and promotions</div>
-  <div class="prot-table" id="pv-promo"></div>
-
   <details class="pv-d" id="pv-adv">
   <summary><span data-t="tab.advanced">Advanced</span> <span class="cur" data-t="pv.advanced.sub">Every setting, one by one</span></summary>
 
@@ -1301,6 +1298,11 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
     </div>
   </div>
+
+  <details class="pv-d" id="pv-promo-d" hidden>
+  <summary><span data-t="pv.promotions">LG ads and promotions</span> <span class="cur" id="pv-promo-cur"></span></summary>
+  <div class="prot-table" id="pv-promo"></div>
+  </details>
 
   <details class="pv-d">
   <summary><span data-t="pv.consent">What LG is allowed to collect</span> <span class="cur" id="pv-consent-cur"></span></summary>
@@ -2658,7 +2660,14 @@ async function switchAllOff() {
    reports come back, so a section with none stays hidden. */
 function renderLgSettings(rows) {
   const promo = rows.filter(r => r.section === 'promotions');
-  q('pv-promo-sec').hidden = !promo.length;
+  const d = q('pv-promo-d');
+  if (d) d.hidden = !promo.length;
+  const cur = q('pv-promo-cur');
+  if (cur) {
+    const onCount = promo.filter(r => r.on).length;
+    cur.textContent = promo.length
+      ? t('pv.groupOn', '{on} of {total} on', { on: onCount, total: promo.length }) : '';
+  }
   q('pv-promo').innerHTML = promo.map(r =>
     `<div class="prot-row"><div class="prot-main"><div class="prot-title">${esc(r.title)}</div>` +
     `<div class="prot-desc">${esc(r.desc)}</div></div>` +
