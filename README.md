@@ -76,11 +76,11 @@ This project is intended to give a rooted webOS TV a useful local control surfac
 ### Web dashboard
 
 <p align="center">
-  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Metrics tab: SoC temperature, system readouts, storage and HDMI ports, dark theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Metrics tab: SoC temperature, system readouts, storage, Magic Remote battery and HDMI ports, dark theme (OLED42C24LA)" width="440"></a>
   &nbsp;
-  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer and power, light theme (OLED65B8SLC)" width="440"></a>
+  <a href="docs/screenshots/dashboard-light.png"><img src="docs/screenshots/dashboard-light.png" alt="Control tab: panel, source, volume, playback, sleep timer and power, light theme (OLED42C24LA)" width="440"></a>
   <br>
-  <sub>System and Control tabs, shown in dark and light themes.</sub>
+  <sub>Metrics and Control tabs, shown in dark and light themes.</sub>
 </p>
 
 ### Home Assistant
@@ -121,6 +121,12 @@ From a browser you can navigate the TV, change inputs, control playback and volu
 
 The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keeps several menus deep: Quick Boot, Wake-on-LAN, staying connected when off, the LG logo shown at power on and off, auto device detection, and the front lights. Auto device detection finds devices the TV can show on its Home Dashboard and control, from a set-top box to smart lights, plugs and switches; on newer TVs it does so by looking up every address on the home network each time the TV switches on, and switching it off stops those lookups. Each setting appears only on TVs that have it. On the TV itself they are under **System**.
 
+<p align="center">
+  <a href="docs/screenshots/advanced.png"><img src="docs/screenshots/advanced.png" alt="Advanced tab: Quick Boot, Stay connected when off with its nightly power-down hours, Wake-on-LAN, LG logo, auto device detection and the standby light" width="700"></a>
+  <br>
+  <sub>The TV's own settings, grouped as Power, Display, Devices and Front lights.</sub>
+</p>
+
 ### Telemetry and diagnostics
 
 The **Metrics** tab, `/?tab=metrics`, exposes information about what the TV is doing and what hardware it contains — most of which is absent from its own settings menu.
@@ -135,7 +141,7 @@ This is useful both for monitoring and for troubleshooting. You can see whether 
 * On demand: what is resident in memory, and which processes are using the processor right now.
 
 <p align="center">
-  <img width="432" alt="Metrics tab: processor, memory, swap, network and current draw readouts" src="https://github.com/user-attachments/assets/2e6cfe5a-c905-426e-8b4d-8f52d4f31c11" />
+  <img width="432" alt="Metrics tab: processor, memory, swap, network and current draw readouts" src="docs/screenshots/metrics-system.png" />
   <br>
   <sub>Metrics including processor, memory, swap and current draw.</sub>
 </p>
@@ -153,9 +159,9 @@ The **Apps** tab, `/?tab=apps`, gives you three different ways to manage softwar
 * **Available on TV and Web:** Manage apps from any browser or directly on the TV using the remote control in the on-TV dashboard app.
 
 <p align="center">
-  <a href="docs/screenshots/apps.png"><img src="docs/screenshots/apps.png" alt="Apps tab: installed applications with uninstall actions, and built-in system tiles with visibility toggles" width="700"></a>
+  <a href="docs/screenshots/apps.png"><img src="docs/screenshots/apps.png" alt="Apps tab: installed applications with uninstall actions, background services switched off, and saved web pages" width="700"></a>
   <br>
-  <sub>Installed applications, background services and built-in system apps.</sub>
+  <sub>Installed applications, background services and saved web pages.</sub>
 </p>
 
 ### Privacy and data collection
@@ -178,7 +184,7 @@ Two tiers are available:
 What ACR collects and what LG Ad Solutions does with it is set out in [What LG's ACR does](docs/ACR.md).
 
 <p align="center">
-  <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
+  <a href="docs/screenshots/privacy.png"><img src="docs/screenshots/privacy.png" alt="Privacy tab: an overview of what is still on, then the ad and telemetry blocker, advertising identifier, the data collection agreements grouped by subject with toggles, and what is running now" width="700"></a>
   <br>
   <sub>Privacy controls, data agreements, advertising ID and LG telemetry blocking.</sub>
 </p>
@@ -201,7 +207,7 @@ The aim is not to encourage disabling OLED protections blindly. Instead, the das
 </p>
 
 <p align="center">
-  <img width="429" alt="Panel life: total power-on hours, panel maintenance and Pixel Refresher countdowns" src="https://github.com/user-attachments/assets/825ef48d-9560-474c-9d3e-7feb045724b5" />
+  <img width="400" alt="Panel life: total power-on hours, panel maintenance and Pixel Refresher countdowns" src="docs/screenshots/oledcare-panel.png" />
   <br>
   <sub>Panel life, maintenance and Pixel Refresher status.</sub>
 </p>
@@ -235,7 +241,7 @@ Each mode offers dim and bright variants, and visual elements continuously drift
 A firmware update restores the LG default.
 
 <p align="center">
-  <a href="docs/screenshots/screensaver.png"><img src="docs/screenshots/screensaver.png" alt="Screensaver tab: LG default, Clock, Starfield, Fireworks and Panel vitals, with a dim and bright toggle" width="700"></a>
+  <a href="docs/screenshots/screensaver.png"><img src="docs/screenshots/screensaver.png" alt="Screensaver tab: LG default, Clock, Starfield, Fireworks, Bokeh and Panel vitals, with brightness and a start button beside them" width="700"></a>
   <br>
   <sub>Built-in screen saver choices, including the panel-vitals display.</sub>
 </p>
@@ -279,6 +285,12 @@ The **Server** tab, `/?tab=server`, shows the installed version, whether a newer
 **Check daily** looks on its own and lets Home Assistant offer the update.
 
 It also adds or removes [the app on the TV's home screen](#the-dashboard-on-the-tv).
+
+<p align="center">
+  <a href="docs/screenshots/server.png"><img src="docs/screenshots/server.png" alt="Server tab: version and daily check beside the update buttons, blocking the TV's own software updates, the dashboard app on the TV, and the theme for this browser" width="700"></a>
+  <br>
+  <sub>Server and TV software updates, the dashboard app and the theme.</sub>
+</p>
 
 [Updating](#updating) covers installs from before the tab existed.
 
