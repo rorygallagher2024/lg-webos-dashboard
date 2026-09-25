@@ -94,14 +94,14 @@ var ROWS = [
   // too; it is here as well, beside the settings that depend on it.
   { id: 'soundOutput', section: 'sound', category: 'sound', key: 'soundOutput', type: 'choice',
     choices: [
-      { value: 'tv_speaker', label: msg('srv.lgs.soundOutput.tv_speaker', 'TV speakers') },
-      { value: 'external_arc', label: msg('srv.lgs.soundOutput.external_arc', 'HDMI (ARC) device') },
-      { value: 'external_optical', label: msg('srv.lgs.soundOutput.external_optical', 'Optical out device') },
-      { value: 'bt_soundbar', label: msg('srv.lgs.soundOutput.bt_soundbar', 'Bluetooth device') },
+      { value: 'tv_speaker', label: msg('srv.lgs.soundOutput.tvSpeaker', 'TV speakers') },
+      { value: 'external_arc', label: msg('srv.lgs.soundOutput.externalArc', 'HDMI (ARC) device') },
+      { value: 'external_optical', label: msg('srv.lgs.soundOutput.externalOptical', 'Optical out device') },
+      { value: 'bt_soundbar', label: msg('srv.lgs.soundOutput.btSoundbar', 'Bluetooth device') },
       { value: 'headphone', label: msg('srv.lgs.soundOutput.headphone', 'Wired headphones') },
-      { value: 'tv_speaker_external_arc', label: msg('srv.lgs.soundOutput.tv_speaker_external_arc', 'HDMI (ARC) device and TV speakers') },
-      { value: 'tv_speaker_bluetooth', label: msg('srv.lgs.soundOutput.tv_speaker_bluetooth', 'Bluetooth device and TV speakers') },
-      { value: 'tv_speaker_headphone', label: msg('srv.lgs.soundOutput.tv_speaker_headphone', 'Wired headphones and TV speakers') }
+      { value: 'tv_speaker_external_arc', label: msg('srv.lgs.soundOutput.tvSpeakerExternalArc', 'HDMI (ARC) device and TV speakers') },
+      { value: 'tv_speaker_bluetooth', label: msg('srv.lgs.soundOutput.tvSpeakerBluetooth', 'Bluetooth device and TV speakers') },
+      { value: 'tv_speaker_headphone', label: msg('srv.lgs.soundOutput.tvSpeakerHeadphone', 'Wired headphones and TV speakers') }
     ],
     title: msg('srv.lgs.soundOutput', 'Sound output'),
     desc: msg('srv.lgs.soundOutput.desc', 'Where the TV plays its sound. Sound mode and balance apply only to the TV speakers.') },

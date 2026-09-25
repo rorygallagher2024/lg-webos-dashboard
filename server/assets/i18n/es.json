@@ -2595,7 +2595,7 @@
   "text": "Salida de sonido",
   "from": "Sound output"
  },
- "srv.lgs.soundOutput.bt_soundbar": {
+ "srv.lgs.soundOutput.btSoundbar": {
   "text": "Dispositivo Bluetooth",
   "from": "Bluetooth device"
  },
@@ -2603,11 +2603,11 @@
   "text": "Por dónde reproduce la TV el sonido. El modo de sonido y el balance solo se aplican a los altavoces de la TV.",
   "from": "Where the TV plays its sound. Sound mode and balance apply only to the TV speakers."
  },
- "srv.lgs.soundOutput.external_arc": {
+ "srv.lgs.soundOutput.externalArc": {
   "text": "Dispositivo HDMI (ARC)",
   "from": "HDMI (ARC) device"
  },
- "srv.lgs.soundOutput.external_optical": {
+ "srv.lgs.soundOutput.externalOptical": {
   "text": "Dispositivo de salida óptica",
   "from": "Optical out device"
  },
@@ -2615,19 +2615,19 @@
   "text": "Auriculares con cable",
   "from": "Wired headphones"
  },
- "srv.lgs.soundOutput.tv_speaker": {
+ "srv.lgs.soundOutput.tvSpeaker": {
   "text": "Altavoces de la TV",
   "from": "TV speakers"
  },
- "srv.lgs.soundOutput.tv_speaker_bluetooth": {
+ "srv.lgs.soundOutput.tvSpeakerBluetooth": {
   "text": "Dispositivo Bluetooth y altavoces de la TV",
   "from": "Bluetooth device and TV speakers"
  },
- "srv.lgs.soundOutput.tv_speaker_external_arc": {
+ "srv.lgs.soundOutput.tvSpeakerExternalArc": {
   "text": "Dispositivo HDMI (ARC) y altavoces de la TV",
   "from": "HDMI (ARC) device and TV speakers"
  },
- "srv.lgs.soundOutput.tv_speaker_headphone": {
+ "srv.lgs.soundOutput.tvSpeakerHeadphone": {
   "text": "Auriculares con cable y altavoces de la TV",
   "from": "Wired headphones and TV speakers"
  },
