@@ -353,7 +353,7 @@ function optionRows(d) {
     r.push(head(t('adv.power', 'Power')));
     if (d.quickBoot !== undefined)
       r.push(toggle(t('adv.quickBoot', 'Quick Boot'), d.quickBoot, 'quickBoot',
-        t('adv.quickBoot.desc', 'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.')));
+        t('adv.quickBoot.desc', 'Switching off puts the TV into a light sleep rather than shutting it down, so it comes back on faster. LG calls this Quick Start+.')));
     if (d.alwaysReady !== undefined)
       r.push(toggle(t('adv.stayConnected', 'Stay connected when off'), d.alwaysReady, 'alwaysReady',
         t('tv.options.stayConnected.hint', 'Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2.')));

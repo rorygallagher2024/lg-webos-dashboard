@@ -64,8 +64,8 @@
   "from": "Quick Boot"
  },
  "adv.quickBoot.desc": {
-  "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve en menos de 2 segundos en lugar de unos 25. LG lo llama Quick Start+.",
-  "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+."
+  "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve a encenderse más rápido. LG lo llama Quick Start+.",
+  "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back on faster. LG calls this Quick Start+."
  },
  "adv.standbyLight": {
   "text": "Luz en espera",
