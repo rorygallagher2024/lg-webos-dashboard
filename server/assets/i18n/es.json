@@ -64,8 +64,8 @@
   "from": "Quick Boot"
  },
  "adv.quickBoot.desc": {
-  "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve en menos de 2 segundos en lugar de unos 25. En algunas TVs, como una LG C2, también mantiene la TV conectada a la red mientras está apagada, así que este dashboard y Home Assistant siguen funcionando, a unos 11 W. LG lo llama Quick Start+.",
-  "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. On some TVs, such as an LG C2, it also keeps the TV awake on the network while off, so this dashboard and Home Assistant keep working, at about 11 W. LG calls this Quick Start+."
+  "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve en menos de 2 segundos en lugar de unos 25. LG lo llama Quick Start+.",
+  "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. LG calls this Quick Start+."
  },
  "adv.standbyLight": {
   "text": "Luz en espera",
@@ -3242,10 +3242,6 @@
  "tv.options.nothingToSetOn": {
   "text": "Nada que ajustar en esta TV",
   "from": "Nothing to set on this TV"
- },
- "tv.options.quickBoot.hint": {
-  "text": "Al apagar, la TV entra en un sueño ligero en lugar de apagarse del todo, así que vuelve en menos de 2 segundos en lugar de unos 25. En algunas TVs, como una LG C2, también mantiene la TV conectada a la red mientras está apagada, así que Glasshouse y Home Assistant siguen funcionando, a unos 11 W. LG lo llama Quick Start+.",
-  "from": "Switching off puts the TV into a light sleep rather than shutting it down, so it comes back in under 2 seconds instead of about 25. On some TVs, such as an LG C2, it also keeps the TV awake on the network while off, so Glasshouse and Home Assistant keep working, at about 11 W. LG calls this Quick Start+."
  },
  "tv.options.stayConnected.hint": {
   "text": "Mantiene la TV en la red mientras está apagada, salvo cinco horas cada noche, para que Glasshouse y Home Assistant sigan funcionando. La pantalla permanece a oscuras. Gasta unos 12 W en una LG C2.",
