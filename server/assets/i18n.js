@@ -18,7 +18,6 @@
  * ES5: the dashboard on the TV runs in the TV's own browser, which on webOS 4
  * parses nothing newer.
  */
-/** @param {any} root  the window, which gains t and I18N */
 (function (root) {
   // Languages that have a file in /assets/i18n/. English needs none.
   var LANGS = [];
@@ -100,4 +99,5 @@
 
   root.t = t;
   root.I18N = { t: t, apply: apply, lang: function () { return lang; }, languages: LANGS };
-})(window);
+// Untyped for the type check, which does not know the two names added to it.
+})(/** @type {any} */ (window));
