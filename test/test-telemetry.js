@@ -149,6 +149,18 @@ console.log('Running test-telemetry.js ...');
   });
 })();
 
+(function testHdmiSeenKept() {
+  var file = '/var/lib/tvweb/hdmi_seen';
+  telemetry.noteHdmiSeen({ port: 1, phy_mode: 'FRL 48 Gbps', chroma: null, allm: false, vrr: true });
+  assert.strictEqual(mockEnv.files[file], 'allm\nphy_mode\nvrr\n');
+  mockEnv.files[file] = 'allm\nhdcp\n';
+  telemetry.loadHdmiSeen();
+  assert.strictEqual(telemetry.getCapabilitySignature().replace(',play_state', ''), 'allm,hdcp');
+  delete mockEnv.files[file];
+  telemetry.loadHdmiSeen();
+  console.log('  ✓ the HDMI fields seen are kept across restarts');
+})();
+
 // 7. Format helpers
 (function testFormatters() {
   assert.strictEqual(telemetry.formatPicMode('expert1'), 'ISF Expert (Bright)');

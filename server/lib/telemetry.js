@@ -49,7 +49,36 @@ var HARDWARE_INFO = {
 var hasLogoLight = null;   // null = not yet determined
 var hasLightSensor = false;
 var hasMediaState = false;
+
+// HDMI fields the TV has reported. Home Assistant only gets the entities for
+// these, and withholding one deletes it there, so the set is kept across
+// restarts: a restart with no source connected would otherwise remove them.
+var HDMI_SEEN_FILE = '/var/lib/tvweb/hdmi_seen';
 var hdmiSeen = {};
+
+function loadHdmiSeen() {
+  hdmiSeen = {};
+  var saved = rd(HDMI_SEEN_FILE);
+  if (!saved) return;
+  var fields = saved.split('\n');
+  for (var i = 0; i < fields.length; i++) {
+    if (fields[i].trim()) hdmiSeen[fields[i].trim()] = true;
+  }
+}
+
+function noteHdmiSeen(diag) {
+  if (!diag) return;
+  var added = false;
+  for (var f in diag) {
+    if (f !== 'port' && diag[f] !== null && !hdmiSeen[f]) {
+      hdmiSeen[f] = true;
+      added = true;
+    }
+  }
+  if (!added) return;
+  try { fs.writeFileSync(HDMI_SEEN_FILE, Object.keys(hdmiSeen).sort().join('\n') + '\n', 'utf8'); }
+  catch (e) {}
+}
 
 var prevNet = null;
 var TEMP_HISTORY_MAX = 120;
@@ -103,6 +132,7 @@ function init(opts) {
   tvwebVersionStr = opts.tvwebVersion || '0.0.0';
   mapPowerStateFn = opts.mapPowerState;
   isScreenSaverFn = opts.isScreenSaver;
+  loadHdmiSeen();
 }
 
 function rd(p) {
@@ -981,11 +1011,7 @@ function collectStats(cb) {
   if (n) prevNet = n;
 
   var hdmiDiag = getActiveHdmiDiagnostics();
-  if (hdmiDiag) {
-    for (var hf in hdmiDiag) {
-      if (hf !== 'port' && hdmiDiag[hf] !== null) hdmiSeen[hf] = true;
-    }
-  }
+  noteHdmiSeen(hdmiDiag);
   var peInfo = getPictureEngineInfo();
   var uptimeSec = Math.floor(parseFloat(rd('/proc/uptime') || '0'));
 
@@ -1352,6 +1378,8 @@ module.exports = {
   getInstalledApps: getInstalledApps,
   getPictureModes: getPictureModes,
   getCapabilitySignature: getCapabilitySignature,
+  loadHdmiSeen: loadHdmiSeen,
+  noteHdmiSeen: noteHdmiSeen,
   appStorage: appStorage,
   hdmiPorts: hdmiPorts,
   hdmiInputs: hdmiInputs,
