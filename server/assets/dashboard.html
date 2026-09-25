@@ -650,6 +650,19 @@ function privacyRows(d) {
              hint: cur.hint + ' ' + t('tv.privacy.blocking.streaming', 'Streaming apps are untouched.') });
   }
 
+  // LG's own settings from lgsettings.js; only those the TV has come back.
+  var promo = (d.lgSettings || []).filter(function (s) { return s.section === 'promotions'; });
+  if (promo.length) {
+    r.push(head(t('pv.promotions', 'LG ads and promotions')));
+    for (var pi = 0; pi < promo.length; pi++) {
+      var ps = promo[pi];
+      r.push({ label: ps.title, value: ps.on ? t('common.on', 'On') : t('common.off', 'Off'), cls: ps.on ? 'off' : 'on',
+               act: 'lgSetting', key: ps.id, on: ps.on,
+               press: ps.on ? t('tv.press.switchOff', 'Press OK to switch off') : t('tv.press.switchOn', 'Press OK to switch on'),
+               hint: ps.desc });
+    }
+  }
+
   if (d.acr) {
     r.push(head(t('tv.privacy.head.screenContentRecognition', 'Screen content recognition')));
     var canAcr = d.consentWritable !== false;
@@ -1394,6 +1407,9 @@ function activate() {
       return closeSub();
     case 'consent':
       return send({ action: 'consent', value: { key: r.key, enabled: !r.on } },
+                  r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
+    case 'lgSetting':
+      return send({ action: 'lgSetting', value: { id: r.key, on: !r.on } },
                   r.on ? t('tv.flash.switchedOff', 'Switched off') : t('tv.flash.switchedOn', 'Switched on'));
     case 'resetAdId':
       return send({ action: 'resetAdId' }, t('tv.flash.adIdReset', 'Advertising ID reset'));

@@ -62,6 +62,7 @@ var privacy = null;
 var servicesModule = null;
 var screensavers = null;
 var appsModule = null;
+var lgSettings = null;
 var updater = null;
 var tvAppFn = null;
 var restartSelfFn = null;
@@ -520,6 +521,11 @@ function doControl(action, value, cb) {
                     cb({ ok: !!(r && r.returnValue) });
                   });
 
+    // One of lgsettings.js's rows: { id, on }.
+    case 'lgSetting':
+      if (!value || typeof value.id !== 'string') return cb({ ok: false, error: 'lgSetting needs an id' });
+      return lgSettings.set(value.id, value.on === true, cb);
+
     case 'lgLogo':
       var logoOn = (value === true || value === 'on' || value === 'ON' || value === 'true');
       return luna('com.webos.service.settings/setSystemSettings',
@@ -736,6 +742,7 @@ function init(opts) {
   if (opts.services) servicesModule = opts.services;
   if (opts.screensavers) screensavers = opts.screensavers;
   if (opts.apps) appsModule = opts.apps;
+  if (opts.lgSettings) lgSettings = opts.lgSettings;
   if (opts.updater) updater = opts.updater;
   if (opts.tvApp) tvAppFn = opts.tvApp;
   if (opts.restartSelf) restartSelfFn = opts.restartSelf;

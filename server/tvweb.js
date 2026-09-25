@@ -37,6 +37,7 @@ var mqttStateModule = require('./lib/mqtt-state');
 var notifications = require('./lib/notifications');
 var lunaTransport = require('./lib/luna');
 var say = require('./lib/say');
+var lgSettings = require('./lib/lgsettings');
 var msg = say.msg;
 var luna = lunaTransport.call;
 
@@ -360,6 +361,8 @@ var INPUTS = ha.INPUTS;
 // from there go without it.
 var TILE_HIDING_OFF = 'hiding home-screen tiles is not available when installed from the Homebrew Channel';
 
+lgSettings.init({ luna: luna, lunaCached: lunaCached, clearLunaCache: clearLunaCache });
+
 controls.init({
   luna: luna,
   clearLunaCache: clearLunaCache,
@@ -370,6 +373,7 @@ controls.init({
   services: servicesModule,
   screensavers: screensavers,
   apps: appsModule,
+  lgSettings: lgSettings,
   updater: updater,
   tvApp: tvApp,
   restartSelf: restartSelf,
@@ -554,6 +558,7 @@ routes.init({
   telemetry: telemetry,
   oled: oled,
   privacy: privacy,
+  lgSettings: lgSettings,
   apps: appsModule,
   services: servicesModule,
   screensavers: screensavers,
