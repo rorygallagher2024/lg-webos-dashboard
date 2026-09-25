@@ -41,7 +41,24 @@ var lunaFn = null;
 var getMqttStatusFn = null;
 var versionStr = '';
 
+// ---------------------------------------------------------------- first-run setup
+/*
+ * Setup screens on the TV: opening the dashboard to the network and connecting
+ * Home Assistant. An installer that leaves SETUP_PENDING shows them at first
+ * launch; the Settings tab offers the same afterwards. Everything here is
+ * reachable only from the TV (fromTV), and through its own endpoint rather
+ * than the control actions, which MQTT and the
+ * network can reach: whoever holds the remote is the owner, a phone on the
+ * network is not.
+ */
 var SETUP_PENDING = '/var/lib/tvweb/.setup-pending';
+/*
+ * Home Assistant is set up on a phone, not typed with a remote. With the
+ * dashboard closed the phone cannot reach it, so a second, short-lived
+ * listener opens beside it serving only that one form, behind a one-time code
+ * carried in the QR code. It closes when the form is sent, after ten minutes,
+ * or when the TV leaves the screen - whichever is first.
+ */
 var HANDOFF = { server: null, code: null, timer: null };
 var HANDOFF_MS = 10 * 60 * 1000;
 
@@ -49,50 +66,27 @@ var UI_HTML = null;
 var UI_HTML_GZ = null;
 var ASSET_CACHE = {};
 
-function assetPath(rel) {
-  if (typeof assetPathFn === 'function') return assetPathFn(rel);
-  return null;
-}
-
-function fromHomebrewChannel() {
-  if (typeof fromHbcFn === 'function') return fromHbcFn();
-  return !!fromHbcFn;
-}
-
-function tvApp(action, cb) {
-  if (typeof tvAppFn === 'function') return tvAppFn(action, cb);
-  if (cb) cb({ ok: false, error: 'tvApp not available' });
-}
-
-function restartSelf() {
-  if (typeof restartSelfFn === 'function') return restartSelfFn();
-  return false;
-}
-
-function doControl(action, value, cb) {
-  if (controlsModule && typeof controlsModule.doControl === 'function') {
-    return controlsModule.doControl(action, value, cb);
-  }
-  if (typeof controlsModule === 'function') {
-    return controlsModule(action, value, cb);
-  }
-  if (cb) cb({ ok: false, error: 'controls not available' });
-}
-
-function luna(uri, payload, cb) {
-  if (typeof lunaFn === 'function') return lunaFn(uri, payload, cb);
-  if (cb) cb({ returnValue: false });
-}
-
-function getMqttStatus() {
-  if (typeof getMqttStatusFn === 'function') return getMqttStatusFn();
-  return { state: 'disabled', broker: '', tls: false, since: Date.now() };
-}
+// What tvweb.js passes to init(). Called as given: a module left unwired fails
+// at the call, where it shows, rather than answering with empty data.
+function assetPath(rel) { return assetPathFn(rel); }
+function fromHomebrewChannel() { return fromHbcFn(); }
+function tvApp(action, cb) { return tvAppFn(action, cb); }
+function restartSelf() { return restartSelfFn(); }
+function doControl(action, value, cb) { return controlsModule.doControl(action, value, cb); }
+function luna(uri, payload, cb) { return lunaFn(uri, payload, cb); }
+function getMqttStatus() { return getMqttStatusFn(); }
 
 function setupPending() {
   try { return fs.existsSync(SETUP_PENDING); } catch (e) { return false; }
 }
 
+/*
+ * Settings the dashboard is allowed to write. Everything else in config.json
+ * (port, host, allowControl, allowPower, token) stays file-only: those decide
+ * who may reach this server at all, and a UI that can widen its own exposure
+ * defeats the point of setting them. The one exception is host, from the TV
+ * itself during setup - see setNetworkAccess.
+ */
 function readConfigFile() {
   try {
     if (configFilePath && fs.existsSync(configFilePath)) {
@@ -106,6 +100,11 @@ function readConfigFile() {
 
 function str(v) { return typeof v === 'string' ? v.trim() : ''; }
 
+/*
+ * A topic segment ends up in every topic this bridge publishes. MQTT wildcards
+ * and a trailing slash would produce topics Home Assistant silently never
+ * matches, which looks like a broken bridge rather than a bad prefix.
+ */
 function badTopic(v) {
   return !v || /[#+\s]/.test(v) || v.charAt(0) === '/' || v.charAt(v.length - 1) === '/';
 }
@@ -131,6 +130,10 @@ function validateSettings(j) {
   out.mqtt.tlsRejectUnauthorized = m.tlsRejectUnauthorized !== false;
   out.mqtt.username = str(m.username);
 
+  /*
+   * The password is never sent to the browser, so an absent field means
+   * "unchanged" rather than "clear it". Clearing needs an explicit "".
+   */
   if (typeof m.password === 'string') out.mqtt.password = m.password;
 
   out.mqtt.topicPrefix = str(m.topicPrefix) || 'lgtv';
@@ -152,6 +155,10 @@ function validateSettings(j) {
     return typeof id === 'string' && /^[a-z0-9_.]{1,64}$/.test(id);
   }) : [];
 
+  /*
+   * The device id keys every discovery topic and every entity id in Home
+   * Assistant. Changing it orphans the old entities rather than renaming them.
+   */
   out.device.id = str(d.id);
   if (!/^[a-z0-9_]{1,64}$/.test(out.device.id)) e.push('device id must be 1-64 characters of a-z, 0-9 or _');
   out.device.name = str(d.name);
@@ -170,13 +177,17 @@ function writeSettings(patch, cb) {
     var tmp = configFilePath + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(file, null, 2), 'utf8');
     fs.chmodSync(tmp, parseInt('600', 8));
-    fs.renameSync(tmp, configFilePath);
+    fs.renameSync(tmp, configFilePath);   // atomic: never leave a half-written config
   } catch (err) {
     return cb(err);
   }
   cb(null);
 }
 
+/*
+ * host is file-only everywhere else so a page cannot widen its own exposure.
+ * This is the one writer, and only the TV can reach it.
+ */
 function setNetworkAccess(open, cb) {
   var file = readConfigFile();
   file.host = open ? '0.0.0.0' : '127.0.0.1';
@@ -190,6 +201,7 @@ function setNetworkAccess(open, cb) {
   cb(null);
 }
 
+// The TV's own address on the home network, whatever the server is bound to.
 function lanAddress() {
   var ifaces = {};
   try { ifaces = os.networkInterfaces() || {}; } catch (e) { return null; }
@@ -202,17 +214,26 @@ function lanAddress() {
       var fam = String(a.family);
       if (fam !== 'IPv4' && fam !== '4') continue;
       if (a.internal) continue;
+      // Wired first where a TV has both, otherwise the first that answers.
       if (!best || /^eth/.test(name)) best = a.address;
     }
   }
   return best;
 }
 
+// Whether the dashboard answers on the network, or only on the TV itself.
 function networkOpen() {
   return !/^(127\.|::1$|localhost$)/.test(String(config.host));
 }
 
+/*
+ * The address a phone on the same network can reach this server at. The TV app
+ * only ever sees localhost, so it cannot work this out for itself, and a QR
+ * code of "localhost" would be useless to the person holding the phone.
+ */
 function lanOrigin() {
+  // Bound to loopback, the server answers nothing on the network, so any LAN
+  // address handed to a phone would be a dead link.
   if (!networkOpen()) return null;
   var ip = lanAddress();
   return ip ? 'http://' + ip + ':' + config.port : null;
@@ -231,9 +252,18 @@ function handoffUrl() {
   return ip && HANDOFF.code ? 'http://' + ip + ':' + handoffPort() + '/?c=' + HANDOFF.code : null;
 }
 
+/*
+ * A TV set up from a phone has had no chance to pick a device id or topic
+ * prefix, and the defaults are the same on every TV: a second TV would take
+ * over the first one's entities in Home Assistant. So one that has neither
+ * saved gets its own, from its model and the end of its network address, which
+ * also tells two TVs of the same model apart.
+ */
 function ownIdentity() {
   var file = readConfigFile();
   var fm = file.mqtt || {};
+  // One already set up keeps what it has, defaults included: its entities in
+  // Home Assistant are named from it.
   if ((file.device && file.device.id) || fm.topicPrefix || fm.host) return null;
   var model = String((config.device && config.device.model) || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   if (!model || model === 'webostv') model = 'tv';
@@ -291,6 +321,7 @@ function startHandoff(cb) {
         try { p = JSON.parse(body); } catch (e) {
           return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
         }
+        // The phone supplies the broker; everything else keeps its current value.
         var cur = config.mqtt || {}, dev = config.device || {};
         var own = ownIdentity();
         var v = validateSettings({
@@ -310,7 +341,7 @@ function startHandoff(cb) {
           if (err) return send(res, 500, JSON.stringify({ ok: false, error: msg('srv.saveSettingsFailed', 'could not save the settings') }));
           console.log('setup: Home Assistant broker set from a phone, restarting to connect');
           send(res, 200, JSON.stringify({ ok: true }));
-          stopHandoff();
+          stopHandoff();   // the code is spent
           setTimeout(function () { restartSelf(); }, 300);
         });
       });
@@ -330,6 +361,13 @@ function startHandoff(cb) {
   });
 }
 
+/*
+ * Shown in place of the dashboard when its asset is missing. Deliberately
+ * plain and self-contained: it names what is absent and where it was looked
+ * for, because the fix is a redeploy and the reader needs to know that rather
+ * than be shown numbers. The API and the MQTT bridge are unaffected, so it
+ * says that too before anyone assumes the whole server is down.
+ */
 function missingAssetsPage() {
   return [
     '<!doctype html>',
@@ -361,16 +399,25 @@ function missingAssetsPage() {
   ].join('\n');
 }
 
+// Called only where something will serve it: not with the web dashboard off,
+// nor for a one-shot run such as --update.
 function loadUI() {
-  if (config && config.web && config.web.enabled === false) return;
   var f = assetPath('ui.html');
   if (!f) {
-    console.error('assets: ui.html not found in ' + assetDirsList.join(', '));
+    console.error('assets: ui.html not found in ' + assetDirsList.join(', ') +
+                  ' - the dashboard will report it is missing');
     return;
   }
   try {
     UI_HTML = fs.readFileSync(f, 'utf8');
     console.log('assets: serving ui.html from ' + f);
+    /*
+     * On this thread rather than zlib's worker pool. Node 0.12's process
+     * spawning can deadlock (see lunaCached), and startup launches luna-send
+     * repeatedly while an async compression would still be running: the one
+     * startup seen to stall, on a B8 straight after an update, stopped with
+     * this compression unfinished.
+     */
     try {
       UI_HTML_GZ = zlib.gzipSync(UI_HTML);
       console.log('assets: pre-compressed ui.html (' + UI_HTML.length + ' -> ' + UI_HTML_GZ.length + ' bytes)');
@@ -380,11 +427,11 @@ function loadUI() {
   }
 }
 
+// ---------------------------------------------------------------- server
+// The TV's own software updates sit beside Glasshouse's in both dashboards.
 function updateSummary() {
-  var s = (updaterModule && updaterModule.updateSummary) ? updaterModule.updateSummary() : {};
-  if (privacyModule && privacyModule.tvUpdatesBlocked) {
-    s.tvUpdatesBlocked = privacyModule.tvUpdatesBlocked();
-  }
+  var s = updaterModule.updateSummary();
+  s.tvUpdatesBlocked = privacyModule.tvUpdatesBlocked();
   return s;
 }
 
@@ -392,6 +439,12 @@ function send(res, code, body, type) {
   if (!type || type.indexOf('application/json') === 0) {
     body = say.translateBody(body, res && res.glasshouseLang);
   }
+  /*
+   * No Access-Control-Allow-Origin. The telemetry includes what is currently
+   * playing, the model, panel hours and usage, and a wildcard here let any
+   * site the user happened to visit read all of it from their browser. The
+   * dashboard is same-origin, so it needs no CORS grant.
+   */
   res.writeHead(code, {
     'Content-Type': type || 'application/json',
     'Cache-Control': 'no-store',
@@ -404,11 +457,14 @@ function send(res, code, body, type) {
 function authed(q, req) {
   if (!config.token) return true;
   if (q && q.k === config.token) return true;
-  var auth = (req && req.headers && req.headers.authorization) || '';
-  if (auth && auth.indexOf('Bearer ') === 0 && auth.slice(7).trim() === config.token) return true;
+  // The on-TV dashboard app fetches from localhost and has no way to carry a
+  // token (there is no login prompt on a TV remote).  A process on the TV
+  // already has root, so the token adds nothing for local requests.
   return !!(req && fromTV(req));
 }
 
+// A request made on the TV itself - the on-TV app, or anything else running
+// there, which has root already. Nothing on the network can present as this.
 function fromTV(req) {
   var ra = (req && req.connection && req.connection.remoteAddress) ||
            (req && req.socket && req.socket.remoteAddress) || '';
@@ -416,6 +472,15 @@ function fromTV(req) {
 }
 
 function readJsonBody(req, res, cb) {
+  /*
+   * CSRF guard. No CORS grant is sent, so another site cannot read the
+   * reply - but a POST with a "simple" content type (text/plain,
+   * form-urlencoded) is still *delivered* without a preflight, and the TV
+   * has acted on it by the time the response is discarded. Requiring
+   * application/json forces a preflight, which this server never approves,
+   * and rejecting cross-site Origins closes the gap for anything that does
+   * slip through.
+   */
   var ctype = String(req.headers['content-type'] || '').toLowerCase();
   if (ctype.indexOf('application/json') !== 0) {
     return send(res, 415, JSON.stringify({ ok: false, error: 'Content-Type must be application/json' }));
@@ -463,6 +528,8 @@ function handleRequest(req, res) {
       }
       return send(res, 200, UI_HTML, 'text/html; charset=utf-8');
     }
+    // 503, not 200: the dashboard is genuinely unavailable, and a monitor
+    // polling this should see that rather than a page that says so in prose.
     return send(res, 503, missingAssetsPage(), 'text/html; charset=utf-8');
   }
 
@@ -471,6 +538,9 @@ function handleRequest(req, res) {
     if (!file) return send(res, 404, JSON.stringify({ ok: false, error: 'not found' }));
     var ext = path.extname(file).toLowerCase();
     var mime = MIME[ext] || 'application/octet-stream';
+    // The strings and their translations change with each release as the pages
+    // do, so a day-old copy beside a new page would show text the page no
+    // longer has, or miss text it now does.
     var fresh = ext === '.html' || ext === '.json' || /(^|\/)i18n\.js$/.test(file);
     var cacheHdr = fresh ? 'no-cache' : 'public, max-age=86400';
     if (ASSET_CACHE[file]) {
@@ -503,33 +573,34 @@ function handleRequest(req, res) {
       origin: lanOrigin(), version: versionStr,
       fromHomebrewChannel: fromHomebrewChannel(), setupNeeded: setupPending()
     };
+    // The token goes into the TV's QR codes, so a phone that scans one can use
+    // what it opens. Only to the TV itself: whoever sees the screen holds the
+    // remote, and the remote needs no token.
     if (config.token && fromTV(req)) caps.key = config.token;
     return send(res, 200, JSON.stringify(caps));
   }
 
   if (pathname === '/api/screensaver') {
-    var ssList = (screensaversModule && screensaversModule.screensaverList)
-      ? screensaversModule.screensaverList() : [];
-    return send(res, 200, JSON.stringify(ssList));
+    return send(res, 200, JSON.stringify(screensaversModule.screensaverList()));
   }
 
   if (pathname === '/api/hdmi') {
-    if (!telemetryModule || !telemetryModule.hdmiInputs) {
-      return send(res, 200, JSON.stringify([]));
-    }
     return telemetryModule.hdmiInputs(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/servicemenu') {
-    if (!oledModule || !oledModule.serviceMenuState) {
-      return send(res, 200, JSON.stringify({ ok: false, supported: false }));
-    }
     return oledModule.serviceMenuState(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
+  // First-run setup and the TV's own settings. The TV only: see fromTV.
   if (pathname === '/api/setup') {
     if (!fromTV(req)) return send(res, 403, JSON.stringify({ ok: false, error: 'only from the TV itself' }));
     if (req.method === 'GET') {
+      /*
+       * Setup offers Always-on only on a TV that has it (a C2 on webOS 9.2
+       * does, a B8 on 4.4 does not), so the TV is asked here; a TV without the
+       * setting answers with an error, and the step is left out.
+       */
       return luna('com.webos.service.settings/getSystemSettings',
                   { category: 'general', keys: ['alwaysOn'] }, function (r) {
         var st = setupState();
@@ -558,6 +629,10 @@ function handleRequest(req, res) {
         return setNetworkAccess(open, function (err) {
           if (err) return send(res, 500, JSON.stringify({ ok: false, error: msg('srv.saveSettingFailed.plain', 'could not save the setting') }));
           console.log('setup: dashboard ' + (open ? 'opened to the network' : 'closed to this TV') + ', restarting');
+          /*
+           * Answer before restarting: the restart kills this process, and the
+           * browser needs the result to know the save itself succeeded.
+           */
           send(res, 200, JSON.stringify({ ok: true, restarting: true }));
           setTimeout(function () { restartSelf(); }, 250);
         });
@@ -594,22 +669,28 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/oledcare') {
-    if (!oledModule || !oledModule.readOledProtections || !telemetryModule) {
-      return send(res, 200, JSON.stringify({ ok: true, isOled: false }));
-    }
     return oledModule.readOledProtections(function (live) {
       telemetryModule.collectStats(function (st) {
         var oledData = (st && st.oled) || {};
         send(res, 200, JSON.stringify({
           ok: true,
           isOled: !!(st && st.oled),
+          // Whether this TV has the service the service menu goes through.
           serviceControls: oledModule.oledProtControllable(),
           writable: config.allowControl,
+          /*
+           * null where the TV says nothing. Without the service, all there is
+           * are the marker files, and a TV that writes none of them - a B8
+           * writes neither - has not said these are off, only that it does not
+           * report them.
+           */
           gsr: live ? live.gsr : (oledData.gsr_protection ? oledData.gsr_protection === 'Active' : null),
           tpc: live ? live.tpc : (oledData.asbl_protection ? oledData.asbl_protection === 'Active' : null),
           gsrStressCount: live ? live.gsrStressCount : null,
           screenShift: oledData.screen_shift || null,
           logoDimming: oledData.logo_dimming || null,
+          // The panel's own wear figures, which belong beside the switches
+          // that decide how hard it is worked.
           panelHours: (oledData.panel_hours === undefined) ? null : oledData.panel_hours,
           hoursUntilComp: (oledData.hours_until_comp === undefined) ? null : oledData.hours_until_comp,
           hoursUntilRefresher: (oledData.hours_until_refresher === undefined) ? null : oledData.hours_until_refresher,
@@ -624,48 +705,29 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/cpu') {
-    if (!telemetryModule || !telemetryModule.collectCpuProcesses) {
-      return send(res, 200, JSON.stringify({ ok: true, processes: [] }));
-    }
     return telemetryModule.collectCpuProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/processes') {
-    if (!telemetryModule || !telemetryModule.collectProcesses) {
-      return send(res, 200, JSON.stringify({ ok: true, processes: [] }));
-    }
     return telemetryModule.collectProcesses(function (r) { send(res, 200, JSON.stringify(r)); });
   }
 
   if (pathname === '/api/privacy') {
-    if (!privacyModule || !privacyModule.collectPrivacy) {
-      return send(res, 200, JSON.stringify({ ok: true }));
-    }
     return privacyModule.collectPrivacy(function (pv) { send(res, 200, JSON.stringify(pv)); });
   }
 
   if (pathname === '/api/apps' && req.method === 'GET') {
-    if (!appsModule || !appsModule.getApps) {
-      return send(res, 200, JSON.stringify({ ok: true, apps: [] }));
-    }
     return appsModule.getApps(function (d) {
       d.tileHidingAvailable = !fromHomebrewChannel();
       if (!d.tileHidingAvailable) { d.systemTiles = []; d.tileHidingEnabled = false; d.hiddenCount = 0; }
-      if (servicesModule && servicesModule.getServices) {
-        servicesModule.getServices(function (sRes) {
-          if (sRes && sRes.services) d.services = sRes.services;
-          send(res, 200, JSON.stringify(d));
-        });
-      } else {
+      servicesModule.getServices(function (sRes) {
+        if (sRes && sRes.services) d.services = sRes.services;
         send(res, 200, JSON.stringify(d));
-      }
+      });
     });
   }
 
   if (pathname === '/api/apps/icon' && (req.method === 'GET' || req.method === 'HEAD')) {
-    if (!appsModule || !appsModule.getIconPath) {
-      return send(res, 404, JSON.stringify({ ok: false, error: 'apps module not available' }));
-    }
     var iconAppId = u.query && u.query.id;
     return appsModule.getIconPath(iconAppId, function (iconPath) {
       if (!iconPath) return send(res, 404, JSON.stringify({ ok: false, error: 'icon not found' }));
@@ -691,7 +753,6 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/add-page' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.addSavedPage) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.addSavedPage(body && body.address, body && body.title, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -700,16 +761,15 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/remove-page' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.removeSavedPage) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.removeSavedPage(body && body.launchPointId, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
     });
   }
 
+  // /api/apps/rename is the name it had in 0.55.0, when only the title changed.
   if ((pathname === '/api/apps/edit-page' || pathname === '/api/apps/rename') && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.editSavedPage) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.editSavedPage(body && body.launchPointId, body && body.title, body && body.address, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -718,7 +778,6 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/uninstall' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.uninstallApp) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.uninstallApp(body.id, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -730,7 +789,6 @@ function handleRequest(req, res) {
   }
   if (pathname === '/api/apps/hide' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.hideTile) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.hideTile(body.id, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -739,7 +797,6 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/unhide' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.unhideTile) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.unhideTile(body.id, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -748,7 +805,6 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/unhide-all' && req.method === 'POST') {
     return readJsonBody(req, res, function () {
-      if (!appsModule || !appsModule.unhideAllTiles) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.unhideAllTiles(function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -757,7 +813,6 @@ function handleRequest(req, res) {
 
   if (pathname === '/api/apps/tile-hiding' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!appsModule || !appsModule.setTileHidingEnabled) return send(res, 500, JSON.stringify({ ok: false }));
       appsModule.setTileHidingEnabled(body && body.enabled, function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -765,15 +820,11 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/services' && req.method === 'GET') {
-    if (!servicesModule || !servicesModule.getServices) {
-      return send(res, 200, JSON.stringify({ ok: true, services: [] }));
-    }
     return servicesModule.getServices(function (d) { send(res, 200, JSON.stringify(d)); });
   }
 
   if (pathname === '/api/services/toggle' && req.method === 'POST') {
     return readJsonBody(req, res, function (body) {
-      if (!servicesModule || !servicesModule.toggleService) return send(res, 500, JSON.stringify({ ok: false }));
       servicesModule.toggleService(body && body.id, !!(body && body.disabled), function (r) {
         send(res, r && r.ok ? 200 : 400, JSON.stringify(r));
       });
@@ -781,12 +832,11 @@ function handleRequest(req, res) {
   }
 
   if (pathname === '/api/stats') {
-    if (!telemetryModule || !telemetryModule.collectStats) {
-      return send(res, 200, JSON.stringify({ ok: true }));
-    }
     return telemetryModule.collectStats(function (s) { send(res, 200, JSON.stringify(s)); });
   }
 
+  /* Reports what is known, and never checks on its own: the dashboard polls
+     this, and a poll that reached GitHub would be a request per viewer. */
   if (pathname === '/api/update') {
     return send(res, 200, JSON.stringify(updateSummary()));
   }
@@ -806,6 +856,7 @@ function handleRequest(req, res) {
         tls: !!mc.tls,
         tlsRejectUnauthorized: mc.tlsRejectUnauthorized !== false,
         username: mc.username || '',
+        // The password is deliberately not returned; only whether one is set.
         passwordSet: !!mc.password,
         topicPrefix: mc.topicPrefix || 'lgtv',
         discoveryPrefix: mc.discoveryPrefix || 'homeassistant',
@@ -825,6 +876,8 @@ function handleRequest(req, res) {
         id: (config.device && config.device.id) || '',
         name: (config.device && config.device.name) || ''
       },
+      /* Ages rather than timestamps: the TV's clock is often minutes off the
+         browser's, and a negative "last publish" reads as a fault. */
       status: {
         state: mqttStat.state,
         broker: mqttStat.broker,
@@ -895,7 +948,7 @@ function handleRequest(req, res) {
     var body = '';
     req.on('data', function (d) {
       body += d;
-      if (body.length > 4096) req.destroy();
+      if (body.length > 4096) req.destroy();   // do not buffer junk
     });
     req.on('end', function () {
       var j = {};
@@ -929,8 +982,6 @@ function init(opts) {
   if (opts.luna) lunaFn = opts.luna;
   if (opts.getMqttStatus) getMqttStatusFn = opts.getMqttStatus;
   if (opts.version) versionStr = opts.version;
-
-  loadUI();
 
   return {
     handleRequest: handleRequest,

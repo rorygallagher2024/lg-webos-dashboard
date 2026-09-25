@@ -566,6 +566,8 @@ routes.init({
   version: TVWEB_VERSION
 });
 
+if (WEB_ENABLED && !CLI_MODE) routes.loadUI();   // otherwise nothing will serve it
+
 var server = http.createServer(routes.handleRequest);
 
 var webEnabled = WEB_ENABLED;

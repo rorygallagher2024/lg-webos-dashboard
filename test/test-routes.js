@@ -261,9 +261,10 @@ function createMockRes(cb) {
     },
     version: '0.64.0',
     controls: mockControls,
+    fromHomebrewChannel: function () { return false; },
     screensavers: {
       screensaverList: function () {
-        return [{ id: 'bokeh', name: 'Bokeh' }];
+        return { ok: true, current: 'bokeh', modes: [{ id: 'bokeh', label: 'Bokeh' }] };
       }
     }
   });
@@ -301,8 +302,8 @@ function createMockRes(cb) {
   var resSs = createMockRes(function (res) {
     assert.strictEqual(res.statusCode, 200);
     var body = JSON.parse(res.body);
-    assert.strictEqual(body.length, 1);
-    assert.strictEqual(body[0].id, 'bokeh');
+    assert.strictEqual(body.ok, true);
+    assert.strictEqual(body.modes[0].id, 'bokeh');
   });
   routes.handleRequest(reqSs, resSs);
 
