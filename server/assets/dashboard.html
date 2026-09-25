@@ -211,7 +211,7 @@ var TABS = [
   { key: 'system',  label: t('tab.metrics', 'Metrics'),      url: '/api/stats',       build: sysRows,  poll: 5000 },
   { key: 'apps',    label: t('tab.apps', 'Apps'),         url: '/api/apps',        build: appsRows },
   { key: 'oled',    label: t('tab.oledCare', 'OLED Care'),    url: '/api/oledcare',    build: oledRows },
-  { key: 'game',    label: t('tab.game', 'Game'),         url: '/api/game',        build: gameRows },
+  { key: 'game',    label: t('tab.game', 'Game'),         url: '/api/game',        build: gameRows, optional: true },
   { key: 'saver',   label: t('tv.tab.screenSaver', 'Screen Saver'), url: '/api/screensaver', build: saverRows },
   { key: 'privacy', label: t('tab.privacy', 'Privacy'),      url: '/api/privacy',     build: privacyRows },
   { key: 'service', label: t('tv.tab.serviceMenu', 'Service Menu'), url: '/api/servicemenu', build: svcRows },
@@ -1651,6 +1651,24 @@ if (selMatch) {
   }
 }
 openTab(initTab, initialSel !== null);
+
+/* A section the TV may not have is dropped once its endpoint says so, as the
+   browser dashboard hides its tab: a B8 has no Game Optimizer. */
+TABS.forEach(function (section) {
+  if (!section.optional) return;
+  fetch(section.url, { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var i = TABS.indexOf(section);
+      if (!d || d.available !== false || i < 0) return;
+      var cur = TABS[tab];
+      TABS.splice(i, 1);
+      tab = Math.max(0, TABS.indexOf(cur));
+      renderTabs();
+      if (cur === section) openTab(tab);
+    })
+    .catch(function () {});
+});
 </script>
 </body>
 </html>
