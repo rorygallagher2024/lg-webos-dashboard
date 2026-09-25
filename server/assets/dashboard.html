@@ -22,10 +22,11 @@ body{font-family:'Manrope',sans-serif;color:#fff;
 
 #stage{height:100vh;display:flex;flex-direction:column;padding:5vh 0 5vh 8vw}
 
-/* The Glasshouse mark, then the clock: the mark at the clock's height, full
-   strength, so it reads as the name and the time as secondary. */
-#top{display:flex;display:-webkit-flex;align-items:center;-webkit-align-items:center;flex:0 0 auto;margin-bottom:3.4vh}
-#mark{height:4.6vh;width:auto;margin-right:1.6vw;color:#fff;opacity:.92}
+/* The clock on the left and the Glasshouse mark on the right, at the clock's
+   height and full strength, level with the end of the tab bar. */
+#top{display:flex;display:-webkit-flex;align-items:center;-webkit-align-items:center;
+  justify-content:space-between;-webkit-justify-content:space-between;flex:0 0 auto;margin:0 4vw 3.4vh 0}
+#mark{height:4.6vh;width:auto;color:#fff;opacity:.92}
 #clock{font-family:'Manrope',sans-serif;font-weight:400;font-size:4.4vh;letter-spacing:.01em;
   line-height:1;opacity:.65}
 
@@ -188,9 +189,9 @@ body.light #flash{color:rgba(0,0,0,.88)}
 <body>
 <div id="stage">
   <div id="top">
+    <div id="clock">--:--</div>
     <!-- docs/logo/glasshouse.svg without its tile. -->
     <svg id="mark" viewBox="124 104 264 302" role="img" aria-label="Glasshouse" translate="no"><path d="M358 214 L256 134 L154 214 V342 A34 34 0 0 0 188 376 H324 A34 34 0 0 0 358 342 V286 H272" fill="none" stroke="currentColor" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div id="clock">--:--</div>
   </div>
   <nav id="tabs"></nav>
   <div id="main">
