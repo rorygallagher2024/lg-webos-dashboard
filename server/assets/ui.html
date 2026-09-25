@@ -431,6 +431,8 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .upd{max-width:760px;margin-top:22px}
 .upd .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .upd .btns button{min-width:160px;padding:16px 22px}
+.theme-seg{display:flex;gap:6px}
+.theme-seg button{height:28px;min-height:0;padding:0 12px;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .upd #upd-msg{margin-top:12px}
 .upd-prog{margin-top:22px;max-width:520px}
 .upd-step{font-size:13px;color:var(--w80);letter-spacing:.02em;margin-bottom:12px}
@@ -1405,6 +1407,21 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
     <div class="sub" id="upd-msg"></div>
   </div>
+
+  <div class="pv-h">This browser</div>
+  <div class="prot-table">
+    <div class="prot-row">
+      <div class="prot-main">
+        <div class="prot-title">Theme</div>
+        <div class="prot-desc">Auto follows this device's light or dark setting. Applies to this browser only:
+          other phones and computers keep their own. The button at the end of the footer changes it too.</div>
+      </div>
+      <div class="prot-status"><div class="theme-seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="auto">Auto</button><button type="button"
+          data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button>
+      </div></div>
+    </div>
+  </div>
 </section>
 </main>
 
@@ -1425,7 +1442,9 @@ const q = id => document.getElementById(id);
   // they default to dark, the theme the dashboard is designed around.
   const mqSupported = mq.media !== 'not all';
   const urlTheme = new URLSearchParams(location.search).get('theme');
-  let setting = urlTheme || localStorage.getItem('theme') || 'auto';
+  let stored = null;
+  try { stored = localStorage.getItem('theme'); } catch (e) { /* private window */ }
+  let setting = urlTheme || stored || 'auto';
   if (setting !== 'auto' && setting !== 'dark' && setting !== 'light') setting = 'auto';
   apply();
 
@@ -1446,6 +1465,12 @@ const q = id => document.getElementById(id);
       btn.title = label;
       btn.setAttribute('aria-label', label);
     }
+    // The Server tab's explicit choice, kept in step with the footer button.
+    document.querySelectorAll('[data-theme-set]').forEach(b => {
+      const on = b.dataset.themeSet === setting;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
     const mc = document.querySelector('meta[name="theme-color"]');
     if (mc) mc.content = mode === 'light' ? '#f5f5f5' : '#000000';
   }
@@ -1460,11 +1485,11 @@ const q = id => document.getElementById(id);
   else if (mq.addListener) mq.addListener(onMediaChange);   // Chrome <= 68 (webOS 5.x)
 
   document.addEventListener('click', function(e) {
-    const btn = e.target.closest('#theme-toggle');
+    const btn = e.target.closest('#theme-toggle, [data-theme-set]');
     if (!btn) return;
     e.preventDefault();
-    setting = nextSetting();
-    localStorage.setItem('theme', setting);
+    setting = btn.dataset.themeSet || nextSetting();
+    try { localStorage.setItem('theme', setting); } catch (err) { /* private window */ }
     apply();
   });
 })();
