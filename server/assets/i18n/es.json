@@ -48,7 +48,7 @@
   "from": "Nightly power-down"
  },
  "adv.nightlyOff.desc": {
-  "text": "Cinco horas cada noche, LG deja que una TV apagada duerma del todo. Entonces está sin conexión: este panel y Home Assistant no pueden alcanzarla hasta que pasen las horas o se encienda. LG fija la duración; elige unas horas en las que no se use la TV.",
+  "text": "Cinco horas cada noche, LG deja que una TV apagada duerma del todo. Entonces está sin conexión: este tablero y Home Assistant no pueden alcanzarla hasta que pasen las horas o se encienda. LG fija la duración; elige unas horas en las que no se use la TV.",
   "from": "For five hours every night, LG lets a switched-off TV sleep fully. It is offline then: this dashboard and Home Assistant can't reach it until the hours end or it is switched on. LG fixes the length; choose hours when the TV isn't used."
  },
  "adv.nightlyOff.hours": {
@@ -80,7 +80,7 @@
   "from": "Stay connected when off"
  },
  "adv.stayConnected.desc": {
-  "text": "Mantiene la TV en la red mientras está apagada, salvo cinco horas cada noche, para que este panel y Home Assistant sigan funcionando y puedan volver a encenderla. La pantalla permanece a oscuras. Gasta unos 12 W en una LG C2, frente a casi nada en el standby normal.",
+  "text": "Mantiene la TV en la red mientras está apagada, salvo cinco horas cada noche, para que este tablero y Home Assistant sigan funcionando y puedan volver a encenderla. La pantalla permanece a oscuras. Gasta unos 12 W en una LG C2, frente a casi nada en el modo en espera normal.",
   "from": "Keeps the TV on the network while it is switched off, apart from five hours each night, so this dashboard and Home Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG C2, against almost nothing in normal standby."
  },
  "adv.wol": {
@@ -88,7 +88,7 @@
   "from": "Wake-on-LAN"
  },
  "adv.wol.desc": {
-  "text": "Permite que Home Assistant, un teléfono u otro dispositivo de la red enciendan la TV desde el standby. La guía de Home Assistant explica cómo configurarlo. LG lo llama Mobile TV On.",
+  "text": "Permite que Home Assistant, un teléfono u otro dispositivo de la red enciendan la TV desde el modo en espera. La guía de Home Assistant explica cómo configurarlo. LG lo llama Mobile TV On.",
   "from": "Lets Home Assistant, a phone or another device on the network switch the TV on from standby. The Home Assistant guide shows how to set it up. LG calls this Mobile TV On."
  },
  "app.accessibility": {
@@ -512,7 +512,7 @@
   "from": "Reboot"
  },
  "ctl.reboot.confirm": {
-  "text": "¿Reiniciar la TV ahora? No estará disponible unos minutos.",
+  "text": "¿Reiniciar la TV ahora? No estará disponible sobre un minuto.",
   "from": "Reboot the TV now? It will be unavailable for about a minute."
  },
  "ctl.rewind": {
@@ -980,7 +980,7 @@
   "from": "Only change if Home Assistant was reconfigured."
  },
  "mqtt.enabled.off": {
-  "text": "No se publica nada. El panel no se ve afectado.",
+  "text": "No se publica nada. El tablero no se ve afectado.",
   "from": "Nothing is published. The dashboard is unaffected."
  },
  "mqtt.enabled.on": {
@@ -1256,7 +1256,7 @@
   "from": "Lowers overall brightness when a bright image is held, which is what makes a mostly-white screen fade after a few seconds. Switching it off keeps full brightness and puts more heat through the panel."
  },
  "oled.warn": {
-  "text": "Nota: los dos últimos solo son accesibles desde el menú de servicio de la TV. Existen para proteger el panel del burn-in; desactivarlos hace más probable la retención permanente de imagen. Hacerlo puede afectar a la garantía.",
+  "text": "Nota: los dos últimos normalmente solo son accesibles desde el menú de servicio de la TV. Existen para proteger el panel del burn-in; desactivarlos hace más probable la retención permanente de imagen. Hacerlo puede afectar a la garantía.",
   "from": "Note: the last two are normally reachable only from the TV's service menu. They exist to protect the panel from burn-in, and switching them off makes permanent image retention more likely. Doing so may affect your warranty."
  },
  "phone.badPort": {
@@ -1740,7 +1740,7 @@
   "from": "Auto follows this device's light or dark setting. Other phones and computers keep their own. The button at the end of the footer changes it too."
  },
  "server.tvApp": {
-  "text": "App del dashboard",
+  "text": "App del tablero",
   "from": "Dashboard app"
  },
  "server.tvApp.added": {
@@ -1752,11 +1752,11 @@
   "from": "Adding…"
  },
  "server.tvApp.desc": {
-  "text": "Añade un mosaico que abre este panel en la propia TV, controlado con el mando.",
+  "text": "Añade un mosaico que abre este tablero en la propia TV, controlado con el mando.",
   "from": "Adds a tile that opens this dashboard on the TV itself, driven by the remote."
  },
  "server.tvApp.desc.added": {
-  "text": "Abre este panel en la propia TV, controlado con el mando. Elimínala para quitar el mosaico de la pantalla de inicio.",
+  "text": "Abre este tablero en la propia TV, controlado con el mando. Elimínala para quitar el mosaico de la pantalla de inicio.",
   "from": "Opens this dashboard on the TV itself, driven by the remote. Remove it to take the tile off the home screen."
  },
  "server.tvApp.failed": {
@@ -1876,15 +1876,15 @@
   "from": "Yes, on phones and computers at home"
  },
  "setup.net.open.hint": {
-  "text": "Una versión más completa de este panel, con más controles, que se abre en un navegador desde cualquier teléfono u ordenador de tu red doméstica.",
+  "text": "Una versión más completa de este tablero, con más controles, que se abre en un navegador desde cualquier teléfono u ordenador de tu red doméstica.",
   "from": "A fuller version of this dashboard, with more controls, that opens in a browser on any phone or computer on your home network."
  },
  "setup.net.title": {
-  "text": "¿Activar el panel web?",
+  "text": "¿Activar el tablero web?",
   "from": "Turn on the web dashboard?"
  },
  "setup.net.token": {
-  "text": "Usarlo requiere el token de acceso del dashboard.",
+  "text": "Usarlo requiere el token de acceso del tablero.",
   "from": "Using it needs the dashboard’s access token."
  },
  "setup.pageTitle": {
@@ -1920,7 +1920,7 @@
   "from": "Yes, keep it connected"
  },
  "setup.standby.on.hint": {
-  "text": "Al apagar la TV, sigue en tu red con la pantalla en negro, así que este dashboard y Home Assistant siguen funcionando y pueden volver a encenderla. Consume unos 12 W mientras está apagada. Cinco horas cada noche duerme del todo y se desconecta; el dashboard puede mover esas horas.",
+  "text": "Al apagar la TV, sigue en tu red con la pantalla en negro, así que este tablero y Home Assistant siguen funcionando y pueden volver a encenderla. Consume unos 12 W mientras está apagada. Cinco horas cada noche duerme del todo y se desconecta; el tablero puede mover esas horas.",
   "from": "When the TV is switched off, it stays on your network with the screen dark, so this dashboard and Home Assistant keep working and can switch it back on. It uses about 12 W while off. For five hours each night it sleeps fully and is offline; the dashboard can move those hours."
  },
  "setup.standby.title": {
@@ -1944,7 +1944,7 @@
   "from": "On this TV"
  },
  "setup.summary.open": {
-  "text": "Abrir dashboard",
+  "text": "Abrir tablero",
   "from": "Open dashboard"
  },
  "setup.summary.standby": {
@@ -2412,15 +2412,15 @@
   "from": "Tunes the picture for the kind of game. Each genre keeps its own stabilizer settings."
  },
  "srv.lgs.gameGenre.fps": {
-  "text": "Disparos en primera persona",
+  "text": "FPS",
   "from": "First-person shooter"
  },
  "srv.lgs.gameGenre.rpg": {
-  "text": "Rol",
+  "text": "RPG",
   "from": "Role-playing"
  },
  "srv.lgs.gameGenre.rts": {
-  "text": "Estrategia en tiempo real",
+  "text": "RTS",
   "from": "Real-time strategy"
  },
  "srv.lgs.gameGenre.sports": {
@@ -3256,11 +3256,11 @@
   "from": "Quick Boot turned on"
  },
  "tv.flash.standbyOff": {
-  "text": "Luz de standby desactivada",
+  "text": "Luz de espera desactivada",
   "from": "Standby light turned off"
  },
  "tv.flash.standbyOn": {
-  "text": "Luz de standby activada",
+  "text": "Luz de espera activada",
   "from": "Standby light turned on"
  },
  "tv.flash.startingSaver": {
@@ -3324,7 +3324,7 @@
   "from": "and include the error:"
  },
  "tv.msg.issue": {
-  "text": "Si esto persiste, abre un issue en github.com/rorygallagher2024/lg-webos-dashboard",
+  "text": "Si esto persiste, abre un issue en github.com/rorygallagher2024/lg-webos-tablero",
   "from": "If this persists, open an issue at github.com/rorygallagher2024/lg-webos-dashboard"
  },
  "tv.msg.noResponse": {
@@ -3340,7 +3340,7 @@
   "from": "Could not reach the TV server"
  },
  "tv.msg.useWeb": {
-  "text": "Usa el panel web en su lugar:",
+  "text": "Usa el tablero web en su lugar:",
   "from": "Use the web dashboard instead:"
  },
  "tv.msg.wentWrong": {
@@ -3468,7 +3468,7 @@
   "from": "Switched off with the remote, the TV shows LG's Always Ready screen, such as a clock or artwork, instead of going dark, from the next time it is switched off. Uses about 30 W on an LG C2, close to what it uses when on. Home turns the TV back on from the clock; the power button switches it fully off."
  },
  "tv.options.deviceDetection.hint": {
-  "text": "Busca dispositivos para mostrar en el panel de inicio y controlarlos: un descodificador, y luces, enchufes e interruptores inteligentes como Philips Hue, LIFX y TP-Link Kasa. Las TV más recientes consultan cada dirección de tu red doméstica cada vez que se encienden para hacerlo. Desactivada, los escaneos se detienen y la TV ya no encuentra dispositivos por sí sola.",
+  "text": "Busca dispositivos para mostrar en el tablero de inicio y controlarlos: un descodificador, y luces, enchufes e interruptores inteligentes como Philips Hue, LIFX y TP-Link Kasa. Las TV más recientes consultan cada dirección de tu red doméstica cada vez que se encienden para hacerlo. Desactivada, los escaneos se detienen y la TV ya no encuentra dispositivos por sí sola.",
   "from": "Finds devices to show on the Home Dashboard and control: a set-top box, and smart lights, plugs and switches such as Philips Hue, LIFX and TP-Link Kasa. Newer TVs look up every address on your home network each time they switch on to do it. Switched off, the scans stop and the TV no longer finds devices by itself."
  },
  "tv.options.lgLogo.hide": {
@@ -3508,7 +3508,7 @@
   "from": "Keeps the TV on the network while it is switched off, apart from five hours each night, so Glasshouse and Home Assistant keep working. The screen stays dark. Uses about 12 W on an LG C2."
  },
  "tv.options.wol.hint": {
-  "text": "Permite que Home Assistant, un teléfono u otro dispositivo de la red enciendan la TV desde el standby. LG lo llama Mobile TV On.",
+  "text": "Permite que Home Assistant, un teléfono u otro dispositivo de la red enciendan la TV desde el modo en espera. LG lo llama Mobile TV On.",
   "from": "Lets Home Assistant, a phone or another device on the network switch the TV on from standby. LG calls this Mobile TV On."
  },
  "tv.press.change": {
@@ -3612,7 +3612,7 @@
   "from": "The agreements the TV records against this account, each with what it lets LG do."
  },
  "tv.privacy.controlsOff": {
-  "text": "Los controles están desactivados en la configuración de este panel.",
+  "text": "Los controles están desactivados en la configuración de este tablero.",
   "from": "Controls are switched off in this dashboard’s config."
  },
  "tv.privacy.everything.hint": {
@@ -3780,7 +3780,7 @@
   "from": "Address"
  },
  "tv.settings.address.hint": {
-  "text": "Dónde está el panel web, para un navegador en un teléfono u ordenador de tu red doméstica.",
+  "text": "Dónde está el tablero web, para un navegador en un teléfono u ordenador de tu red doméstica.",
   "from": "Where the web dashboard is, for a browser on a phone or computer on your home network."
  },
  "tv.settings.address.scan": {
@@ -3836,7 +3836,7 @@
   "from": "Home Assistant"
  },
  "tv.settings.web.hint": {
-  "text": "Una versión más completa de este dashboard, con más controles, para un navegador en un teléfono u ordenador.",
+  "text": "Una versión más completa de este tablero, con más controles, para un navegador en un teléfono u ordenador.",
   "from": "A fuller version of this dashboard, with more controls, for a browser on a phone or computer."
  },
  "tv.settings.web.off": {
@@ -3848,11 +3848,11 @@
   "from": "It is on for your home network, with no password, so anyone on that network can use it."
  },
  "tv.settings.web.token": {
-  "text": "Está activo para tu red doméstica y requiere el token de acceso del dashboard, que incluye el código bajo Dirección.",
+  "text": "Está activo para tu red doméstica y requiere el token de acceso del tablero, que incluye el código bajo Dirección.",
   "from": "It is on for your home network, and needs the dashboard’s access token, which the code under Address includes."
  },
  "tv.settings.webDashboard": {
-  "text": "panel web",
+  "text": "tablero web",
   "from": "Web dashboard"
  },
  "tv.svc.lock": {
