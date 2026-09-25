@@ -276,7 +276,8 @@ for page in PAGES:
 SERVER = [ROOT / 'server' / 'tvweb.js'] + sorted((ROOT / 'server' / 'lib').glob('*.js'))
 for path in SERVER:
     src = path.read_text(encoding='utf-8')
-    if not re.search(r"require\('\./(?:lib/)?say'\)", src):
+    # say.js defines msg() and uses it for its own messages, such as list()'s.
+    if path.name != 'say.js' and not re.search(r"require\('\./(?:lib/)?say'\)", src):
         continue
     name = str(path.relative_to(ROOT))
     code = strip_code(src)
