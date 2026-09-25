@@ -44,3 +44,20 @@ jobs:
 
       - name: entity templates resolve against fixture
         run: ./scripts/check-entities.py --stats test/fixtures/stats-b8-webos4.json
+
+  # The unit tests again on the node each kind of supported TV runs, since a
+  # laptop's node accepts calls an older one lacks: 0.12 on webOS 4 (B8),
+  # 8.12 on webOS 6 (50UP81006LR) and 16 on webOS 9 (C2).
+  tv-node:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['0.12', '8.12', '16']
+    name: unit tests on node ${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --version && node test/run-all.js
