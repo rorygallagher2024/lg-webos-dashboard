@@ -47,8 +47,7 @@ LANG_DIR = ASSETS / 'i18n'
 # converted, so the check holds it there from then on. Inside one, text that is
 # the same in every language - a product name, a unit - carries translate="no".
 CONVERTED = {
-    'ui.html': ['<header>', 'tabs', 'tab-metrics', 'tab-control', 'serverpane', 'svcpane', 'oledpane',
-                'advpane', 'sspane', '<footer>'],
+    'ui.html': ['<body>'],
 }
 
 KEY_RE = re.compile(r'^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)*$')

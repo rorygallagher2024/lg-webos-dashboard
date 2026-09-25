@@ -1148,59 +1148,59 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 </section>
 
 <section class="priv panel" id="appspane" role="tabpanel" hidden>
-  <div class="lbl">Apps &amp; Home Screen Launcher</div>
+  <div class="lbl" data-t="apps.heading">Apps &amp; Home Screen Launcher</div>
 
 
   <details class="pv-d" id="disc-installed-apps" open>
-    <summary>Uninstall applications <span class="cur" id="apps-installed-summary"></span></summary>
-    <div class="pv-sub">Store downloads and user-installed applications. Click Uninstall to permanently remove the application and free up internal eMMC flash storage space.</div>
+    <summary><span data-t="apps.uninstall">Uninstall applications</span> <span class="cur" id="apps-installed-summary"></span></summary>
+    <div class="pv-sub" data-t="apps.uninstall.desc">Store downloads and user-installed applications. Click Uninstall to permanently remove the application and free up internal eMMC flash storage space.</div>
     <div class="prot-table" id="apps-installed-list">
-      <div class="sub" style="padding:16px 0">Loading installed apps&hellip;</div>
+      <div class="sub" style="padding:16px 0" data-t="apps.loadingInstalled">Loading installed apps&hellip;</div>
     </div>
   </details>
 
   <details class="pv-d" id="disc-system-tiles">
-    <summary>Hide home screen system apps <span class="cur" id="apps-tiles-summary"></span></summary>
-    <div class="pv-sub">Hide built-in LG apps (Gallery, Music, Sports, Always Ready, Alexa, etc.) from the TV's home launcher ribbon.</div>
+    <summary><span data-t="apps.tiles">Hide home screen system apps</span> <span class="cur" id="apps-tiles-summary"></span></summary>
+    <div class="pv-sub" data-t="apps.tiles.desc">Hide built-in LG apps (Gallery, Music, Sports, Always Ready, Alexa, etc.) from the TV's home launcher ribbon.</div>
     <div class="btns" style="margin-top:14px;max-width:520px">
-      <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)">Off (Stock)</button>
-      <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)">On (Custom)</button>
+      <button type="button" id="tile-hiding-off" onclick="setTileHiding(false)" data-t="apps.tiles.off">Off (Stock)</button>
+      <button type="button" id="tile-hiding-on" onclick="setTileHiding(true)" data-t="apps.tiles.on">On (Custom)</button>
     </div>
     <div class="sub" id="apps-hidden-count" style="margin-top:8px">&mdash;</div>
-    <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b>When enabled:</b> On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</div>
+    <div class="pv-note" id="tile-hiding-warning" style="margin-top:12px" hidden><b data-t="apps.tiles.warn.lead">When enabled:</b> <span data-t="apps.tiles.warn">On each cold boot of your TV, this can cause a brief 1-second blank screen or input refresh before returning to your active HDMI source.</span></div>
     <div class="prot-table" id="apps-tiles-list" style="margin-top:16px">
-      <div class="sub" style="padding:16px 0">Loading system apps&hellip;</div>
+      <div class="sub" style="padding:16px 0" data-t="apps.loadingSystem">Loading system apps&hellip;</div>
     </div>
   </details>
 
   <details class="pv-d" id="disc-system-services" open hidden>
-    <summary>Turn off background services <span class="cur" id="apps-services-summary"></span></summary>
-    <div class="pv-sub">Non-essential background services discovered on this TV. Disable unnecessary services to reduce memory usage, eliminate background telemetry, and speed up boot times.</div>
+    <summary><span data-t="apps.services">Turn off background services</span> <span class="cur" id="apps-services-summary"></span></summary>
+    <div class="pv-sub" data-t="apps.services.desc">Non-essential background services discovered on this TV. Disable unnecessary services to reduce memory usage, eliminate background telemetry, and speed up boot times.</div>
     <div class="prot-table" id="apps-services-list">
-      <div class="sub" style="padding:16px 0">Loading background services&hellip;</div>
+      <div class="sub" style="padding:16px 0" data-t="apps.loadingServices">Loading background services&hellip;</div>
     </div>
   </details>
 
   <details class="pv-d" id="disc-saved-pages" open>
-    <summary>Saved web pages <span class="cur" id="apps-pages-summary"></span></summary>
-    <div class="pv-sub">Web pages on the TV's home screen, each opening in its browser. A page saved
+    <summary><span data-t="apps.pages">Saved web pages</span> <span class="cur" id="apps-pages-summary"></span></summary>
+    <div class="pv-sub" data-t="apps.pages.desc">Web pages on the TV's home screen, each opening in its browser. A page saved
       from the browser takes its whole title as its name, so a long one can be given a shorter name
       here. Pages can also be added, pointed at a new address, or removed.</div>
     <div class="prot-table" id="apps-pages-list"></div>
     <form class="toast-form page-add" id="page-add" onsubmit="event.preventDefault();addPage();">
-      <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" maxlength="2048"
+      <input type="text" id="page-add-url" placeholder="Web address, such as bbc.co.uk/weather" data-t-placeholder="apps.pages.urlPlaceholder" maxlength="2048"
         autocomplete="off" spellcheck="false">
-      <input type="text" id="page-add-name" placeholder="Name (optional)" maxlength="60" autocomplete="off">
-      <button type="submit" id="page-add-btn">Add to home screen</button>
+      <input type="text" id="page-add-name" placeholder="Name (optional)" data-t-placeholder="apps.pages.namePlaceholder" maxlength="60" autocomplete="off">
+      <button type="submit" id="page-add-btn" data-t="apps.pages.add">Add to home screen</button>
     </form>
     <div class="sub page-add-msg" id="page-add-msg" role="alert"></div>
   </details>
 </section>
 
 <section class="priv panel" id="privpane" role="tabpanel" hidden>
-  <div class="lbl">Privacy &amp; data collection</div>
+  <div class="lbl" data-t="pv.heading">Privacy &amp; data collection</div>
 
-  <div class="pv-sec">Overview</div>
+  <div class="pv-sec" data-t="pv.overview">Overview</div>
   <div class="ps" id="ps">
     <div class="ps-state">
       <span class="ps-dot" id="ps-dot"></span>
@@ -1211,63 +1211,63 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
     <div class="pv-list" id="ps-areas"></div>
     <div class="btns" style="max-width:520px;margin-top:18px">
-      <button type="button" id="ps-go" onclick="switchAllOff()">Switch it all off</button>
+      <button type="button" id="ps-go" onclick="switchAllOff()">&mdash;</button>
     </div>
     <div class="sub" id="ps-msg" style="margin-top:12px"></div>
     <div class="pv-note" id="ps-keep" hidden></div>
   </div>
 
   <details class="pv-d" id="pv-adv">
-  <summary>Advanced <span class="cur">Every setting, one by one</span></summary>
+  <summary><span data-t="tab.advanced">Advanced</span> <span class="cur" data-t="pv.advanced.sub">Every setting, one by one</span></summary>
 
   <div class="pv-top">
     <div>
-      <div class="pv-h">Ad &amp; telemetry blocker</div>
-      <div class="pv-sub">Stops the TV reaching LG's ad, tracking and diagnostics servers.</div>
+      <div class="pv-h" data-t="pv.adblock">Ad &amp; telemetry blocker</div>
+      <div class="pv-sub" data-t="pv.adblock.desc">Stops the TV reaching LG's ad, tracking and diagnostics servers.</div>
       <div class="btns" style="max-width:520px">
-        <button id="ab-off" onclick="setAdBlockMode('off')">Off</button>
-        <button id="ab-ads" onclick="setAdBlockMode('ads')">Ads &amp; telemetry</button>
-        <button id="ab-full" onclick="setAdBlockMode('full')">Everything</button>
+        <button id="ab-off" onclick="setAdBlockMode('off')" data-t="common.off">Off</button>
+        <button id="ab-ads" onclick="setAdBlockMode('ads')" data-t="pv.adblock.ads">Ads &amp; telemetry</button>
+        <button id="ab-full" onclick="setAdBlockMode('full')" data-t="pv.adblock.full">Everything</button>
       </div>
       <div class="sub" id="adblock-detail" style="margin-top:12px">&mdash;</div>
-      <div class="pv-note"><b>Everything</b> also blocks the servers the Content Store installs
-        from and LG delivers firmware through, so on that setting <b>the app store and updates
-        may stop working</b>. To stop only system updates, use <b>Block TV software updates</b>
-        in the Server tab.</div>
+      <div class="pv-note"><b data-t="pv.adblock.full.warn">Everything also blocks the servers the Content
+        Store installs from and LG delivers firmware through, so the app store and updates may stop
+        working.</b> <span data-t="pv.adblock.full.updates">To stop only system updates, use Block TV software
+        updates in the Server tab.</span></div>
     </div>
 
     <div>
-      <div class="pv-h">Advertising identifier</div>
-      <div class="pv-sub">A unique ID your TV hands to advertisers so they can recognise it and
+      <div class="pv-h" data-t="pv.adid">Advertising identifier</div>
+      <div class="pv-sub" data-t="pv.adid.desc">A unique ID your TV hands to advertisers so they can recognise it and
         target ads at you. Resetting it breaks the link to any profile built from past activity.</div>
       <div id="pv-adid"></div>
       <div id="pv-lmt"></div>
       <div class="sub" id="pv-adnote" style="margin-top:8px"></div>
       <div class="btns" style="margin-top:14px;max-width:520px">
-        <button id="adid-reset" onclick="privAction('resetAdId')">Reset advertising ID</button>
-        <button id="adcookies-clear" onclick="privAction('clearAdCookies')">Clear ad cookies</button>
+        <button id="adid-reset" onclick="privAction('resetAdId')" data-t="pv.adid.reset">Reset advertising ID</button>
+        <button id="adcookies-clear" onclick="privAction('clearAdCookies')" data-t="pv.cookies.clear">Clear ad cookies</button>
       </div>
     </div>
   </div>
 
   <details class="pv-d">
-  <summary>What LG is allowed to collect <span class="cur" id="pv-consent-cur"></span></summary>
-  <div class="pv-sub">These are the agreements recorded on the TV. <b>Off is the private
-    setting.</b></div>
+  <summary><span data-t="pv.consent">What LG is allowed to collect</span> <span class="cur" id="pv-consent-cur"></span></summary>
+  <div class="pv-sub"><span data-t="pv.consent.desc">These are the agreements recorded on the TV.</span>
+    <b data-t="pv.consent.private">Off is the private setting.</b></div>
   <div id="pv-consent" class="pv-list"></div>
   <div class="pv-note" id="pv-consent-note"></div>
   </details>
 
   <details class="pv-d">
-  <summary>What&rsquo;s running now <span class="cur" id="pv-running-cur"></span></summary>
-  <div class="pv-sub">What LG's collection machinery is doing at this moment, which is a
+  <summary><span data-t="pv.runningNow">What&rsquo;s running now</span> <span class="cur" id="pv-running-cur"></span></summary>
+  <div class="pv-sub" data-t="pv.runningNow.desc">What LG's collection machinery is doing at this moment, which is a
     separate question from what it is permitted to collect.</div>
   <!-- The feature and the process behind it are different questions: ACR can
        report "not running" while acr2 is alive, which read as a contradiction
        when the two sat in one list. -->
   <div class="pv-list">
-    <div class="pv-grp"><div class="pv-g"><span>Recognition</span></div><div id="pv-live"></div></div>
-    <div class="pv-grp"><div class="pv-g"><span>Diagnostics services</span></div><div id="pv-daemons"></div></div>
+    <div class="pv-grp"><div class="pv-g"><span data-t="pv.recognition">Recognition</span></div><div id="pv-live"></div></div>
+    <div class="pv-grp"><div class="pv-g"><span data-t="pv.diagnostics">Diagnostics services</span></div><div id="pv-daemons"></div></div>
   </div>
   <div class="pv-note" id="pv-running-note"></div>
   </details>
@@ -1275,109 +1275,109 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 </section>
 
 <section class="priv panel" id="mqttpane" role="tabpanel" hidden>
-  <div class="lbl">MQTT &amp; Home Assistant</div>
+  <div class="lbl" translate="no">MQTT &amp; Home Assistant</div>
 
   <div class="cfg-cols">
   <div class="cfg-side">
     <div class="pv-row" style="margin-top:0">
       <div>
-        <div class="n">Bridge status</div>
+        <div class="n" data-t="mqtt.status">Bridge status</div>
         <div class="d" id="cfg-status-detail">&mdash;</div>
       </div>
       <div><span class="pill idle" id="cfg-status-pill">&mdash;</span></div>
     </div>
 
     <div class="cfg-toggles" style="margin-top:18px">
-      <button id="cfg-enabled" onclick="cfgToggle('cfg-enabled')">MQTT bridge</button>
+      <button id="cfg-enabled" onclick="cfgToggle('cfg-enabled')" data-t="mqtt.bridge">MQTT bridge</button>
     </div>
     <div class="sub" id="cfg-enabled-note" style="margin-top:8px"></div>
   </div>
 
   <div class="cfg-main">
-  <div class="pv-h" style="margin-top:0">Broker</div>
-  <div class="pv-sub">Where this TV publishes its telemetry. Home Assistant picks the
+  <div class="pv-h" style="margin-top:0" data-t="mqtt.broker">Broker</div>
+  <div class="pv-sub" data-t="mqtt.broker.desc">Where this TV publishes its telemetry. Home Assistant picks the
     entities up automatically once the broker is reachable.</div>
 
   <div class="cfg-grid">
     <div class="cfg-f">
-      <label for="cfg-host">Broker address</label>
-      <input type="text" id="cfg-host" placeholder="192.168.1.10" autocomplete="off" spellcheck="false">
-      <div class="hint">Hostname or IP of the MQTT broker.</div>
+      <label for="cfg-host" data-t="mqtt.host">Broker address</label>
+      <input type="text" id="cfg-host" placeholder="192.168.1.10" translate="no" autocomplete="off" spellcheck="false">
+      <div class="hint" data-t="mqtt.host.hint">Hostname or IP of the MQTT broker.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-port">Port</label>
-      <input type="number" id="cfg-port" placeholder="auto" min="1" max="65535" autocomplete="off">
-      <div class="hint">Left blank: 1883, or 8883 with TLS.</div>
+      <label for="cfg-port" data-t="mqtt.port">Port</label>
+      <input type="number" id="cfg-port" placeholder="auto" data-t-placeholder="mqtt.port.auto" min="1" max="65535" autocomplete="off">
+      <div class="hint" data-t="mqtt.port.hint">Left blank: 1883, or 8883 with TLS.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-user">Username</label>
+      <label for="cfg-user" data-t="mqtt.user">Username</label>
       <input type="text" id="cfg-user" autocomplete="off" spellcheck="false">
-      <div class="hint">Blank for an anonymous broker.</div>
+      <div class="hint" data-t="mqtt.user.hint">Blank for an anonymous broker.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-pass">Password</label>
+      <label for="cfg-pass" data-t="mqtt.password">Password</label>
       <input type="password" id="cfg-pass" autocomplete="new-password">
-      <div class="hint" id="cfg-pass-hint">Stored on the TV in plain text.</div>
+      <div class="hint" id="cfg-pass-hint"></div>
     </div>
   </div>
 
   <div class="cfg-toggles">
-    <button id="cfg-tls" onclick="cfgToggle('cfg-tls')">TLS</button>
-    <button id="cfg-verify" onclick="cfgToggle('cfg-verify')">Verify certificate</button>
+    <button id="cfg-tls" onclick="cfgToggle('cfg-tls')" translate="no">TLS</button>
+    <button id="cfg-verify" onclick="cfgToggle('cfg-verify')" data-t="mqtt.verify">Verify certificate</button>
   </div>
-  <div class="pv-note">Without TLS the username and password cross the network in
+  <div class="pv-note" data-t="mqtt.tls.note">Without TLS the username and password cross the network in
     cleartext. The config file is readable by anything with root on this TV, so use a
     broker account restricted to these topics rather than a shared one.</div>
 
-  <div class="pv-h">Topics &amp; identity</div>
-  <div class="pv-sub">Changing the device ID orphans any entities Home Assistant has
+  <div class="pv-h" data-t="mqtt.topics">Topics &amp; identity</div>
+  <div class="pv-sub" data-t="mqtt.topics.desc">Changing the device ID orphans any entities Home Assistant has
     already created &mdash; it appears as a second device rather than renaming the first.</div>
 
   <div class="cfg-grid">
     <div class="cfg-f">
-      <label for="cfg-prefix">Topic prefix</label>
-      <input type="text" id="cfg-prefix" placeholder="lgtv" autocomplete="off" spellcheck="false">
-      <div class="hint">Must differ per TV. Publishes to &lt;prefix&gt;/telemetry.</div>
+      <label for="cfg-prefix" data-t="mqtt.prefix">Topic prefix</label>
+      <input type="text" id="cfg-prefix" placeholder="lgtv" translate="no" autocomplete="off" spellcheck="false">
+      <div class="hint" data-t="mqtt.prefix.hint">Must differ per TV. Telemetry goes to this prefix followed by /telemetry.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-disc">Discovery prefix</label>
-      <input type="text" id="cfg-disc" placeholder="homeassistant" autocomplete="off" spellcheck="false">
-      <div class="hint">Only change if Home Assistant was reconfigured.</div>
+      <label for="cfg-disc" data-t="mqtt.discovery">Discovery prefix</label>
+      <input type="text" id="cfg-disc" placeholder="homeassistant" translate="no" autocomplete="off" spellcheck="false">
+      <div class="hint" data-t="mqtt.discovery.hint">Only change if Home Assistant was reconfigured.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-devid">Device ID</label>
-      <input type="text" id="cfg-devid" placeholder="lg_tv" autocomplete="off" spellcheck="false">
-      <div class="hint">Lowercase letters, digits and underscores.</div>
+      <label for="cfg-devid" data-t="mqtt.deviceId">Device ID</label>
+      <input type="text" id="cfg-devid" placeholder="lg_tv" translate="no" autocomplete="off" spellcheck="false">
+      <div class="hint" data-t="mqtt.deviceId.hint">Lowercase letters, digits and underscores.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-devname">Device name</label>
-      <input type="text" id="cfg-devname" placeholder="LG OLED TV" autocomplete="off">
-      <div class="hint">Shown as the device name in Home Assistant.</div>
+      <label for="cfg-devname" data-t="mqtt.deviceName">Device name</label>
+      <input type="text" id="cfg-devname" placeholder="LG OLED TV" data-t-placeholder="header.brand.oled" autocomplete="off">
+      <div class="hint" data-t="mqtt.deviceName.hint">Shown as the device name in Home Assistant.</div>
     </div>
     <div class="cfg-f">
-      <label for="cfg-interval">Telemetry interval</label>
-      <input type="number" id="cfg-interval" placeholder="10000" min="1000" max="600000" autocomplete="off">
-      <div class="hint">Milliseconds between publishes.</div>
+      <label for="cfg-interval" data-t="mqtt.interval">Telemetry interval</label>
+      <input type="number" id="cfg-interval" placeholder="10000" translate="no" min="1000" max="600000" autocomplete="off">
+      <div class="hint" data-t="mqtt.interval.hint">Milliseconds between publishes.</div>
     </div>
   </div>
 
-  <div class="pv-h">Home Assistant entities</div>
-  <div class="pv-sub">Choose which entity categories are published over MQTT Discovery.
+  <div class="pv-h" data-t="mqtt.entities">Home Assistant entities</div>
+  <div class="pv-sub" data-t="mqtt.entities.desc">Choose which entity categories are published over MQTT Discovery.
     Disabling an entity removes it cleanly from Home Assistant without leaving an orphaned state.</div>
 
   <div class="pv-table" id="cfg-ents"></div>
 
   <details class="pv-d" id="cfg-fine" style="margin-top:16px">
     <summary>
-      <span>Fine-tune individual entities</span>
+      <span data-t="mqtt.fineTune">Fine-tune individual entities</span>
       <span class="cur" id="cfg-fine-count">&mdash;</span>
     </summary>
     <div id="cfg-subents" style="padding:10px 0 20px"></div>
   </details>
 
   <div class="cfg-save">
-    <button id="cfg-save-btn" onclick="saveSettings()">Save &amp; restart</button>
-    <span class="cfg-msg" id="cfg-msg">Saving restarts the server. The dashboard reconnects on its own.</span>
+    <button id="cfg-save-btn" onclick="saveSettings()" data-t="mqtt.save">Save &amp; restart</button>
+    <span class="cfg-msg" id="cfg-msg"></span>
   </div>
   </div>
   </div>
@@ -2534,14 +2534,14 @@ function pvPill(on, goodWhenOff) {
   // For privacy, "off" is the desirable state, so the colouring is inverted
   // relative to the metrics above.
   const cls = goodWhenOff ? (on ? 'warn' : 'good') : (on ? 'bad' : 'idle');
-  return `<span class="pill ${cls}">${on ? 'On' : 'Off'}</span>`;
+  return `<span class="pill ${cls}">${esc(on ? t('common.on', 'On') : t('common.off', 'Off'))}</span>`;
 }
 
 function pvConsentPill(f, writable) {
   if (!writable) return pvPill(f.enabled, true);
   if (!f.settable) return pvPill(f.enabled, true).replace('class="pill ', 'class="pill fixed ');
   return `<button class="pill ${f.enabled ? 'warn' : 'good'}" data-key="${esc(f.key)}" ` +
-         `data-next="${f.enabled ? '0' : '1'}">${f.enabled ? 'On' : 'Off'}</button>`;
+         `data-next="${f.enabled ? '0' : '1'}">${esc(f.enabled ? t('common.on', 'On') : t('common.off', 'Off'))}</button>`;
 }
 
 function pvRow(name, detail, pillHtml) {
@@ -2560,27 +2560,27 @@ function renderSimple(d) {
   if (!sm) return;
   q('ps-dot').className = 'ps-dot ' + (sm.total ? 'warn' : 'good');
   q('ps-head').textContent = sm.total
-    ? (sm.total === 1 ? '1 thing is still on' : sm.total + ' things are still on')
-    : 'Tracking and targeted ads are off';
+    ? (sm.total === 1 ? t('pv.stillOn.one', '1 thing is still on') : t('pv.stillOn', '{n} things are still on', { n: sm.total }))
+    : t('pv.allOff', 'Tracking and targeted ads are off');
   q('ps-sub').textContent = sm.total
-    ? 'Switching it all off keeps the TV’s features working. It can be undone under Advanced.'
-    : 'If an LG update switches anything back on, it shows here.';
+    ? t('pv.allOff.hint', 'Switching it all off keeps the TV\u2019s features working. It can be undone under Advanced.')
+    : t('pv.allOff.watch', 'If an LG update switches anything back on, it shows here.');
   q('ps-areas').innerHTML = sm.areas.map(a => {
     const n = a.items.length;
     return `<div class="ps-area">` +
-      `<span class="ps-st${n ? ' warn' : ''}">${n ? n + ' on' : 'Off'}</span>` +
+      `<span class="ps-st${n ? ' warn' : ''}">${esc(n ? t('pv.areaOn', '{n} on', { n }) : t('common.off', 'Off'))}</span>` +
       `<div class="n">${esc(a.name)}</div><div class="d">${esc(a.detail)}</div>` +
-      (n ? `<div class="on"><b>Still on</b> &middot; ${a.items.map(i => esc(i.label)).join(', ')}</div>` : '') +
+      (n ? `<div class="on"><b>${esc(t('pv.stillOnLabel', 'Still on'))}</b> &middot; ${a.items.map(i => esc(i.label)).join(', ')}</div>` : '') +
       `</div>`;
   }).join('');
   const go = q('ps-go');
   if (!go.dataset.busy) {
     go.disabled = !sm.total || d.consentWritable === false;
-    go.textContent = sm.total ? 'Switch it all off' : 'All switched off';
+    go.textContent = sm.total ? t('pv.switchAllOff', 'Switch it all off') : t('pv.allSwitchedOff', 'All switched off');
   }
   q('ps-keep').hidden = !sm.kept.length;
   q('ps-keep').textContent = sm.kept.length
-    ? 'Left on because they run features: ' + sm.kept.join(', ') + '. They can be switched off under Advanced.'
+    ? t('pv.kept', 'Left on because they run features: {names}. They can be switched off under Advanced.', { names: sm.kept.join(', ') })
     : '';
 }
 
@@ -2588,11 +2588,11 @@ async function switchAllOff() {
   const go = q('ps-go'), msg = q('ps-msg');
   go.disabled = true;
   go.dataset.busy = '1';
-  go.textContent = 'Switching off…';
+  go.textContent = t('pv.switchingOff', 'Switching off\u2026');
   msg.textContent = '';
   const r = await c('privacyAllOff');
   delete go.dataset.busy;
-  msg.textContent = r && r.ok ? 'Done.' : '';
+  msg.textContent = r && r.ok ? t('pv.done', 'Done.') : '';
   loadPrivacy();
 }
 
@@ -2613,10 +2613,10 @@ async function loadPrivacy() {
      * pill beside it already says.
      */
     q('pv-live').innerHTML =
-      pvRow('Content recognition', 'LG’s ACR captures what’s on your screen to target ads at you.',
-          `<span class="pill ${a.active ? 'warn' : 'good'}">${a.active ? 'Running' : 'Not running'}</span>`) +
-      pvRow('Screen capturing', 'Sampling frames from the screen for recognition.',
-          `<span class="pill ${a.capturing ? 'warn' : 'good'}">${a.capturing ? 'Capturing' : 'Stopped'}</span>`);
+      pvRow(esc(t('pv.acr', 'Content recognition')), esc(t('pv.acr.desc', 'LG\u2019s ACR captures what\u2019s on your screen to target ads at you.')),
+          `<span class="pill ${a.active ? 'warn' : 'good'}">${esc(a.active ? t('pv.running', 'Running') : t('pv.notRunning', 'Not running'))}</span>`) +
+      pvRow(esc(t('pv.capture', 'Screen capturing')), esc(t('pv.capture.desc', 'Sampling frames from the screen for recognition.')),
+          `<span class="pill ${a.capturing ? 'warn' : 'good'}">${esc(a.capturing ? t('pv.capturing', 'Capturing') : t('pv.stopped', 'Stopped'))}</span>`);
 
     // advertising id
     const ad = d.advertisingId || {};
@@ -2628,19 +2628,19 @@ async function loadPrivacy() {
     // available === false means the call does not exist on this firmware, which
     // is not the same answer as "no identifier assigned".
     const adOk = ad.available !== false;
-    q('pv-adid').innerHTML = pvRow('Advertising ID',
-      !adOk ? 'This firmware does not answer the call that reads it.'
-            : ad.present ? 'The value is deliberately not displayed here.'
-                         : 'No identifier is currently assigned.',
-      !adOk ? '<span class="pill idle">Not readable</span>'
-            : `<span class="pill ${ad.present ? 'warn' : 'good'}">${ad.present ? 'Assigned' : 'None'}</span>`);
+    q('pv-adid').innerHTML = pvRow(esc(t('pv.adid.row', 'Advertising ID')),
+      esc(!adOk ? t('pv.adid.unreadable', 'This firmware does not answer the call that reads it.')
+            : ad.present ? t('pv.adid.hidden', 'The value is deliberately not displayed here.')
+                         : t('pv.adid.none', 'No identifier is currently assigned.')),
+      !adOk ? `<span class="pill idle">${esc(t('pv.notReadable', 'Not readable'))}</span>`
+            : `<span class="pill ${ad.present ? 'warn' : 'good'}">${esc(ad.present ? t('pv.adid.assigned', 'Assigned') : t('pv.adid.noneShort', 'None'))}</span>`);
     q('pv-lmt').innerHTML = pvRow(
-      ad.limitTrackingLabel || 'Limit ad tracking',
-      adOk ? (ad.limitTrackingDetail || '') : 'Read from the same call, so it is unknown here.',
-      !adOk ? '<span class="pill idle">Unknown</span>'
+      esc(ad.limitTrackingLabel || t('pv.lmt', 'Limit ad tracking')),
+      esc(adOk ? (ad.limitTrackingDetail || '') : t('pv.lmt.unknown', 'Read from the same call, so it is unknown here.')),
+      !adOk ? `<span class="pill idle">${esc(t('pv.unknown', 'Unknown'))}</span>`
             : d.consentWritable
-            ? `<button class="pill ${ad.limitTracking ? 'good' : 'warn'}" id="lmt-toggle" data-next="${ad.limitTracking ? '0' : '1'}">${ad.limitTracking ? 'On' : 'Off'}</button>`
-            : `<span class="pill ${ad.limitTracking ? 'good' : 'warn'}">${ad.limitTracking ? 'On' : 'Off'}</span>`);
+            ? `<button class="pill ${ad.limitTracking ? 'good' : 'warn'}" id="lmt-toggle" data-next="${ad.limitTracking ? '0' : '1'}">${esc(ad.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'))}</button>`
+            : `<span class="pill ${ad.limitTracking ? 'good' : 'warn'}">${esc(ad.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'))}</span>`);
     // The two ad actions go through the same service, so they cannot work either.
     for (const id of ['adid-reset', 'adcookies-clear']) {
       const btn = q(id);
@@ -2654,7 +2654,7 @@ async function loadPrivacy() {
     // A flag cannot be off while an agreement it shares stays accepted, so the
     // rows it takes with it are named before the click, not after.
     const shared = f => f.sharesWith && f.sharesWith.length
-      ? ` <span class="k">&middot; switching this off also switches off ${esc(f.sharesWith.join(', '))}</span>`
+      ? ` <span class="k">&middot; ${esc(t('pv.sharesWith', 'switching this off also switches off {names}', { names: f.sharesWith.join(', ') }))}</span>`
       : '';
     const rows = c.known.map(f => ({ ...f, name: f.label, detail: esc(f.detail || '') + shared(f) }))
       .concat((c.other || []).map(f => ({
@@ -2685,32 +2685,31 @@ async function loadPrivacy() {
       // heading above every row is worse than none.
       html += '<div class="pv-grp">' +
               (title ? `<div class="pv-g"><span>${esc(title)}</span>` +
-                       `<span class="c">${on} of ${groupTotal} on</span></div>` : '') +
+                       `<span class="c">${esc(t('pv.groupOn', '{on} of {total} on', { on, total: groupTotal }))}</span></div>` : '') +
               (note ? `<div class="pv-gn">${esc(note)}</div>` : '') +
               inGroup.map(f => pvRow(esc(f.name), f.detail, pvConsentPill(f, cw))).join('') +
               (anon.length ? pvRow(
-                anon.length + ' unidentified flag' + (anon.length === 1 ? '' : 's'),
-                'Recorded by the TV, tied to no agreement on this firmware and not writable.',
+                esc(anon.length === 1 ? t('pv.anon.one', '1 unidentified flag') : t('pv.anon', '{n} unidentified flags', { n: anon.length })),
+                esc(t('pv.anon.desc', 'Recorded by the TV, tied to no agreement on this firmware and not writable.')),
                 `<span class="pill fixed ${anon.some(f => f.enabled) ? 'warn' : 'good'}">` +
-                  (anon.some(f => f.enabled)
-                    ? anon.filter(f => f.enabled).length + ' on'
-                    : 'All off') + '</span>') : '') +
+                  esc(anon.some(f => f.enabled)
+                    ? t('pv.areaOn', '{n} on', { n: anon.filter(f => f.enabled).length })
+                    : t('pv.allOffShort', 'All off')) + '</span>') : '') +
               '</div>';
     }
-    q('pv-consent').innerHTML = html || '<div class="d">Could not read the agreements file.</div>';
+    q('pv-consent').innerHTML = html || `<div class="d">${esc(t('pv.consent.failed', 'Could not read the agreements file.'))}</div>`;
+    // The menu path is set in bold inside the sentence, so it goes in after escaping.
     q('pv-consent-note').innerHTML = cw
-      ? 'These write to the TV and survive a reboot. A flag records what the TV stored ' +
-        '&mdash; it is not proof LG honours it. Dimmed rows are read-only, each for the ' +
-        'reason given beside it.'
-      : 'Controls are disabled in config.json, so these can only be read. Change them on the TV ' +
-        'under <b>Settings &rarr; General &rarr; About This TV &rarr; User Agreements</b>.';
+      ? esc(t('pv.consent.note', 'These write to the TV and survive a reboot. A flag records what the TV stored \u2014 it is not proof LG honours it. Dimmed rows are read-only, each for the reason given beside it.'))
+      : esc(t('pv.consent.readOnly', 'Controls are disabled in config.json, so these can only be read. Change them on the TV under {path}.'))
+          .replace('{path}', '<b>' + esc(t('pv.consent.path', 'Settings \u2192 General \u2192 About This TV \u2192 User Agreements')) + '</b>');
     /* A folded section still has to say where it stands, or folding it just
        hides the answer. Off is the private setting, so the count is of the
        agreements that are on. */
     const allConsent = (c.known || []).concat(c.other || []);
     const onCount = allConsent.filter(f => f.enabled).length;
     q('pv-consent-cur').textContent = allConsent.length
-      ? onCount + ' of ' + allConsent.length + ' on' : '';
+      ? t('pv.groupOn', '{on} of {total} on', { on: onCount, total: allConsent.length }) : '';
 
     // services
     /*
@@ -2721,10 +2720,10 @@ async function loadPrivacy() {
      */
     const dae = (d.daemons || []).filter(x => !x.onDemand);
     q('pv-daemons').innerHTML = dae.map(x => {
-      const state = x.running ? 'Running' : 'Stopped';
+      const state = x.running ? t('pv.running', 'Running') : t('pv.stopped', 'Stopped');
       const cls = x.running ? 'idle' : 'good';
-      const note = x.heldDown ? ' <span class="k">&middot; kept stopped at boot</span>' : '';
-      const pill = `<span class="pill ${cls}">${state}</span>`;
+      const note = x.heldDown ? ` <span class="k">&middot; ${esc(t('pv.heldDown', 'kept stopped at boot'))}</span>` : '';
+      const pill = `<span class="pill ${cls}">${esc(state)}</span>`;
       return pvRow(esc(x.label), esc(x.detail) + note, pill);
     }).join('');
     const liveOn = (d.acr && d.acr.active ? 1 : 0) + (d.acr && d.acr.capturing ? 1 : 0);
@@ -2734,36 +2733,30 @@ async function loadPrivacy() {
      * the dashboard: webOS 9 has an initctl that lists no jobs, so the rows are
      * read-only there and the note must not promise otherwise.
      */
-    q('pv-running-note').innerHTML =
-      'A service can be running with its permission switched off &mdash; it simply has ' +
-      'nothing it is allowed to send. ' +
-      'They are switched off in the Apps tab, under Turn off background services, which keeps them ' +
-      'off across reboots.' +
-      ' LG\'s recognition and advertising services are not listed: anything that asks them a ' +
-      'question starts them, this panel included.';
+    q('pv-running-note').textContent = t('pv.runningNow.note',
+      'A service can be running with its permission switched off \u2014 it simply has nothing it is allowed to send. ' +
+      'They are switched off in the Apps tab, under Turn off background services, which keeps them off across reboots. ' +
+      'LG\'s recognition and advertising services are not listed: anything that asks them a question starts them, this panel included.');
 
     q('pv-running-cur').textContent = dae.length
-      ? (dae.filter(x => x.running).length + liveOn) + ' of ' + total + ' running' : '';
+      ? t('pv.runningOf', '{n} of {total} running', { n: dae.filter(x => x.running).length + liveOn, total }) : '';
 
     // ad blocker
     const ab = d.adblock || {};
     const mode = ab.mode || (ab.enabled ? 'full' : 'off');
-    const AB = {
-      off:  { label: 'Off',
-              detail: 'Nothing is blocked. LG’s advertising and telemetry addresses work as normal.' },
-      ads:  { label: 'Ads & telemetry',
-              detail: `Blocks advertising, tracking and diagnostics addresses. LG's app ` +
-                      `store and software updates still work.` },
-      full: { label: 'Everything',
-              detail: `Also blocks LG's platform services, so the app store and software updates may stop working.` }
-    }[mode] || {};
-    q('adblock-detail').textContent = AB.detail || '';
+    q('adblock-detail').textContent = mode === 'off'
+      ? t('pv.adblock.off.detail', 'Nothing is blocked. LG\u2019s advertising and telemetry addresses work as normal.')
+      : mode === 'ads'
+      ? t('pv.adblock.ads.detail', 'Blocks advertising, tracking and diagnostics addresses. LG\'s app store and software updates still work.')
+      : mode === 'full'
+      ? t('pv.adblock.full.detail', 'Also blocks LG\'s platform services, so the app store and software updates may stop working.')
+      : '';
     for (const m of ['off', 'ads', 'full']) {
       const btn = q('ab-' + m);
       if (btn) btn.classList.toggle('on', m === mode);
     }
   } catch (e) {
-    q('pv-live').innerHTML = '<div class="d">Could not load privacy information &mdash; ' + e.message + '</div>';
+    q('pv-live').innerHTML = `<div class="d">${esc(t('pv.failed', 'Could not load privacy information \u2014 {error}', { error: e.message }))}</div>`;
   }
 }
 
@@ -2983,7 +2976,8 @@ function pageHost(url) {
 
 function renderSavedPages(d) {
   const pages = d.savedPages || [];
-  q('apps-pages-summary').textContent = !pages.length ? 'None yet' : pages.length === 1 ? '1 page' : pages.length + ' pages';
+  q('apps-pages-summary').textContent = !pages.length ? t('apps.pages.none', 'None yet')
+    : pages.length === 1 ? t('apps.pages.one', '1 page') : t('apps.pages.count', '{n} pages', { n: pages.length });
   q('page-add').hidden = !d.writable;
   q('apps-pages-list').innerHTML = pages.map(p => {
     const id = esc(p.launchPointId);
@@ -2991,11 +2985,11 @@ function renderSavedPages(d) {
     return `<div class="prot-row" id="page-${id}">
       <div class="prot-main">
         <div class="prot-title">${esc(p.title)}</div>
-        <div class="prot-desc">${esc(where || 'Saved page')}${p.renamed ? ' &middot; renamed' : ''}</div>
+        <div class="prot-desc">${esc(where || t('apps.pages.saved', 'Saved page'))}${p.renamed ? ' &middot; ' + esc(t('apps.pages.renamed', 'renamed')) : ''}</div>
       </div>
       <div class="prot-status page-acts">
-        <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>Edit</button>
-        <button type="button" class="pill bad" onclick="removePage('${id}')" ${d.writable ? '' : 'disabled'}>Remove</button>
+        <button type="button" class="pill idle" onclick="editPage('${id}')" ${d.writable ? '' : 'disabled'}>${esc(t('apps.pages.edit', 'Edit'))}</button>
+        <button type="button" class="pill bad" onclick="removePage('${id}')" ${d.writable ? '' : 'disabled'}>${esc(t('apps.pages.remove', 'Remove'))}</button>
       </div>
     </div>`;
   }).join('');
@@ -3010,12 +3004,12 @@ function editPage(lpId) {
   row.innerHTML = `<div class="prot-main">
       <form class="toast-form page-edit" onsubmit="event.preventDefault();savePage('${id}')">
         <input type="text" id="page-url-${id}" maxlength="2048" autocomplete="off" spellcheck="false"
-          placeholder="Web address" value="${esc(p.address)}" aria-label="Web address" ${cancel}>
+          placeholder="${esc(t('apps.pages.url', 'Web address'))}" value="${esc(p.address)}" aria-label="${esc(t('apps.pages.url', 'Web address'))}" ${cancel}>
         <input type="text" id="page-name-${id}" maxlength="60" autocomplete="off" spellcheck="false"
-          placeholder="${p.renamed ? 'Empty puts back its own title' : 'Name'}" value="${esc(p.title)}"
-          aria-label="Name" ${cancel}>
-        <button type="submit">Save</button>
-        <button type="button" onclick="renderSavedPages(appsData)">Cancel</button>
+          placeholder="${esc(p.renamed ? t('apps.pages.resetName', 'Empty puts back its own title') : t('apps.pages.name', 'Name'))}" value="${esc(p.title)}"
+          aria-label="${esc(t('apps.pages.name', 'Name'))}" ${cancel}>
+        <button type="submit">${esc(t('apps.pages.save', 'Save'))}</button>
+        <button type="button" onclick="renderSavedPages(appsData)">${esc(t('common.cancel', 'Cancel'))}</button>
       </form>
       <div class="sub page-add-msg" id="page-msg-${id}" role="alert"></div>
     </div>`;
@@ -3038,7 +3032,7 @@ async function addPage() {
     // Beside the field it is about, and in a sentence's case: the server's
     // messages are written to follow "Could not add it:" elsewhere.
     if (!r.ok || !j.ok) {
-      const e = j.error || 'Could not add it';
+      const e = j.error || t('apps.pages.addFailed', 'Could not add it');
       msg.textContent = e.charAt(0).toUpperCase() + e.slice(1) + '.';
       url.focus();
     } else { url.value = ''; name.value = ''; }
@@ -3049,14 +3043,14 @@ async function addPage() {
 
 async function removePage(lpId) {
   const p = ((appsData && appsData.savedPages) || []).find(x => x.launchPointId === lpId);
-  if (!p || !confirm('Remove "' + p.title + '" from the home screen?')) return;
+  if (!p || !confirm(t('apps.pages.remove.confirm', 'Remove "{name}" from the home screen?', { name: p.title }))) return;
   try {
     const r = await fetch(api('/api/apps/remove-page'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ launchPointId: lpId })
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) showErr(j.error || 'Could not remove it');
+    if (!r.ok || !j.ok) showErr(j.error || t('apps.pages.removeFailed', 'Could not remove it'));
   } catch (e) { showErr(e.message); }
   loadApps();
 }
@@ -3073,7 +3067,7 @@ async function savePage(lpId) {
     const j = await r.json().catch(() => ({}));
     // A refused edit stays open with the reason, so nothing typed is lost.
     if (!r.ok || !j.ok) {
-      const e = j.error || 'Could not save it';
+      const e = j.error || t('apps.pages.saveFailed', 'Could not save it');
       msg.textContent = e.charAt(0).toUpperCase() + e.slice(1) + '.';
       return;
     }
@@ -3092,11 +3086,12 @@ function renderAppsPanel() {
   const instSummary = q('apps-installed-summary');
   const installed = d.installed || [];
 
-  if (instSummary) instSummary.textContent = installed.length + ' apps';
+  const appCount = n => n === 1 ? t('apps.count.one', '1 app') : t('apps.count', '{n} apps', { n });
+  if (instSummary) instSummary.textContent = appCount(installed.length);
 
   if (instList) {
     if (installed.length === 0) {
-      instList.innerHTML = '<div class="sub" style="padding:16px 0">No removable apps found on the TV.</div>';
+      instList.innerHTML = `<div class="sub" style="padding:16px 0">${esc(t('apps.installed.none', 'No removable apps found on the TV.'))}</div>`;
     } else {
       instList.innerHTML = installed.map(app => {
         const title = esc(app.title || app.id);
@@ -3107,10 +3102,10 @@ function renderAppsPanel() {
           <img src="${iconUrl}" width="38" height="38" style="border-radius:8px;object-fit:contain;background:var(--w06);flex-shrink:0" onerror="this.style.display='none'">
           <div class="prot-main">
             <div class="prot-title">${title} <span class="prot-sub">&middot; ${id}</span></div>
-            <div class="prot-desc">${esc(meta || 'Installed app')}</div>
+            <div class="prot-desc">${esc(meta || t('apps.installed.app', 'Installed app'))}</div>
           </div>
           <div class="prot-status">
-            <button type="button" class="pill bad" id="btn-uninstall-${id}" onclick="confirmUninstall('${id}', '${title}')" ${!d.writable ? 'disabled' : ''}>Uninstall</button>
+            <button type="button" class="pill bad" id="btn-uninstall-${id}" onclick="confirmUninstall('${id}', '${title}')" ${!d.writable ? 'disabled' : ''}>${esc(t('apps.uninstall.button', 'Uninstall'))}</button>
           </div>
         </div>`;
       }).join('');
@@ -3151,23 +3146,25 @@ function renderAppsPanel() {
       hiddenCount.style.display = 'none';
     } else {
       hiddenCount.style.display = '';
-      hiddenCount.textContent = numHidden > 0 ? numHidden + ' hidden of ' + tiles.length + ' apps' : 'All ' + tiles.length + ' apps visible';
+      hiddenCount.textContent = numHidden > 0
+        ? t('apps.tiles.hiddenOf', '{hidden} hidden of {n} apps', { hidden: numHidden, n: tiles.length })
+        : t('apps.tiles.allVisible', 'All {n} apps visible', { n: tiles.length });
     }
   }
 
   if (tilesSummary) {
     if (!tileHidingEnabled) {
-      tilesSummary.textContent = 'Off';
+      tilesSummary.textContent = t('common.off', 'Off');
     } else {
-      tilesSummary.textContent = numHidden > 0 ? numHidden + ' hidden' : tiles.length + ' apps';
+      tilesSummary.textContent = numHidden > 0 ? t('apps.tiles.hidden', '{n} hidden', { n: numHidden }) : appCount(tiles.length);
     }
   }
 
   if (tilesList) {
     if (!tileHidingEnabled) {
-      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">All built-in apps are visible (stock behavior). Select <b>On (Custom)</b> above to hide apps from the home launcher.</div>';
+      tilesList.innerHTML = `<div class="sub" style="padding:16px 0">${esc(t('apps.tiles.stock', 'All built-in apps are visible (stock behavior). Select On (Custom) above to hide apps from the home launcher.'))}</div>`;
     } else if (tiles.length === 0) {
-      tilesList.innerHTML = '<div class="sub" style="padding:16px 0">No eligible system apps found.</div>';
+      tilesList.innerHTML = `<div class="sub" style="padding:16px 0">${esc(t('apps.tiles.none', 'No eligible system apps found.'))}</div>`;
     } else {
       tilesList.innerHTML = tiles.map(tile => {
         const title = esc(tile.title || tile.id);
@@ -3178,10 +3175,10 @@ function renderAppsPanel() {
           <img src="${iconUrl}" width="38" height="38" style="border-radius:8px;object-fit:contain;background:var(--w06);flex-shrink:0" onerror="this.style.display='none'">
           <div class="prot-main">
             <div class="prot-title">${title} <span class="prot-sub">&middot; ${id}</span></div>
-            <div class="prot-desc">${isHidden ? 'Hidden from home launcher ribbon' : 'Visible on home launcher ribbon'}</div>
+            <div class="prot-desc">${esc(isHidden ? t('apps.tile.hidden.desc', 'Hidden from home launcher ribbon') : t('apps.tile.visible.desc', 'Visible on home launcher ribbon'))}</div>
           </div>
           <div class="prot-status">
-            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" id="btn-tile-${id}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${isHidden ? 'Hidden' : 'Visible'}</button>
+            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" id="btn-tile-${id}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${esc(isHidden ? t('apps.tile.hidden', 'Hidden') : t('apps.tile.visible', 'Visible'))}</button>
           </div>
         </div>`;
       }).join('');
@@ -3201,7 +3198,9 @@ function renderAppsPanel() {
       svcsDisc.hidden = false;
       const numDisabled = svcs.filter(s => s.disabled).length;
       if (svcsSummary) {
-        svcsSummary.textContent = numDisabled > 0 ? numDisabled + ' disabled of ' + svcs.length : svcs.length + ' services';
+        svcsSummary.textContent = numDisabled > 0
+          ? t('apps.services.disabledOf', '{disabled} disabled of {n}', { disabled: numDisabled, n: svcs.length })
+          : svcs.length === 1 ? t('apps.services.one', '1 service') : t('apps.services.count', '{n} services', { n: svcs.length });
       }
       if (svcsList) {
         svcsList.innerHTML = svcs.map(svc => {
@@ -3219,7 +3218,8 @@ function renderAppsPanel() {
             </div>
             <div class="prot-status" style="display:flex;align-items:center;gap:10px">
               ${badge ? `<span class="pv-badge" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--w06);color:var(--t2)">${badge}</span>` : ''}
-              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ' title="Switched off, but something on the TV has started it again."' : ''}>${stillRunning ? 'Disabled, still running' : isDisabled ? 'Disabled' : 'Active'}</button>
+              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ` title="${esc(t('apps.service.restarted', 'Switched off, but something on the TV has started it again.'))}"` : ''}>${esc(stillRunning
+                ? t('apps.service.stillRunning', 'Disabled, still running') : isDisabled ? t('apps.service.disabled', 'Disabled') : t('apps.service.active', 'Active'))}</button>
             </div>
           </div>`;
         }).join('');
@@ -3232,7 +3232,7 @@ async function toggleService(serviceId, makeDisabled) {
   const btn = document.getElementById('btn-svc-' + serviceId);
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Updating…';
+    btn.textContent = t('apps.service.updating', 'Updating\u2026');
   }
   try {
     const res = await fetch(api('/api/services/toggle'), {
@@ -3250,27 +3250,27 @@ async function toggleService(serviceId, makeDisabled) {
     } else {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = makeDisabled ? 'Active' : 'Disabled';
+        btn.textContent = makeDisabled ? t('apps.service.active', 'Active') : t('apps.service.disabled', 'Disabled');
       }
-      alert('Could not update service: ' + ((d && d.error) || 'unknown error'));
+      alert(t('apps.service.failed', 'Could not update service: {error}', { error: (d && d.error) || t('common.unknownError', 'unknown error') }));
     }
   } catch (e) {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = makeDisabled ? 'Active' : 'Disabled';
+      btn.textContent = makeDisabled ? t('apps.service.active', 'Active') : t('apps.service.disabled', 'Disabled');
     }
-    alert('Error updating service: ' + e.message);
+    alert(t('apps.service.failed', 'Could not update service: {error}', { error: e.message }));
   }
 }
 
 async function confirmUninstall(appId, appTitle) {
-  if (!confirm('Uninstall "' + appTitle + '" from the TV?\n\nThis will permanently delete the application and its stored data.')) {
+  if (!confirm(t('apps.uninstall.confirm', 'Uninstall "{name}" from the TV?\n\nThis will permanently delete the application and its stored data.', { name: appTitle }))) {
     return;
   }
   const btn = document.getElementById('btn-uninstall-' + appId);
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Uninstalling…';
+    btn.textContent = t('apps.uninstall.working', 'Uninstalling\u2026');
   }
   try {
     const res = await fetch(api('/api/apps/uninstall'), {
@@ -3289,16 +3289,16 @@ async function confirmUninstall(appId, appTitle) {
     } else {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Uninstall';
+        btn.textContent = t('apps.uninstall.button', 'Uninstall');
       }
-      alert('Could not uninstall ' + appTitle + ': ' + ((d && d.error) || 'unknown error'));
+      alert(t('apps.uninstall.failed', 'Could not uninstall {name}: {error}', { name: appTitle, error: (d && d.error) || t('common.unknownError', 'unknown error') }));
     }
   } catch (e) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = 'Uninstall';
     }
-    alert('Error uninstalling ' + appTitle + ': ' + e.message);
+    alert(t('apps.uninstall.failed', 'Could not uninstall {name}: {error}', { name: appTitle, error: e.message }));
   }
 }
 
@@ -3307,7 +3307,7 @@ async function toggleTileVisibility(appId, makeHidden) {
   const btn = document.getElementById('btn-tile-' + appId);
   if (btn) {
     btn.disabled = true;
-    btn.textContent = makeHidden ? 'Hiding…' : 'Restoring…';
+    btn.textContent = makeHidden ? t('apps.tile.hiding', 'Hiding\u2026') : t('apps.tile.restoring', 'Restoring\u2026');
   }
   try {
     const res = await fetch(api(ep), {
@@ -3332,16 +3332,16 @@ async function toggleTileVisibility(appId, makeHidden) {
     } else {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = makeHidden ? 'Visible' : 'Hidden';
+        btn.textContent = makeHidden ? t('apps.tile.visible', 'Visible') : t('apps.tile.hidden', 'Hidden');
       }
-      alert('Could not update tile: ' + ((d && d.error) || 'unknown error'));
+      alert(t('apps.tile.failed', 'Could not update tile: {error}', { error: (d && d.error) || t('common.unknownError', 'unknown error') }));
     }
   } catch (e) {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = makeHidden ? 'Visible' : 'Hidden';
+      btn.textContent = makeHidden ? t('apps.tile.visible', 'Visible') : t('apps.tile.hidden', 'Hidden');
     }
-    alert('Error updating tile: ' + e.message);
+    alert(t('apps.tile.failed', 'Could not update tile: {error}', { error: e.message }));
   }
 }
 
@@ -3364,11 +3364,11 @@ async function setTileHiding(enabled) {
       }
       await loadApps();
     } else {
-      alert('Could not update tile hiding: ' + ((d && d.error) || 'unknown error'));
+      alert(t('apps.tiles.failed', 'Could not update tile hiding: {error}', { error: (d && d.error) || t('common.unknownError', 'unknown error') }));
       renderAppsPanel();
     }
   } catch (e) {
-    alert('Error updating tile hiding: ' + e.message);
+    alert(t('apps.tiles.failed', 'Could not update tile hiding: {error}', { error: e.message }));
     renderAppsPanel();
   } finally {
     if (btnOff) btnOff.disabled = false;
@@ -3747,20 +3747,21 @@ document.addEventListener('click', async ev => {
 function togglePrivacy() { showTab(activeTab === 'privacy' ? 'control' : 'privacy'); }
 
 async function privAction(action) {
-  const nice = action === 'resetAdId' ? 'reset the advertising ID' : 'clear ad cookies';
-  if (!confirm('Really ' + nice + '?')) return;
+  const question = action === 'resetAdId' ? t('pv.adid.reset.confirm', 'Really reset the advertising ID?')
+    : t('pv.cookies.clear.confirm', 'Really clear ad cookies?');
+  if (!confirm(question)) return;
   try {
     const r = await fetch(api('/api/control'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     });
     const j = await r.json();
-    if (!j.ok) { showErr(j.error || 'Action failed'); return; }
+    if (!j.ok) { showErr(j.error || t('common.actionFailed', 'Action failed')); return; }
     if (action === 'resetAdId') {
       // The TV compared old and new for us; neither value came back.
       q('pv-adnote').textContent = j.changed
-        ? 'Reset — the TV issued a new identifier.'
-        : 'Reset was accepted, but the identifier did not change.';
+        ? t('pv.adid.reset.done', 'Reset \u2014 the TV issued a new identifier.')
+        : t('pv.adid.reset.same', 'Reset was accepted, but the identifier did not change.');
     }
   } catch (e) { showErr(e.message); return; }
   setTimeout(loadPrivacy, 800);
@@ -3783,8 +3784,8 @@ function cfgToggle(id) {
 function cfgSyncEnabled() {
   const on = q('cfg-enabled').classList.contains('on');
   q('cfg-enabled-note').textContent = on
-    ? 'The TV publishes telemetry and accepts commands over MQTT.'
-    : 'Nothing is published. The dashboard is unaffected.';
+    ? t('mqtt.enabled.on', 'The TV publishes telemetry and accepts commands over MQTT.')
+    : t('mqtt.enabled.off', 'Nothing is published. The dashboard is unaffected.');
 }
 
 // Certificate verification is meaningless without TLS, so it follows it.
@@ -3794,19 +3795,19 @@ function cfgSyncTls() {
 }
 
 const CFG_STATE = {
-  connected:  { pill: 'good', label: 'Connected' },
-  connecting: { pill: 'warn', label: 'Connecting' },
-  error:      { pill: 'bad',  label: 'Error' },
-  disabled:   { pill: 'idle', label: 'Off' }
+  connected:  { pill: 'good', label: t('mqtt.state.connected', 'Connected') },
+  connecting: { pill: 'warn', label: t('mqtt.state.connecting', 'Connecting') },
+  error:      { pill: 'bad',  label: t('mqtt.state.error', 'Error') },
+  disabled:   { pill: 'idle', label: t('common.off', 'Off') }
 };
 
 function cfgAge(ms) {
-  if (ms == null) return 'not yet';
+  if (ms == null) return t('mqtt.age.never', 'not yet');
   const s = Math.round(ms / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return s + 's ago';
-  if (s < 3600) return Math.round(s / 60) + 'm ago';
-  return Math.round(s / 3600) + 'h ago';
+  if (s < 5) return t('mqtt.age.now', 'just now');
+  if (s < 60) return t('mqtt.age.seconds', '{n}s ago', { n: s });
+  if (s < 3600) return t('mqtt.age.minutes', '{n}m ago', { n: Math.round(s / 60) });
+  return t('mqtt.age.hours', '{n}h ago', { n: Math.round(s / 3600) });
 }
 
 function renderCfgStatus(st) {
@@ -3815,19 +3816,18 @@ function renderCfgStatus(st) {
   pill.className = 'pill ' + meta.pill;
   pill.textContent = meta.label;
 
-  const broker = st.broker + (st.tls ? ' over TLS' : '');
+  const broker = st.tls ? t('mqtt.broker.tls', '{broker} over TLS', { broker: st.broker }) : st.broker;
+  // st.detail is the server's own words, in English.
+  const detail = st.detail ? st.detail.charAt(0).toUpperCase() + st.detail.slice(1) + '.' : '';
   let text;
   if (st.state === 'connected') {
-    text = 'Publishing to ' + broker + '. Last telemetry ' + cfgAge(st.lastPublishMs) + '.';
+    text = t('mqtt.status.connected', 'Publishing to {broker}. Last telemetry {age}.', { broker, age: cfgAge(st.lastPublishMs) });
   } else if (st.state === 'connecting') {
-    text = (st.detail ? st.detail.charAt(0).toUpperCase() + st.detail.slice(1) + '. ' : '') +
-           'Reaching ' + broker + '.';
+    text = (detail ? detail + ' ' : '') + t('mqtt.status.connecting', 'Reaching {broker}.', { broker });
   } else if (st.state === 'error') {
-    text = broker + ': ' + st.detail + '. Retrying every 5s.';
+    text = t('mqtt.status.error', '{broker}: {detail}. Retrying every 5s.', { broker, detail: st.detail });
   } else {
-    text = st.detail
-      ? st.detail.charAt(0).toUpperCase() + st.detail.slice(1) + '.'
-      : 'The bridge is off. Nothing is published.';
+    text = detail || t('mqtt.status.off', 'The bridge is off. Nothing is published.');
   }
   q('cfg-status-detail').textContent = text;
 }
@@ -3884,11 +3884,11 @@ function renderEntitiesUI() {
     entsHtml += `
       <div class="pv-row">
         <div>
-          <div class="n">${esc(cat.name)} <span class="cnt">(${count} ${count === 1 ? 'entity' : 'entities'})</span></div>
+          <div class="n">${esc(cat.name)} <span class="cnt">${esc(count === 1 ? t('mqtt.entities.one', '(1 entity)') : t('mqtt.entities.count', '({n} entities)', { n: count }))}</span></div>
           <div class="d">${esc(cat.desc)}</div>
         </div>
         <button type="button" class="pill ${catOn ? 'good' : 'idle'}" id="cfg-cat-${cat.id}" onclick="cfgToggleCat('${cat.id}')">
-          ${catOn ? 'Enabled' : 'Disabled'}
+          ${esc(catOn ? t('mqtt.cat.enabled', 'Enabled') : t('mqtt.cat.disabled', 'Disabled'))}
         </button>
       </div>`;
   }
@@ -3918,7 +3918,7 @@ function renderEntitiesUI() {
   }
 
   const countEl = q('cfg-fine-count');
-  if (countEl) countEl.textContent = `${totalActive} of ${totalEntities} active`;
+  if (countEl) countEl.textContent = t('mqtt.entities.active', '{n} of {total} active', { n: totalActive, total: totalEntities });
 }
 
 function cfgToggleCat(catId) {
@@ -3944,7 +3944,7 @@ async function loadSettings() {
   try {
     const r = await fetch(api('/api/settings'));
     const j = await r.json();
-    if (!j.ok) { cfgMsg(j.error || 'Could not read settings', 'bad'); return; }
+    if (!j.ok) { cfgMsg(j.error || t('mqtt.readFailed', 'Could not read settings'), 'bad'); return; }
     if (j.status) renderCfgStatus(j.status);
     const m = j.mqtt, d = j.device;
     q('cfg-host').value = m.host;
@@ -3953,8 +3953,8 @@ async function loadSettings() {
     q('cfg-pass').value = '';
     cfgPasswordSet = m.passwordSet;
     q('cfg-pass-hint').textContent = cfgPasswordSet
-      ? 'A password is set. Leave blank to keep it.'
-      : 'Stored on the TV in plain text.';
+      ? t('mqtt.password.set', 'A password is set. Leave blank to keep it.')
+      : t('mqtt.password.plain', 'Stored on the TV in plain text.');
     q('cfg-prefix').value = m.topicPrefix;
     q('cfg-disc').value = m.discoveryPrefix;
     q('cfg-devid').value = d.id;
@@ -3971,8 +3971,8 @@ async function loadSettings() {
     renderEntitiesUI();
     q('cfg-save-btn').disabled = !j.writable;
     cfgMsg(j.writable
-      ? 'Saving restarts the server. The dashboard reconnects on its own.'
-      : 'Controls are disabled in config.json, so settings cannot be changed from here.');
+      ? t('mqtt.save.note', 'Saving restarts the server. The dashboard reconnects on its own.')
+      : t('mqtt.controlsOff', 'Controls are disabled in config.json, so settings cannot be changed from here.'));
   } catch (e) { cfgMsg(e.message, 'bad'); }
 }
 
@@ -4004,15 +4004,15 @@ async function saveSettings() {
   if (pass !== '' || !cfgPasswordSet) body.mqtt.password = pass;
 
   q('cfg-save-btn').disabled = true;
-  cfgMsg('Saving...');
+  cfgMsg(t('mqtt.saving', 'Saving...'));
   try {
     const r = await fetch(api('/api/settings'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     const j = await r.json();
-    if (!j.ok) { cfgMsg(j.error || 'Save failed', 'bad'); q('cfg-save-btn').disabled = false; return; }
-    cfgMsg('Saved. Restarting...');
+    if (!j.ok) { cfgMsg(j.error || t('mqtt.saveFailed', 'Save failed'), 'bad'); q('cfg-save-btn').disabled = false; return; }
+    cfgMsg(t('mqtt.restarting', 'Saved. Restarting...'));
     await waitForServer();
   } catch (e) {
     cfgMsg(e.message, 'bad');
@@ -4032,7 +4032,7 @@ async function waitForServer() {
     try {
       const r = await fetch(api('/api/caps'), { cache: 'no-store' });
       if (r.ok) {
-        cfgMsg('Applied.', 'good');
+        cfgMsg(t('mqtt.applied', 'Applied.'), 'good');
         q('cfg-save-btn').disabled = false;
         loadSettings();
         tick();
@@ -4040,7 +4040,7 @@ async function waitForServer() {
       }
     } catch (e) { /* still down */ }
   }
-  cfgMsg('Saved, but the server did not come back. Check the log on the TV.', 'bad');
+  cfgMsg(t('mqtt.notBack', 'Saved, but the server did not come back. Check the log on the TV.'), 'bad');
   q('cfg-save-btn').disabled = false;
 }
 
