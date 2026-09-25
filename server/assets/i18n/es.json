@@ -1831,25 +1831,49 @@
   "text": "¿Conectar con Home Assistant?",
   "from": "Connect to Home Assistant?"
  },
+ "setup.handoff.backToSettings": {
+  "text": "Volver a Ajustes",
+  "from": "Back to Settings"
+ },
  "setup.handoff.expired": {
-  "text": "El código ha caducado. Pulsa OK para obtener uno nuevo.",
-  "from": "The code has expired. Press OK for a new one."
+  "text": "El código ha caducado.",
+  "from": "The code has expired."
  },
  "setup.handoff.failed": {
-  "text": "No se pudo abrir el enlace. Pulsa OK para reintentarlo.",
-  "from": "The link could not be opened. Press OK to try again."
+  "text": "No se pudo abrir el enlace.",
+  "from": "The link could not be opened."
  },
  "setup.handoff.notConnected": {
-  "text": "No se ha conectado. Comprueba los datos y pulsa OK para reintentarlo.",
-  "from": "It did not connect. Check the details and press OK to try again."
+  "text": "No se ha conectado. Puede que los datos del bróker no sean correctos o que no esté en marcha.",
+  "from": "It did not connect. The broker’s details may be wrong, or it may not be running."
  },
  "setup.handoff.preparing": {
   "text": "Preparando el enlace…",
   "from": "Setting up the link…"
  },
+ "setup.handoff.retry": {
+  "text": "Reintentar",
+  "from": "Try again"
+ },
+ "setup.handoff.retry.hint": {
+  "text": "Un código nuevo para escanear con el teléfono.",
+  "from": "A new code to scan with your phone."
+ },
  "setup.handoff.scan": {
   "text": "Escanea esto con la cámara de tu teléfono. Esta pantalla avanza sola en cuanto la TV se conecta.",
   "from": "Scan this with your phone’s camera. This screen moves on by itself once the TV connects."
+ },
+ "setup.handoff.skip": {
+  "text": "Omitir por ahora",
+  "from": "Skip for now"
+ },
+ "setup.handoff.skipHint": {
+  "text": "Pulsa Atrás para omitirlo. Puedes configurar Home Assistant en cualquier momento desde Ajustes.",
+  "from": "Press Back to skip. Home Assistant can be set up any time from Settings."
+ },
+ "setup.handoff.skipSettings": {
+  "text": "Pulsa Atrás para volver a Ajustes.",
+  "from": "Press Back to return to Settings."
  },
  "setup.handoff.title": {
   "text": "Termina en tu teléfono",

@@ -36,6 +36,7 @@ body{font-family:'Manrope',sans-serif}
 #qr .url{font-size:1.9vh;color:rgba(255,255,255,.45);margin-top:1.6vh}
 .wait{margin-top:5vh;font-size:2.8vh}.wait::before{content:'';display:inline-block;width:1vh;height:1vh;border-radius:50%;
   margin-right:2vh;vertical-align:middle;background:#1ec15f}
+.skip{margin-top:1.6vh;font-size:2.1vh;color:rgba(255,255,255,.45)}
 .dots{position:absolute;left:8vw;bottom:7vh;display:flex;gap:1vh}
 .dots i{display:block;width:3.4vh;height:.5vh;border-radius:.3vh;background:rgba(255,255,255,.2)}.dots i.on{background:#fff}
 </style>
@@ -155,7 +156,10 @@ body{font-family:'Manrope',sans-serif}
     } else if (name === 'handoff') {
       render('<div class="step">Home Assistant</div><div class="title">' + esc(t('setup.handoff.title', 'Finish on your phone')) + '</div>' +
         '<div class="sub" id="hsub" style="max-width:44vw">' + esc(t('setup.handoff.preparing', 'Setting up the link…')) + '</div>' +
-        '<div class="wait" id="hwait" style="visibility:hidden">' + esc(t('setup.handoff.waiting', 'Waiting for your phone…')) + '</div>' + dots(3));
+        '<div class="wait" id="hwait" style="visibility:hidden">' + esc(t('setup.handoff.waiting', 'Waiting for your phone…')) + '</div>' +
+        '<div class="skip" id="hskip" style="visibility:hidden">' + esc(FROM_SETTINGS
+          ? t('setup.handoff.skipSettings', 'Press Back to return to Settings.')
+          : t('setup.handoff.skipHint', 'Press Back to skip. Home Assistant can be set up any time from Settings.')) + '</div>' + dots(3));
       startHandoff();
     } else if (name === 'standby') {
       rows = [
@@ -188,15 +192,35 @@ body{font-family:'Manrope',sans-serif}
     }
   }
 
+  /*
+   * When the link fails, the code runs out or the details do not connect,
+   * the code is dead: the QR code goes, and two rows offer a new code or a
+   * way on, so nobody is left on a screen that can only be escaped with Back.
+   */
+  function handoffChoices(message) {
+    if (poll) { clearInterval(poll); poll = null; }
+    var qr = document.getElementById('qr');
+    if (qr) qr.parentNode.removeChild(qr);
+    document.getElementById('hsub').textContent = message;
+    document.getElementById('hwait').style.display = 'none';
+    document.getElementById('hskip').style.display = 'none';
+    rows = [
+      { id: 'retry', label: t('setup.handoff.retry', 'Try again'),
+        hint: t('setup.handoff.retry.hint', 'A new code to scan with your phone.') },
+      { id: 'skip', label: FROM_SETTINGS ? t('setup.handoff.backToSettings', 'Back to Settings') : t('setup.handoff.skip', 'Skip for now'),
+        hint: t('setup.ha.later.hint', 'The dashboard works without it. Set it up any time from Settings.') }
+    ];
+    sel = 0;
+    stage.insertAdjacentHTML('beforeend', '<div class="rows" id="rows"></div><div id="hint"></div>');
+    drawRows();
+  }
+
   // The phone link: a one-time code in a QR code, then wait for the TV to connect.
   function startHandoff() {
     api('POST', { action: 'handoff' }, function (r) {
       if (screen !== 'handoff') return;
       var sub = document.getElementById('hsub');
-      if (!r || !r.ok || !r.url) {
-        sub.textContent = t('setup.handoff.failed', 'The link could not be opened. Press OK to try again.');
-        return;
-      }
+      if (!r || !r.ok || !r.url) return handoffChoices(t('setup.handoff.failed', 'The link could not be opened.'));
       sub.textContent = t('setup.handoff.scan', 'Scan this with your phone’s camera. This screen moves on by itself once the TV connects.');
       var qr = document.createElement('div');
       qr.id = 'qr';
@@ -205,6 +229,7 @@ body{font-family:'Manrope',sans-serif}
       qrDraw(qr.querySelector('svg'), r.url);
       qr.querySelector('.url').textContent = r.url.replace(/^https?:\/\//, '').replace(/\/\?c=.*/, '');
       document.getElementById('hwait').style.visibility = 'visible';
+      document.getElementById('hskip').style.visibility = 'visible';
       // The server closes the link and restarts once the phone sends its
       // details, so a failed poll means they arrived. No link and no restart,
       // twice running, means the code ran out instead.
@@ -221,11 +246,9 @@ body{font-family:'Manrope',sans-serif}
             wait.textContent = t('mqtt.state.connected', 'Connected');
             setTimeout(next, 1500);
           } else if (restarted && ha.state === 'error' && ++failedFor > 5) {
-            clearInterval(poll); poll = null;
-            wait.textContent = t('setup.handoff.notConnected', 'It did not connect. Check the details and press OK to try again.');
+            handoffChoices(t('setup.handoff.notConnected', 'It did not connect. The broker’s details may be wrong, or it may not be running.'));
           } else if (!restarted && !s.handoff && ++goneFor >= 2) {
-            clearInterval(poll); poll = null;
-            wait.textContent = t('setup.handoff.expired', 'The code has expired. Press OK for a new one.');
+            handoffChoices(t('setup.handoff.expired', 'The code has expired.'));
           }
         });
       }, 2000);
@@ -246,8 +269,13 @@ body{font-family:'Manrope',sans-serif}
     }
     if (screen === 'ha') return rows[sel].id === 'phone' ? show('handoff') : afterHa();
     if (screen === 'handoff') {
-      if (FROM_SETTINGS) return location.replace(DONE_URL);
       var ha = state.homeAssistant || {};
+      if (rows.length && rows[sel].id === 'skip') {
+        api('POST', { action: 'handoffStop' }, function () {});
+        return FROM_SETTINGS ? location.replace(DONE_URL) : afterHa();
+      }
+      if (rows.length) return show('handoff');          // a new code
+      if (FROM_SETTINGS) return location.replace(DONE_URL);
       if (ha.state === 'connected') return afterHa();
       return show('handoff');                           // try again with a new code
     }
