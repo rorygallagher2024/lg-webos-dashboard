@@ -384,6 +384,8 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .lgs-range{display:flex;align-items:center;gap:14px}
 .lgs-range input{width:170px;accent-color:var(--w100);cursor:pointer}
 .lgs-range .num{min-width:7ch;text-align:right;font-size:14px;color:var(--w80)}
+/* A setting the TV has greyed out: dimmed, as a disabled pill already is. */
+.pill-sel:disabled,.lgs-range input:disabled{opacity:.35;cursor:default}
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
@@ -1145,6 +1147,9 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
   <div class="pv-sec adv-sec" id="adv-sound" hidden data-t="adv.sound">Sound</div>
   <div class="prot-table" id="adv-lgs-sound" data-reload="loadAdvSettings"></div>
+
+  <div class="pv-sec adv-sec" id="adv-hdmi" hidden data-t="adv.hdmi">HDMI inputs</div>
+  <div class="prot-table" id="adv-lgs-hdmi" data-reload="loadAdvSettings"></div>
 
   <div class="pv-sec adv-sec" id="adv-devices" hidden data-t="adv.devices">Devices</div>
   <div class="prot-table">
@@ -2721,7 +2726,8 @@ async function loadGame() {
    choice, a stepper for a number. After a change, the loader named by the
    nearest data-reload redraws the rows. */
 function lgsControl(r) {
-  const id = ' data-lgs="' + esc(r.id) + '"';
+  // A setting the TV has greyed out, such as Deep Colour off an HDMI input.
+  const id = ' data-lgs="' + esc(r.id) + '"' + (r.active === false ? ' disabled' : '');
   if (r.type === 'choice') {
     return '<select class="pill-sel"' + id + '>' +
       r.choices.map(c => '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
@@ -2767,11 +2773,15 @@ document.addEventListener('input', e => {
 var advLgsDevices = false;   // read by tick(), which can run before this line on the first load
 async function loadAdvSettings() {
   let d;
-  try { d = await (await fetch(api('/api/lgsettings?section=sound,devices'), { cache: 'no-store' })).json(); } catch (e) { return; }
+  try { d = await (await fetch(api('/api/lgsettings?section=sound,hdmi,devices'), { cache: 'no-store' })).json(); } catch (e) { return; }
   const row = r => '<div class="prot-row"><div class="prot-main"><div class="prot-title">' + esc(r.title) + '</div>' +
-    '<div class="prot-desc">' + esc(r.desc) + '</div></div><div class="prot-status">' + lgsControl(r) + '</div></div>';
+    '<div class="prot-desc">' + esc(r.desc) + (r.active === false ? ' ' + esc(t('lgs.inactive', 'Not available with the TV’s current input or sound output.')) : '') +
+    '</div></div><div class="prot-status">' + lgsControl(r) + '</div></div>';
   const sound = (d.rows || []).filter(r => r.section === 'sound');
   const devices = (d.rows || []).filter(r => r.section === 'devices');
+  const hdmi = (d.rows || []).filter(r => r.section === 'hdmi');
+  q('adv-hdmi').hidden = !hdmi.length;
+  q('adv-lgs-hdmi').innerHTML = hdmi.map(row).join('');
   q('adv-sound').hidden = !sound.length;
   q('adv-lgs-sound').innerHTML = sound.map(row).join('');
   advLgsDevices = devices.length > 0;

@@ -27,6 +27,10 @@
   "text": "Luces frontales",
   "from": "Front lights"
  },
+ "adv.hdmi": {
+  "text": "Entradas HDMI",
+  "from": "HDMI inputs"
+ },
  "adv.lgLogo": {
   "text": "Logo de LG",
   "from": "LG logo"
@@ -690,6 +694,10 @@
  "header.brand.oled": {
   "text": "LG OLED TV",
   "from": "LG OLED TV"
+ },
+ "lgs.inactive": {
+  "text": "No disponible con la entrada o la salida de sonido actuales de la TV.",
+  "from": "Not available with the TV’s current input or sound output."
  },
  "lgs.left": {
   "text": "Izquierda {n}",
@@ -2395,6 +2403,34 @@
   "text": "Entre los altavoces izquierdo y derecho de la TV, y solo esos. En 0, los dos suenan al mismo nivel.",
   "from": "Between the left and right TV speakers, and only those. At 0 both play at the same level."
  },
+ "srv.lgs.audioFormat.bitstream": {
+  "text": "Bitstream",
+  "from": "Bitstream"
+ },
+ "srv.lgs.audioFormat.pcm": {
+  "text": "PCM",
+  "from": "PCM"
+ },
+ "srv.lgs.audioFormatHdmi.desc": {
+  "text": "Lo que la TV pide al dispositivo de esta entrada. Bitstream deja pasar Dolby Atmos y DTS a una barra de sonido o un receptor; PCM pide audio simple.",
+  "from": "What the TV asks the device on this input to send. Bitstream passes Dolby Atmos and DTS on to a soundbar or receiver; PCM asks for plain audio."
+ },
+ "srv.lgs.audioFormatHdmi1": {
+  "text": "Formato de audio de HDMI 1",
+  "from": "HDMI 1 audio format"
+ },
+ "srv.lgs.audioFormatHdmi2": {
+  "text": "Formato de audio de HDMI 2",
+  "from": "HDMI 2 audio format"
+ },
+ "srv.lgs.audioFormatHdmi3": {
+  "text": "Formato de audio de HDMI 3",
+  "from": "HDMI 3 audio format"
+ },
+ "srv.lgs.audioFormatHdmi4": {
+  "text": "Formato de audio de HDMI 4",
+  "from": "HDMI 4 audio format"
+ },
  "srv.lgs.autoVolume": {
   "text": "Volumen automático",
   "from": "Automatic volume"
@@ -2438,6 +2474,54 @@
  "srv.lgs.darkMode.off": {
   "text": "Desactivado",
   "from": "Off"
+ },
+ "srv.lgs.deepColor": {
+  "text": "HDMI Deep Colour",
+  "from": "HDMI Deep Colour"
+ },
+ "srv.lgs.deepColor.auto": {
+  "text": "Automático",
+  "from": "Auto"
+ },
+ "srv.lgs.deepColor.desc": {
+  "text": "Para la entrada en pantalla. Permite 4K HDR y fotogramas altos. La imagen puede cortarse un momento mientras la TV y el dispositivo acuerdan el cambio, y desactivarlo también desactiva Game Optimizer en esa entrada.",
+  "from": "For the input on screen. Lets it take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change, and turning it off also turns off Game Optimizer for that input."
+ },
+ "srv.lgs.deepColor.off": {
+  "text": "Desactivado",
+  "from": "Off"
+ },
+ "srv.lgs.deepColor.on": {
+  "text": "Activado",
+  "from": "On"
+ },
+ "srv.lgs.deepColorHdmi.desc": {
+  "text": "Permite 4K HDR y fotogramas altos en la entrada. La imagen puede cortarse un momento mientras la TV y el dispositivo acuerdan el cambio.",
+  "from": "Lets the input take 4K HDR and high frame rates. The picture can drop out for a moment while the TV and the device agree the change."
+ },
+ "srv.lgs.deepColorHdmi1": {
+  "text": "HDMI 1 Deep Colour",
+  "from": "HDMI 1 Deep Colour"
+ },
+ "srv.lgs.deepColorHdmi2": {
+  "text": "HDMI 2 Deep Colour",
+  "from": "HDMI 2 Deep Colour"
+ },
+ "srv.lgs.deepColorHdmi3": {
+  "text": "HDMI 3 Deep Colour",
+  "from": "HDMI 3 Deep Colour"
+ },
+ "srv.lgs.deepColorHdmi4": {
+  "text": "HDMI 4 Deep Colour",
+  "from": "HDMI 4 Deep Colour"
+ },
+ "srv.lgs.eArcSupport": {
+  "text": "eARC",
+  "from": "eARC"
+ },
+ "srv.lgs.eArcSupport.desc": {
+  "text": "Envía audio sin pérdidas y Dolby Atmos a una barra de sonido o un receptor en la entrada HDMI (eARC), si ambos lo admiten.",
+  "from": "Sends lossless and Dolby Atmos audio to a soundbar or receiver on the HDMI (eARC) input, where both support it."
  },
  "srv.lgs.enableALLM": {
   "text": "ALLM",
@@ -2518,6 +2602,14 @@
  "srv.lgs.inputOptimization.on": {
   "text": "Boost",
   "from": "Boost"
+ },
+ "srv.lgs.ipControl": {
+  "text": "Control por IP",
+  "from": "IP control"
+ },
+ "srv.lgs.ipControl.desc": {
+  "text": "Permite que los sistemas domóticos controlen la TV por la red con el protocolo propio de LG. Desactivado salvo que algo lo necesite.",
+  "from": "Lets home automation systems control the TV over the network with LG's own protocol. Off unless something needs it."
  },
  "srv.lgs.livePromotion": {
   "text": "Anuncios mientras ves contenido",

@@ -15,13 +15,18 @@ var stored = {
 };
 var reads = 0, writes = [], cleared = 0;
 var described = {};
+var greyed = {};
 lgs.init({
   lunaCached: function (uri, payload, ttl, cb) {
     if (/Desc$/.test(uri)) return cb({ returnValue: true, results: described[payload.category] || [] });
     reads++;
     cb({ returnValue: true, settings: stored[payload.category] || {} });
   },
-  luna: function (uri, payload, cb) { writes.push(payload); cb({ returnValue: true }); },
+  luna: function (uri, payload, cb) {
+    if (/Desc$/.test(uri)) return cb({ returnValue: true, results: greyed[payload.keys[0]] ? [{ key: payload.keys[0], ui: { active: false } }] : [] });
+    writes.push(payload);
+    cb({ returnValue: true });
+  },
   clearLunaCache: function () { cleared++; }
 });
 
@@ -91,6 +96,34 @@ lgs.collect(['sound'], function (r) {
   assert.strictEqual(out.value, 'wisa_speaker');
 });
 console.log('  ✓ a value outside the list is shown by its own name');
+
+// A per-port row gives way where the TV has the one setting, and a setting
+// the TV has greyed out comes back marked so
+stored.other = { uhdDeepColor: 'off', uhdDeepColorHDMI1: 'off' };
+described.other = [{ key: 'uhdDeepColor', values: { arrayExt: [{ value: 'off' }, { value: '4k' }] }, ui: { active: false } }];
+lgs.collect(['hdmi'], function (r) {
+  var ids = r.rows.map(function (x) { return x.id; });
+  assert.ok(ids.indexOf('deepColor') !== -1);
+  assert.strictEqual(ids.indexOf('deepColorHDMI1'), -1, 'the per-port key is not shown beside the one setting');
+  assert.strictEqual(r.rows[ids.indexOf('deepColor')].active, false);
+});
+stored.other = { uhdDeepColorHDMI1: 'on' };
+described.other = [];
+lgs.collect(['hdmi'], function (r) {
+  assert.deepEqual(r.rows.map(function (x) { return x.id; }), ['deepColorHDMI1']);
+  assert.strictEqual(r.rows[0].active, undefined);
+});
+console.log('  ✓ per-port rows give way to the one setting, and greyed-out settings say so');
+
+// A greyed-out setting is not written, although the TV would store it
+greyed.inputAudioFormatHDMI1 = true;
+var before = writes.length;
+lgs.set('audioFormatHDMI1', 'pcm', function (r) {
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(writes.length, before);
+});
+greyed = {};
+console.log('  ✓ a greyed-out setting is refused rather than written');
 
 // 5. Only rows in the table can be written
 lgs.set('systemPin', true, function (r) {
