@@ -5,7 +5,7 @@
   "port": 8080,
   "host": "0.0.0.0",
   "allowControl": true,
-  "allowPower": false,
+  "allowPower": true,
   "token": "",
   "mqtt": {
     "enabled": false,

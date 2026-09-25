@@ -1025,12 +1025,11 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </form>
     </div>
 
-    <div class="set"><div class="lbl" data-t="adv.power">Power</div>
+    <div class="set" id="pwset"><div class="lbl" data-t="adv.power">Power</div>
       <div class="btns">
         <button id="poff" onclick="pw(pwStandby ? 'powerOn' : 'powerOff')">&mdash;</button>
         <button id="prb" onclick="pw('reboot')" data-t="ctl.reboot">Reboot</button>
       </div>
-      <div class="sub" id="pwnote"></div>
     </div>
   </div>
 </section>
@@ -2597,11 +2596,9 @@ function pw(a) {
   if (confirm(msg)) c(a);
 }
 
+// Switched off in config.json, the power buttons are not offered at all.
 fetch(api('/api/caps')).then(r => r.json()).then(cp => {
-  if (!cp.allowPower) {
-    q('poff').disabled = q('prb').disabled = true;
-    q('pwnote').textContent = t('ctl.power.disabled', 'Disabled in config (allowPower: false).');
-  }
+  if (!cp.allowPower) q('pwset').hidden = true;
 }).catch(() => {});
 
 

@@ -499,10 +499,6 @@
   "text": "Reproducción",
   "from": "Playback"
  },
- "ctl.power.disabled": {
-  "text": "Desactivado en la config (allowPower: false).",
-  "from": "Disabled in config (allowPower: false)."
- },
  "ctl.powerOff": {
   "text": "Apagar",
   "from": "Power off"
