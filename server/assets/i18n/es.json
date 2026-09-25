@@ -691,6 +691,14 @@
   "text": "LG OLED TV",
   "from": "LG OLED TV"
  },
+ "lgs.left": {
+  "text": "Izquierda {n}",
+  "from": "Left {n}"
+ },
+ "lgs.right": {
+  "text": "Derecha {n}",
+  "from": "Right {n}"
+ },
  "metrics.ambient": {
   "text": "Ambiente",
   "from": "Ambient"
@@ -2384,8 +2392,8 @@
   "from": "Balance"
  },
  "srv.lgs.audioBalance.desc": {
-  "text": "Entre los altavoces izquierdo y derecho de la TV. En 0, los dos suenan al mismo nivel.",
-  "from": "Between the left and right TV speakers. At 0 both play at the same level."
+  "text": "Entre los altavoces izquierdo y derecho de la TV, y solo esos. En 0, los dos suenan al mismo nivel.",
+  "from": "Between the left and right TV speakers, and only those. At 0 both play at the same level."
  },
  "srv.lgs.autoVolume": {
   "text": "Volumen automático",
@@ -2556,8 +2564,8 @@
   "from": "AI Sound Pro"
  },
  "srv.lgs.soundMode.desc": {
-  "text": "Cómo ajusta la TV su sonido. AI Sound Pro lo adapta por sí solo a lo que se está viendo.",
-  "from": "How the TV tunes its sound. AI Sound Pro adjusts it to what is on by itself."
+  "text": "Cómo ajusta la TV su sonido, solo en sus propios altavoces. AI Sound Pro lo adapta por sí solo a lo que se está viendo.",
+  "from": "How the TV tunes its sound, through its own speakers only. AI Sound Pro adjusts it to what is on by itself."
  },
  "srv.lgs.soundMode.game": {
   "text": "Game Optimizer",
@@ -2582,6 +2590,46 @@
  "srv.lgs.soundMode.standard": {
   "text": "Estándar",
   "from": "Standard"
+ },
+ "srv.lgs.soundOutput": {
+  "text": "Salida de sonido",
+  "from": "Sound output"
+ },
+ "srv.lgs.soundOutput.bt_soundbar": {
+  "text": "Dispositivo Bluetooth",
+  "from": "Bluetooth device"
+ },
+ "srv.lgs.soundOutput.desc": {
+  "text": "Por dónde reproduce la TV el sonido. El modo de sonido y el balance solo se aplican a los altavoces de la TV.",
+  "from": "Where the TV plays its sound. Sound mode and balance apply only to the TV speakers."
+ },
+ "srv.lgs.soundOutput.external_arc": {
+  "text": "Dispositivo HDMI (ARC)",
+  "from": "HDMI (ARC) device"
+ },
+ "srv.lgs.soundOutput.external_optical": {
+  "text": "Dispositivo de salida óptica",
+  "from": "Optical out device"
+ },
+ "srv.lgs.soundOutput.headphone": {
+  "text": "Auriculares con cable",
+  "from": "Wired headphones"
+ },
+ "srv.lgs.soundOutput.tv_speaker": {
+  "text": "Altavoces de la TV",
+  "from": "TV speakers"
+ },
+ "srv.lgs.soundOutput.tv_speaker_bluetooth": {
+  "text": "Dispositivo Bluetooth y altavoces de la TV",
+  "from": "Bluetooth device and TV speakers"
+ },
+ "srv.lgs.soundOutput.tv_speaker_external_arc": {
+  "text": "Dispositivo HDMI (ARC) y altavoces de la TV",
+  "from": "HDMI (ARC) device and TV speakers"
+ },
+ "srv.lgs.soundOutput.tv_speaker_headphone": {
+  "text": "Auriculares con cable y altavoces de la TV",
+  "from": "Wired headphones and TV speakers"
  },
  "srv.lgs.soundOutputDigital": {
   "text": "Salida de sonido digital",

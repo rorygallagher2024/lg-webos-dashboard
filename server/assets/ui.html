@@ -379,9 +379,11 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
           font-variant-numeric:tabular-nums;white-space:nowrap}
 .game-fps em{font-size:.2em}
 .game-fps.empty{font-size:clamp(52px,9vw,90px)}
-.lgs-step{display:flex;align-items:center;gap:10px}
-.lgs-step .num{min-width:3ch;text-align:center;font-size:15px}
-.lgs-step button{min-width:34px;padding:4px 0}
+/* A number setting: a slider that shows its value as it moves and sends it
+   once, on release, so dragging is not a round trip to the TV per step. */
+.lgs-range{display:flex;align-items:center;gap:14px}
+.lgs-range input{width:170px;accent-color:var(--w100);cursor:pointer}
+.lgs-range .num{min-width:7ch;text-align:right;font-size:14px;color:var(--w80)}
 @media(min-width:1020px){.oled-split{grid-template-columns:minmax(280px,0.8fr) 1.6fr;gap:52px}}
 .oled-split .grp{margin-bottom:18px}
 .oled-split .oled-row:first-child{padding-top:0}
@@ -2726,13 +2728,17 @@ function lgsControl(r) {
       '</select>';
   }
   if (r.type === 'number') {
-    return '<div class="lgs-step">' +
-      '<button class="pill"' + id + ' data-value="' + (r.value - 1) + '"' + (r.value <= r.min ? ' disabled' : '') + '>&minus;</button>' +
-      '<span class="num">' + esc(String(r.value)) + '</span>' +
-      '<button class="pill"' + id + ' data-value="' + (r.value + 1) + '"' + (r.value >= r.max ? ' disabled' : '') + '>+</button></div>';
+    return '<label class="lgs-range"><input type="range"' + id + ' min="' + r.min + '" max="' + r.max + '" step="1" value="' + r.value + '"' +
+      ' aria-label="' + esc(r.title) + '"><span class="num">' + esc(lgsNumber(r.min, r.value)) + '</span></label>';
   }
   return '<button class="pill ' + (r.on ? 'good' : 'idle') + '"' + id + ' data-on="' + (r.on ? '0' : '1') + '">' +
     esc(r.on ? t('common.on', 'On') : t('common.off', 'Off')) + '</button>';
+}
+
+// A range either side of 0, as balance's is, reads the way LG labels it.
+function lgsNumber(min, v) {
+  if (min >= 0 || v === 0) return String(v);
+  return v < 0 ? t('lgs.left', 'Left {n}', { n: -v }) : t('lgs.right', 'Right {n}', { n: v });
 }
 
 async function setLgs(el, value) {
@@ -2744,11 +2750,17 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button[data-lgs]');
   if (!b) return;
   b.disabled = true;
-  setLgs(b, b.dataset.on !== undefined ? b.dataset.on === '1' : Number(b.dataset.value));
+  setLgs(b, b.dataset.on === '1');
 });
 document.addEventListener('change', e => {
   const sel = e.target.closest('select[data-lgs]');
   if (sel) setLgs(sel, sel.value);
+  const range = e.target.closest('input[type=range][data-lgs]');
+  if (range) setLgs(range, Number(range.value));
+});
+document.addEventListener('input', e => {
+  const range = e.target.closest('input[type=range][data-lgs]');
+  if (range) range.nextElementSibling.textContent = lgsNumber(Number(range.min), Number(range.value));
 });
 
 // The Advanced tab's Sound section, and the SIMPLINK rows in Devices.

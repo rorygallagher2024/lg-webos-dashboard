@@ -82,6 +82,16 @@ lgs.set('audioBalance', -5, function (r) { assert.strictEqual(r.ok, true); });
 assert.deepEqual(writes[writes.length - 1], { category: 'sound', settings: { audioBalance: '-5' } });
 console.log('  ✓ choices are the TV\'s own, and numbers kept as text are written as text');
 
+// A value set outside the list is kept, by its own name
+stored.sound.soundOutput = 'wisa_speaker';
+lgs.collect(['sound'], function (r) {
+  var out = r.rows.filter(function (x) { return x.id === 'soundOutput'; })[0];
+  var last = out.choices[out.choices.length - 1];
+  assert.deepEqual(last, { value: 'wisa_speaker', label: 'wisa_speaker' });
+  assert.strictEqual(out.value, 'wisa_speaker');
+});
+console.log('  ✓ a value outside the list is shown by its own name');
+
 // 5. Only rows in the table can be written
 lgs.set('systemPin', true, function (r) {
   assert.strictEqual(r.ok, false);

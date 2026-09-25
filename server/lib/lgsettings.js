@@ -90,7 +90,21 @@ var ROWS = [
     title: msg('srv.lgs.aigamesound', 'AI Game Sound'),
     desc: msg('srv.lgs.aigamesound.desc', 'Sets the sound for the game being played: effects, clear voices and surround.') },
 
-  // Sound, as LG's Sound menu names it.
+  // Sound, as LG's Sound menu names it. The Control tab switches the output
+  // too; it is here as well, beside the settings that depend on it.
+  { id: 'soundOutput', section: 'sound', category: 'sound', key: 'soundOutput', type: 'choice',
+    choices: [
+      { value: 'tv_speaker', label: msg('srv.lgs.soundOutput.tv_speaker', 'TV speakers') },
+      { value: 'external_arc', label: msg('srv.lgs.soundOutput.external_arc', 'HDMI (ARC) device') },
+      { value: 'external_optical', label: msg('srv.lgs.soundOutput.external_optical', 'Optical out device') },
+      { value: 'bt_soundbar', label: msg('srv.lgs.soundOutput.bt_soundbar', 'Bluetooth device') },
+      { value: 'headphone', label: msg('srv.lgs.soundOutput.headphone', 'Wired headphones') },
+      { value: 'tv_speaker_external_arc', label: msg('srv.lgs.soundOutput.tv_speaker_external_arc', 'HDMI (ARC) device and TV speakers') },
+      { value: 'tv_speaker_bluetooth', label: msg('srv.lgs.soundOutput.tv_speaker_bluetooth', 'Bluetooth device and TV speakers') },
+      { value: 'tv_speaker_headphone', label: msg('srv.lgs.soundOutput.tv_speaker_headphone', 'Wired headphones and TV speakers') }
+    ],
+    title: msg('srv.lgs.soundOutput', 'Sound output'),
+    desc: msg('srv.lgs.soundOutput.desc', 'Where the TV plays its sound. Sound mode and balance apply only to the TV speakers.') },
   { id: 'soundMode', section: 'sound', category: 'sound', key: 'soundMode', type: 'choice',
     choices: [
       { value: 'aiSoundPlus', label: msg('srv.lgs.soundMode.aiSoundPlus', 'AI Sound Pro') },
@@ -103,7 +117,7 @@ var ROWS = [
       { value: 'game', label: msg('srv.lgs.soundMode.game', 'Game Optimizer') }
     ],
     title: msg('srv.lgs.soundMode', 'Sound mode'),
-    desc: msg('srv.lgs.soundMode.desc', 'How the TV tunes its sound. AI Sound Pro adjusts it to what is on by itself.') },
+    desc: msg('srv.lgs.soundMode.desc', 'How the TV tunes its sound, through its own speakers only. AI Sound Pro adjusts it to what is on by itself.') },
   { id: 'soundOutputDigital', section: 'sound', category: 'sound', key: 'soundOutputDigital', type: 'choice',
     choices: [
       { value: 'auto', label: msg('srv.lgs.soundOutputDigital.auto', 'Auto') },
@@ -114,7 +128,7 @@ var ROWS = [
     desc: msg('srv.lgs.soundOutputDigital.desc', 'The audio sent to a soundbar or receiver over HDMI ARC or optical. Pass Through sends Dolby and DTS as they are; PCM turns them into plain stereo.') },
   { id: 'audioBalance', section: 'sound', category: 'sound', key: 'audioBalance', type: 'number', min: -50, max: 50, store: 'string',
     title: msg('srv.lgs.audioBalance', 'Balance'),
-    desc: msg('srv.lgs.audioBalance.desc', 'Between the left and right TV speakers. At 0 both play at the same level.') },
+    desc: msg('srv.lgs.audioBalance.desc', 'Between the left and right TV speakers, and only those. At 0 both play at the same level.') },
   { id: 'autoVolume', section: 'sound', category: 'sound', key: 'autoVolume', on: 'on', off: 'off',
     title: msg('srv.lgs.autoVolume', 'Automatic volume'),
     desc: msg('srv.lgs.autoVolume.desc', 'Keeps the volume level when switching channels. LG calls this Automatic Volume Adjustment.') },
@@ -154,6 +168,11 @@ function rowValue(r, v, desc) {
       for (var i = 0; i < shown.length; i++) if (shown[i].value === c.value && shown[i].visible !== false) return true;
       return false;
     }) : r.choices;
+    // A value set outside this list, such as another output from LG's menu,
+    // is shown by its own name rather than as the first choice.
+    var known = false;
+    for (var k = 0; k < out.choices.length; k++) if (out.choices[k].value === v) known = true;
+    if (!known) out.choices = out.choices.concat([{ value: v, label: String(v) }]);
   }
   if (out.type === 'number') {
     out.min = desc && typeof desc.min === 'number' ? desc.min : r.min;
