@@ -278,6 +278,8 @@ It does not hold all night. For five hours every night, 01:00 to 06:00 unless ch
 
 The switch is under **Advanced &rarr; Power** in the web dashboard and **System &rarr; Power** on the TV, and setup offers it as a third step. TVs without the setting, such as webOS 4 models, do not show it; Wake-on-LAN still wakes them from standby.
 
+A C2 has been seen staying awake at that same 12.6 W after being switched off with the switch off, until it was restarted. If a switched-off TV is still awake after 15 minutes with nothing meant to hold it, the web dashboard says so and offers a restart, and Home Assistant's **Not Sleeping When Off** sensor turns on.
+
 ### Server updates
 
 The **Server** tab, `/?tab=server`, shows the installed version, whether a newer release is out, and buttons to install it or roll back to the version before.

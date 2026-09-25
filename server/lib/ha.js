@@ -88,6 +88,7 @@ var HA_ENTITIES = [
   { id: 'power_off', type: 'button', name: 'Power Off', cat: 'controls' },
   { id: 'power_on', type: 'button', name: 'Power On', cat: 'controls' },
   { id: 'power', type: 'binary_sensor', name: 'Power', cat: 'controls' },
+  { id: 'standby_stuck', type: 'binary_sensor', name: 'Not Sleeping When Off', cat: 'controls' },
 
   // OLED Care
   { id: 'oled_panel_hours', type: 'sensor', name: 'OLED Panel Hours', cat: 'oled' },
@@ -1092,6 +1093,18 @@ function buildEntities(opts) {
       state_topic: telemetryTopic,
       value_template: '{{ "OFF" if value_json.tvOff else "ON" }}',
       device_class: 'power'
+    }
+  });
+  // A switched-off TV still awake long after it should have slept, with
+  // nothing meant to hold it there. The Restart TV button clears it.
+  entities.push({
+    type: 'binary_sensor', id: 'standby_stuck',
+    payload: {
+      name: 'Not Sleeping When Off',
+      state_topic: telemetryTopic,
+      value_template: '{{ "ON" if value_json.standbyStuck else "OFF" }}',
+      device_class: 'problem',
+      entity_category: 'diagnostic'
     }
   });
 

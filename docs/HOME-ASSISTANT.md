@@ -48,6 +48,7 @@ Categories:
 | `button` | `button.lg_tv_power_off` | Power Off TV | Powers off the TV (requires `allowPower: true`) |
 | `button` | `button.lg_tv_power_on` | Power On TV | Turns the TV back on from Active Standby, while it is still finishing panel compensation; in plain standby the bridge is offline (requires `allowPower: true`) |
 | `binary_sensor` | `binary_sensor.lg_tv_power` | Power | On while the TV is on, off while it is switched off or in standby |
+| `binary_sensor` | `binary_sensor.lg_tv_standby_stuck` | Not Sleeping When Off | On when the TV has been switched off for 15 minutes but is still awake, with no Always-on, Always Ready or panel maintenance to explain it. It then draws standby power it should not (12.6 W on an OLED42C24LA, against about 0 W asleep); Restart TV clears it |
 
 Playback reaches an HDMI source over CEC, where the TV has only one key for both halves of play/pause. Pause and Play / Pause behave as expected there; Play toggles rather than only resuming. On the built-in apps all four are exact.
 

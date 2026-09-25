@@ -366,6 +366,11 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
 .oled-row.guarded .oled-name{color:var(--cand)}
 .oled-warn{margin-top:24px;border-left:2px solid var(--cand);padding:12px 0 12px 14px;
            font-size:13px;color:var(--w60);max-width:64ch;line-height:1.55}
+.stuck-warn{margin-top:20px;border-left:2px solid var(--cand);padding:10px 0 10px 14px;
+            font-size:13px;color:var(--w60);line-height:1.55;display:flex;gap:16px;
+            align-items:center;flex-wrap:wrap}
+.stuck-warn[hidden]{display:none}
+.stuck-warn span{max-width:72ch}
 /* The wear figures and the switches that decide how hard the panel is worked,
    side by side - they are two halves of the same question. */
 .oled-split{display:grid;grid-template-columns:1fr;gap:38px}
@@ -720,6 +725,10 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
   </div>
 </header>
+<div class="stuck-warn" id="stuck-warn" hidden>
+  <span data-t="stuck.msg">The TV is switched off but has not gone to sleep, so it is still drawing power (about 12 W on an LG C2, against almost nothing asleep). Restarting it fixes this, and it stays off.</span>
+  <button id="stuck-rb" onclick="pw('reboot')" data-t="stuck.restart">Restart the TV</button>
+</div>
 
 
 
@@ -1725,6 +1734,7 @@ async function tick() {
     const ps = d.powerState || {};
     const o = d.oled || {};
     pwStandby = ps.raw === 'Active Standby';
+    q('stuck-warn').hidden = !d.standbyStuck;
     if (q('poff')) q('poff').textContent = pwStandby ? t('ctl.powerOn', 'Power on') : t('ctl.powerOff', 'Power off');
     const isComp = !!(o.comp_status === 'Running' || (ps.raw === 'Active Standby' && o.hours_until_comp === 0));
     const stEl = q('state');
@@ -2519,7 +2529,7 @@ function pw(a) {
 
 fetch(api('/api/caps')).then(r => r.json()).then(cp => {
   if (!cp.allowPower) {
-    q('poff').disabled = q('prb').disabled = true;
+    q('poff').disabled = q('prb').disabled = q('stuck-rb').disabled = true;
     q('pwnote').textContent = t('ctl.power.disabled', 'Disabled in config (allowPower: false).');
   }
 }).catch(() => {});

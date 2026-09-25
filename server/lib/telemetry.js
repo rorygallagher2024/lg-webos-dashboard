@@ -29,6 +29,7 @@ var configObj = null;
 var oledModule = null;
 var privacyModule = null;
 var screensaversModule = null;
+var standbyModule = null;
 var tvwebVersionStr = '0.0.0';
 var mapPowerStateFn = null;
 var isScreenSaverFn = null;
@@ -97,6 +98,7 @@ function init(opts) {
   oledModule = opts.oled;
   privacyModule = opts.privacy;
   screensaversModule = opts.screensavers;
+  standbyModule = opts.standby || null;
   tvwebVersionStr = opts.tvwebVersion || '0.0.0';
   mapPowerStateFn = opts.mapPowerState;
   isScreenSaverFn = opts.isScreenSaver;
@@ -937,6 +939,7 @@ function collectStats(cb) {
 
   function flushStats(result) {
     clearTimeout(safetyTimeout);
+    if (standbyModule) result.standbyStuck = standbyModule.isStuck(result, Date.now());
     lastStats = result;
     lastStatsTime = Date.now();
     isCollecting = false;
@@ -1121,6 +1124,14 @@ function collectStats(cb) {
       };
     }
 
+  // LG's Always Ready, a separate setting: 'off', 'alwaysReady' (screen dark)
+  // or 'allEnabled' (wallpaper). Asked on its own so a TV without it keeps the
+  // Always-on readings above.
+  lunaCachedFn('com.webos.service.settings/getSystemSettings',
+       { category: 'general', keys: ['lifeOnScreenMode'] }, 60000, function (lo) {
+    var los = lo && lo.returnValue !== false && lo.settings && lo.settings.lifeOnScreenMode;
+    if (los) out.lifeOnScreen = los;
+
   lunaCachedFn('com.palm.connectionmanager/getStatus', {}, 60000, function (cm) {
     var w = cm && cm.wifi;
     out.ssid = (w && w.ssid) ? w.ssid : null;
@@ -1241,6 +1252,7 @@ function collectStats(cb) {
         });
       }
     );
+  });
   });
   });
   });

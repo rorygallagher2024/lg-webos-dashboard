@@ -37,6 +37,7 @@ var mqttStateModule = require('./lib/mqtt-state');
 var notifications = require('./lib/notifications');
 var lunaTransport = require('./lib/luna');
 var say = require('./lib/say');
+var standby = require('./lib/standby');
 var msg = say.msg;
 var luna = lunaTransport.call;
 
@@ -333,7 +334,8 @@ telemetry.init({
   screensavers: screensavers,
   tvwebVersion: TVWEB_VERSION,
   mapPowerState: mapPowerState,
-  isScreenSaver: isScreenSaver
+  isScreenSaver: isScreenSaver,
+  standby: standby
 });
 
 var liveState = stateModule.init({
@@ -344,6 +346,10 @@ var liveState = stateModule.init({
     telemetry.clearCache();
     clearLunaCache();
   }
+});
+
+liveState.state.onChange(function (ev) {
+  if (ev.group === 'power' && ev.key === 'state') standby.noteState(ev.value, Date.now());
 });
 
 var notificationState = notifications.init({ luna: luna });
