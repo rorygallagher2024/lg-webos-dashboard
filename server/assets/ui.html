@@ -1006,7 +1006,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="priv panel" id="svcpane" role="tabpanel" hidden>
   <div id="svc-rows"></div>
 
-  <div class="oled-warn">
+  <div class="oled-warn" data-t="svc.warn">
     The service menu is LG's own engineering menu. It can change panel
     calibration and hardware settings that the normal menus deliberately keep
     out of reach, and some of them are not easy to put back. Opening it asks for
@@ -1017,21 +1017,21 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="priv panel" id="oledpane" role="tabpanel" hidden>
   <div class="oled-split">
     <div class="oled-wear">
-      <div class="grp">Panel life</div>
-      <div class="lbl">Total power on hours</div>
-      <div class="n num" style="margin-top:10px"><span id="oc-hours">&mdash;</span><em>hours</em></div>
+      <div class="grp" data-t="oled.panelLife">Panel life</div>
+      <div class="lbl" data-t="oled.hours">Total power on hours</div>
+      <div class="n num" style="margin-top:10px"><span id="oc-hours">&mdash;</span><em data-t="oled.hoursUnit">hours</em></div>
       <div class="cols" style="margin-top:22px">
-        <div><div class="lbl">Panel maintenance in</div><div class="v num" id="oc-comp">&mdash;</div><div class="sub" id="oc-comp-sub">&mdash;</div></div>
-        <div><div class="lbl">Pixel refresher in</div><div class="v num" id="oc-refr">&mdash;</div><div class="sub" id="oc-refr-sub">&mdash;</div></div>
+        <div><div class="lbl" data-t="oled.compIn">Panel maintenance in</div><div class="v num" id="oc-comp">&mdash;</div><div class="sub" id="oc-comp-sub">&mdash;</div></div>
+        <div><div class="lbl" data-t="oled.refresherIn">Pixel refresher in</div><div class="v num" id="oc-refr">&mdash;</div><div class="sub" id="oc-refr-sub">&mdash;</div></div>
       </div>
       <div class="oc-cycles" id="oc-cycles"></div>
     </div>
 
     <div class="oled-controls">
-      <div class="grp">Protections</div>
+      <div class="grp" data-t="oled.protections">Protections</div>
       <div id="oled-rows"></div>
 
-      <div class="oled-warn" id="oled-warn" hidden>
+      <div class="oled-warn" id="oled-warn" hidden data-t="oled.warn">
         Note: the last two are normally reachable only from the TV's service menu.
         They exist to protect the panel from burn-in, and switching them off makes
         permanent image retention more likely. Doing so may affect your warranty.
@@ -1041,21 +1041,21 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 </section>
 
 <section class="priv panel" id="advpane" role="tabpanel" hidden>
-  <div class="lbl">Advanced</div>
-  <div class="pv-sec">Power</div>
+  <div class="lbl" data-t="tab.advanced">Advanced</div>
+  <div class="pv-sec" data-t="adv.power">Power</div>
   <div class="prot-table">
     <div class="prot-row" id="row-quickboot" hidden>
       <div class="prot-main">
-        <div class="prot-title">Quick Boot</div>
-        <div class="prot-desc">Switching off puts the TV into a light sleep rather than shutting it down, so it
+        <div class="prot-title" data-t="adv.quickBoot">Quick Boot</div>
+        <div class="prot-desc" data-t="adv.quickBoot.desc">Switching off puts the TV into a light sleep rather than shutting it down, so it
           comes back in under 2 seconds instead of about 25. LG calls this Quick Start+.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_quickboot" onclick="toggleQuickBoot()">&mdash;</button></div>
     </div>
     <div class="prot-row" id="row-ar" hidden>
       <div class="prot-main">
-        <div class="prot-title">Stay connected when off</div>
-        <div class="prot-desc">Keeps the TV on the network while it is switched off, apart from five hours each
+        <div class="prot-title" data-t="adv.stayConnected">Stay connected when off</div>
+        <div class="prot-desc" data-t="adv.stayConnected.desc">Keeps the TV on the network while it is switched off, apart from five hours each
           night, so this dashboard and Home Assistant keep working and can switch it back on. The screen stays dark. Uses about 12 W on an LG
           C2, against almost nothing in normal standby.</div>
       </div>
@@ -1063,41 +1063,41 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
     <div class="prot-row" id="row-aroff" hidden>
       <div class="prot-main">
-        <div class="prot-title">Nightly power-down</div>
-        <div class="prot-desc">For five hours every night, LG lets a switched-off TV sleep fully. It is
+        <div class="prot-title" data-t="adv.nightlyOff">Nightly power-down</div>
+        <div class="prot-desc" data-t="adv.nightlyOff.desc">For five hours every night, LG lets a switched-off TV sleep fully. It is
           offline then: this dashboard and Home Assistant can't reach it until the hours
           end or it is switched on. LG fixes the length; choose hours when the TV isn't used.</div>
       </div>
-      <div class="prot-status"><select class="pill-sel" id="sel_aroff" aria-label="Nightly power-down hours"
+      <div class="prot-status"><select class="pill-sel" id="sel_aroff" aria-label="Nightly power-down hours" data-t-aria-label="adv.nightlyOff.hours"
         onchange="c('alwaysReadyOffStart', this.value)"></select></div>
     </div>
     <div class="prot-row" id="row-wol" hidden>
       <div class="prot-main">
-        <div class="prot-title">Wake-on-LAN</div>
-        <div class="prot-desc">Lets Home Assistant, a phone or another device on the network switch the TV on
+        <div class="prot-title" data-t="adv.wol">Wake-on-LAN</div>
+        <div class="prot-desc" data-t="adv.wol.desc">Lets Home Assistant, a phone or another device on the network switch the TV on
           from standby. The Home Assistant guide shows how to set it up. LG calls this Mobile TV On.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_wol" onclick="toggleWol()">&mdash;</button></div>
     </div>
   </div>
 
-  <div class="pv-sec adv-sec" id="adv-display" hidden>Display</div>
+  <div class="pv-sec adv-sec" id="adv-display" hidden data-t="adv.display">Display</div>
   <div class="prot-table">
     <div class="prot-row" id="row-lglogo" hidden>
       <div class="prot-main">
-        <div class="prot-title">LG logo</div>
-        <div class="prot-desc">Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.</div>
+        <div class="prot-title" data-t="adv.lgLogo">LG logo</div>
+        <div class="prot-desc" data-t="adv.lgLogo.desc">Shows the LG logo as the TV switches on and off. LG calls this LG Logo Display.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="btn_lglogo" onclick="toggleLgLogo()">&mdash;</button></div>
     </div>
   </div>
 
-  <div class="pv-sec adv-sec" id="adv-devices" hidden>Devices</div>
+  <div class="pv-sec adv-sec" id="adv-devices" hidden data-t="adv.devices">Devices</div>
   <div class="prot-table">
     <div class="prot-row" id="row-devdetect" hidden>
       <div class="prot-main">
-        <div class="prot-title">Auto device detection</div>
-        <div class="prot-desc">Lets the TV find devices at home that it can show on its Home Dashboard and control:
+        <div class="prot-title" data-t="adv.deviceDetection">Auto device detection</div>
+        <div class="prot-desc" data-t="adv.deviceDetection.desc">Lets the TV find devices at home that it can show on its Home Dashboard and control:
           a set-top box on an HDMI input, and smart lights, plugs and switches on your network, such as Philips Hue,
           LIFX and TP-Link Kasa. On newer TVs it looks up every address on your home network each time the TV switches
           on, which a network-wide ad blocker such as Pi-hole shows as hundreds of requests. Switched off, the scans
@@ -1107,19 +1107,19 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
   </div>
 
-  <div class="pv-sec adv-sec">Front lights</div>
+  <div class="pv-sec adv-sec" data-t="adv.frontLights">Front lights</div>
   <div class="prot-table">
     <div class="prot-row" id="row-standby" hidden>
       <div class="prot-main">
-        <div class="prot-title">Standby light</div>
-        <div class="prot-desc">The small light on the front of the TV that shows while it is switched off.</div>
+        <div class="prot-title" data-t="adv.standbyLight">Standby light</div>
+        <div class="prot-desc" data-t="adv.standbyLight.desc">The small light on the front of the TV that shows while it is switched off.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="lt_standby" onclick="toggleLight('standbyLight')">&mdash;</button></div>
     </div>
     <div class="prot-row" id="row-logolight" hidden>
       <div class="prot-main">
-        <div class="prot-title">Logo light</div>
-        <div class="prot-desc">The lit LG logo on the front of the TV, on models that have one.</div>
+        <div class="prot-title" data-t="adv.logoLight">Logo light</div>
+        <div class="prot-desc" data-t="adv.logoLight.desc">The lit LG logo on the front of the TV, on models that have one.</div>
       </div>
       <div class="prot-status"><button type="button" class="pill idle" id="lt_logo" onclick="toggleLight('logoLight')">&mdash;</button></div>
     </div>
@@ -1131,18 +1131,18 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   <div id="ss-list" class="ss-list"></div>
   <div class="ss-side">
   <div class="ss-level-row" id="ss-level-row" hidden>
-    <div class="ss-level-lbl">Brightness</div>
+    <div class="ss-level-lbl" data-t="ss.brightness">Brightness</div>
     <div class="btns" id="ss-level"></div>
   </div>
 
   <div class="ss-level-row">
-    <div class="ss-level-lbl">Show it now</div>
+    <div class="ss-level-lbl" data-t="ss.showNow">Show it now</div>
     <div class="btns">
-      <button id="ss-toggle" onclick="pressScreensaver('ss-toggle')">Start screen saver</button>
+      <button id="ss-toggle" onclick="pressScreensaver('ss-toggle')">&mdash;</button>
     </div>
   </div>
 
-  <div class="pv-note" id="ss-note">Note: if a firmware update is applied, the screen saver will be restored to the LG default.</div>
+  <div class="pv-note" id="ss-note"></div>
   </div>
   </div>
 </section>
@@ -1986,11 +1986,11 @@ async function tick() {
       // Rewriting the label replaces the text node under the pointer, which
       // costs the tooltip the same way rewriting the title does.
       setIfChanged(q('ss-toggle'), 'textContent',
-                   ssOn ? 'Dismiss screen saver' : 'Start screen saver');
+                   ssOn ? t('ss.dismiss', 'Dismiss screen saver') : t('ss.start', 'Start screen saver'));
       q('ss-toggle').classList.toggle('on', ssOn);
       // Dismissing works from anywhere; only starting one needs an app.
       refuseScreensaver(q('ss-toggle'),
-        !ssWritable ? 'Controls are disabled in config.json.'
+        !ssWritable ? t('common.controlsOff', 'Controls are disabled in config.json.')
         : ssSwitching ? SS_SWITCHING
         : (ssOnInput && !ssOn) ? SS_ONLY_IN_APPS : '');
     }
@@ -2410,7 +2410,7 @@ function advPill(row, id, on) {
   if (r) r.hidden = on === undefined;
   if (!b || on === undefined) return;
   b.className = 'pill ' + (on ? 'good' : 'idle');
-  b.textContent = on ? 'On' : 'Off';
+  b.textContent = on ? t('common.on', 'On') : t('common.off', 'Off');
   b.dataset.on = on ? '1' : '';
 }
 function flip(id) { const el = q(id); return el && el.dataset.on ? 'off' : 'on'; }
@@ -3453,28 +3453,30 @@ async function loadServiceMenu() {
   try {
     d = await (await fetch(api('/api/servicemenu'), { cache: 'no-store' })).json();
   } catch (e) { showErr(e.message); return; }
-  if (!d || !d.ok) { showErr((d && d.error) || 'Could not read the service menu state'); return; }
+  if (!d || !d.ok) { showErr((d && d.error) || t('svc.readFailed', 'Could not read the service menu state')); return; }
 
   const dis = d.writable ? '' : 'disabled';
   let lockRow;
   if (!d.lockable) {
     lockRow = `<div class="oled-row silent">
         <div class="oled-main">
-          <div class="oled-name">Unlock</div>
-          <div class="oled-desc">This TV does not lock its service menu, so there is nothing to unlock. Newer firmware shows a cut-down menu until it is unlocked.</div>
+          <div class="oled-name">${t('svc.unlock', 'Unlock')}</div>
+          <div class="oled-desc">${t('svc.unlock.none.desc', 'This TV does not lock its service menu, so there is nothing to unlock. Newer firmware shows a cut-down menu until it is unlocked.')}</div>
         </div>
-        <div class="oled-ctl"><span class="oled-none">Not locked on this TV</span></div>
+        <div class="oled-ctl"><span class="oled-none">${t('svc.unlock.none', 'Not locked on this TV')}</span></div>
       </div>`;
   } else {
     const locked = d.locked;
     lockRow = `<div class="oled-row guarded">
         <div class="oled-main">
-          <div class="oled-name">Unlock<span class="oled-sub">${locked ? 'Showing the cut-down menu' : 'Showing the full menu'}</span></div>
-          <div class="oled-desc">Unlocked, the menu shows every page rather than the handful LG leaves in.
-            <strong>The TV has to be switched off and on again before this takes effect.</strong></div>
+          <div class="oled-name">${t('svc.unlock', 'Unlock')}<span class="oled-sub">${locked
+            ? t('svc.unlock.cutDown', 'Showing the cut-down menu') : t('svc.unlock.full', 'Showing the full menu')}</span></div>
+          <div class="oled-desc">${t('svc.unlock.desc', 'Unlocked, the menu shows every page rather than the handful LG leaves in.')}
+            <strong>${t('svc.unlock.restart', 'The TV has to be switched off and on again before this takes effect.')}</strong></div>
         </div>
         <div class="oled-ctl">
-          <button class="pill ${locked ? 'bad' : 'good'}" data-svc="lock" data-next="${locked ? '0' : '1'}" ${dis}>${locked ? 'Locked' : 'Unlocked'}</button>
+          <button class="pill ${locked ? 'bad' : 'good'}" data-svc="lock" data-next="${locked ? '0' : '1'}" ${dis}>${locked
+            ? t('svc.locked', 'Locked') : t('svc.unlocked', 'Unlocked')}</button>
         </div>
       </div>`;
   }
@@ -3482,8 +3484,8 @@ async function loadServiceMenu() {
   q('svc-rows').innerHTML = lockRow + `
     <div class="oled-row">
       <div class="oled-main">
-        <div class="oled-name">Open<span class="oled-sub">On the TV screen</span></div>
-        <div class="oled-desc">Puts the menu on the TV, where it asks for a four-digit PIN &mdash; usually 0413, though it varies by model and region. EZ Adjust is the picture and panel menu; In Start is the wider one.</div>
+        <div class="oled-name">${t('svc.open', 'Open')}<span class="oled-sub">${t('svc.open.sub', 'On the TV screen')}</span></div>
+        <div class="oled-desc">${t('svc.open.desc', 'Puts the menu on the TV, where it asks for a four-digit PIN \u2014 usually 0413, though it varies by model and region. EZ Adjust is the picture and panel menu; In Start is the wider one.')}</div>
       </div>
       <div class="oled-ctl">
         <button class="pill" data-svc="open" data-menu="ezAdjust" ${dis}>EZ Adjust</button>
@@ -3503,7 +3505,7 @@ document.addEventListener('click', async ev => {
     return;
   }
   const wantLocked = btn.dataset.next === '1';
-  if (!wantLocked && !confirm('Unlock the full service menu?\n\nIt can change panel calibration and hardware settings, and the TV must be switched off and on again before this takes effect.')) {
+  if (!wantLocked && !confirm(t('svc.unlock.confirm', 'Unlock the full service menu?\n\nIt can change panel calibration and hardware settings, and the TV must be switched off and on again before this takes effect.'))) {
     btn.disabled = false;
     return;
   }
@@ -3513,18 +3515,20 @@ document.addEventListener('click', async ev => {
 
 let oledWritable = true;
 
-const OLED_ROWS = [
-  { key: 'screenShift', name: 'Screen Shift', sub: 'Pixel orbiting',
-    desc: 'Nudges the whole picture by a pixel at a time so a static edge never sits on the same line for long. Costs nothing visually.',
+// Built when the tab renders rather than at load, so the text is looked up
+// after the page's language is known.
+const OLED_ROWS = () => [
+  { key: 'screenShift', name: t('oled.shift', 'Screen Shift'), sub: t('oled.shift.sub', 'Pixel orbiting'),
+    desc: t('oled.shift.desc', 'Nudges the whole picture by a pixel at a time so a static edge never sits on the same line for long. Costs nothing visually.'),
     kind: 'shift' },
-  { key: 'logoDimming', name: 'Logo Dimming', sub: 'Local dimming',
-    desc: 'Dims only the static logos and banners a channel leaves in a corner, and leaves the rest of the picture alone.',
+  { key: 'logoDimming', name: t('oled.logo', 'Logo Dimming'), sub: t('oled.logo.sub', 'Local dimming'),
+    desc: t('oled.logo.desc', 'Dims only the static logos and banners a channel leaves in a corner, and leaves the rest of the picture alone.'),
     kind: 'logo' },
-  { key: 'tpc', name: 'Temporal Peak Control', sub: 'ASBL', guarded: true,
-    desc: 'Lowers overall brightness when a bright image is held, which is what makes a mostly-white screen fade after a few seconds. Switching it off keeps full brightness and puts more heat through the panel.',
+  { key: 'tpc', name: t('oled.tpc', 'Temporal Peak Control'), sub: 'ASBL', guarded: true,
+    desc: t('oled.tpc.desc', 'Lowers overall brightness when a bright image is held, which is what makes a mostly-white screen fade after a few seconds. Switching it off keeps full brightness and puts more heat through the panel.'),
     kind: 'protection' },
-  { key: 'gsr', name: 'Global Stress Reduction', sub: 'GSR', guarded: true,
-    desc: 'Dims the whole screen when it detects a stationary element such as a HUD or news ticker. Switching it off stops the dimming and leaves that element burning in at full brightness.',
+  { key: 'gsr', name: t('oled.gsr', 'Global Stress Reduction'), sub: 'GSR', guarded: true,
+    desc: t('oled.gsr.desc', 'Dims the whole screen when it detects a stationary element such as a HUD or news ticker. Switching it off stops the dimming and leaves that element burning in at full brightness.'),
     kind: 'protection' }
 ];
 
@@ -3533,20 +3537,21 @@ async function loadOledCare() {
   try {
     d = await (await fetch(api('/api/oledcare'), { cache: 'no-store' })).json();
   } catch (e) { showErr(e.message); return; }
-  if (!d || !d.ok) { showErr((d && d.error) || 'Could not read the panel protections'); return; }
+  if (!d || !d.ok) { showErr((d && d.error) || t('oled.readFailed', 'Could not read the panel protections')); return; }
   oledWritable = d.writable;
 
   const state = v => v === null || v === undefined ? null : !!v;
-  const html = OLED_ROWS.map(r => {
+  const onOff = on => on ? t('common.on', 'On') : t('common.off', 'Off');
+  const html = OLED_ROWS().map(r => {
     // Marked apart only when they can actually be changed here - the warning
     // that explains the colour is hidden otherwise.
     let pill, cls = (r.guarded && d.serviceControls) ? ' guarded' : '';
     if (r.kind === 'shift') {
       const on = /on/i.test(d.screenShift || '');
-      pill = `<button class="pill ${on ? 'good' : 'idle'}" data-oled="screenShift" data-next="${on ? 'off' : 'on'}">${on ? 'On' : 'Off'}</button>`;
+      pill = `<button class="pill ${on ? 'good' : 'idle'}" data-oled="screenShift" data-next="${on ? 'off' : 'on'}">${onOff(on)}</button>`;
     } else if (r.kind === 'logo') {
       const v = String(d.logoDimming || 'off').toLowerCase();
-      const label = v === 'strong' ? 'High' : v.charAt(0).toUpperCase() + v.slice(1);
+      const label = v === 'strong' ? t('oled.logo.high', 'High') : v === 'light' ? t('oled.logo.light', 'Light') : t('common.off', 'Off');
       pill = `<button class="pill ${v === 'off' ? 'idle' : 'good'}" data-oled="logoDimming" data-next="${v === 'off' ? 'light' : (v === 'light' ? 'strong' : 'off')}">${label}</button>`;
     } else {
       const on = state(d[r.key]);
@@ -3558,11 +3563,11 @@ async function loadOledCare() {
          * see or change it, which is what this says.
          */
         cls += ' silent';
-        pill = `<span class="oled-none">Not adjustable on this TV</span>`;
+        pill = `<span class="oled-none">${t('oled.notAdjustable', 'Not adjustable on this TV')}</span>`;
       } else if (!d.serviceControls) {
-        pill = `<span class="pill ${on ? 'good' : 'bad'} fixed">${on ? 'On' : 'Off'}</span>`;
+        pill = `<span class="pill ${on ? 'good' : 'bad'} fixed">${onOff(on)}</span>`;
       } else {
-        pill = `<button class="pill ${on ? 'good' : 'bad'}" data-oled="${r.key}" data-next="${on ? '0' : '1'}">${on ? 'On' : 'Off'}</button>`;
+        pill = `<button class="pill ${on ? 'good' : 'bad'}" data-oled="${r.key}" data-next="${on ? '0' : '1'}">${onOff(on)}</button>`;
       }
     }
     return `<div class="oled-row${cls}">
@@ -3579,15 +3584,18 @@ async function loadOledCare() {
   const hrs = v => v === null || v === undefined ? null :
     (v >= 100 ? Math.round(v).toLocaleString() : (Math.round(v * 10) / 10).toString());
   q('oc-hours').textContent = d.panelHours === null ? '—' : Number(d.panelHours).toLocaleString();
-  q('oc-comp').textContent = hrs(d.hoursUntilComp) === null ? '—' : hrs(d.hoursUntilComp) + ' h';
-  q('oc-refr').textContent = hrs(d.hoursUntilRefresher) === null ? '—' : hrs(d.hoursUntilRefresher) + ' h';
-  q('oc-comp-sub').textContent = d.compStatus ? d.compStatus : '4-hour short cycle';
-  q('oc-refr-sub').textContent = d.refresherStatus ? d.refresherStatus : '2,000-hour calibration';
+  const inHours = v => hrs(v) === null ? '\u2014' : t('oled.hoursShort', '{n} h', { n: hrs(v) });
+  q('oc-comp').textContent = inHours(d.hoursUntilComp);
+  q('oc-refr').textContent = inHours(d.hoursUntilRefresher);
+  // compStatus and refresherStatus are the TV's own words, in English.
+  q('oc-comp-sub').textContent = d.compStatus ? d.compStatus : t('oled.comp.sub', '4-hour short cycle');
+  q('oc-refr-sub').textContent = d.refresherStatus ? d.refresherStatus : t('oled.refresher.sub', '2,000-hour calibration');
   const cyc = [];
-  if (d.compCycles !== null && d.compCycles !== undefined) cyc.push(`Short cycles completed <span>${d.compCycles.toLocaleString()}</span>`);
-  if (d.refresherCycles !== null && d.refresherCycles !== undefined) cyc.push(`Pixel refresher cycles <span>${d.refresherCycles.toLocaleString()}</span>`);
-  if (d.failureAlerts !== null && d.failureAlerts !== undefined) cyc.push(`Refresher failure alerts <span>${d.failureAlerts.toLocaleString()}</span>`);
-  if (d.gsrStressCount !== null && d.gsrStressCount !== undefined) cyc.push(`GSR stress events <span>${d.gsrStressCount.toLocaleString()}</span>`);
+  const count = (label, n) => `${esc(label)} <span>${n.toLocaleString()}</span>`;
+  if (d.compCycles !== null && d.compCycles !== undefined) cyc.push(count(t('oled.cycles.comp', 'Short cycles completed'), d.compCycles));
+  if (d.refresherCycles !== null && d.refresherCycles !== undefined) cyc.push(count(t('oled.cycles.refresher', 'Pixel refresher cycles'), d.refresherCycles));
+  if (d.failureAlerts !== null && d.failureAlerts !== undefined) cyc.push(count(t('oled.cycles.failures', 'Refresher failure alerts'), d.failureAlerts));
+  if (d.gsrStressCount !== null && d.gsrStressCount !== undefined) cyc.push(count(t('oled.cycles.gsr', 'GSR stress events'), d.gsrStressCount));
   q('oc-cycles').innerHTML = cyc.map(x => `<div>${x}</div>`).join('');
   q('oled-warn').hidden = !d.serviceControls;
   q('oled-rows').querySelectorAll('button.pill').forEach(b => { b.disabled = !d.writable; });
@@ -3605,7 +3613,7 @@ document.addEventListener('click', async ev => {
     await c('logoDimming', next);
   } else {
     const on = next === '1';
-    if (!on && !confirm('Switching this off removes a protection against burn-in. Continue?')) {
+    if (!on && !confirm(t('oled.protection.confirm', 'Switching this off removes a protection against burn-in. Continue?'))) {
       btn.disabled = false;
       return;
     }
@@ -3619,10 +3627,10 @@ let ssWritable = true;
 let ssSwitching = false;
 let ssSwitchPoll = null;
 
-const SS_SWITCHING =
-  'The TV is switching screen savers. The screen may stay dark for up to a minute, then it comes back on its own.';
-const SS_ONLY_IN_APPS =
-  'The screen saver can only be started while a webOS app is running, not from an HDMI input or Live TV.';
+const SS_SWITCHING = t('ss.switching',
+  'The TV is switching screen savers. The screen may stay dark for up to a minute, then it comes back on its own.');
+const SS_ONLY_IN_APPS = t('ss.onlyInApps',
+  'The screen saver can only be started while a webOS app is running, not from an HDMI input or Live TV.');
 
 /*
  * Marks a button as refused, with the reason. Not `disabled`: a disabled button
@@ -3664,7 +3672,7 @@ async function loadScreensavers() {
   try {
     d = await (await fetch(api('/api/screensaver'))).json();
   } catch (e) { showErr(e.message); return; }
-  if (!d || !d.ok) { showErr((d && d.error) || 'Could not read the screen savers'); return; }
+  if (!d || !d.ok) { showErr((d && d.error) || t('ss.readFailed', 'Could not read the screen savers')); return; }
   ssCurrent = d.current;
   ssSwitching = !!d.switching;
   const locked = !d.writable || ssSwitching;
@@ -3672,7 +3680,7 @@ async function loadScreensavers() {
   box.innerHTML = d.modes.map(m => `
     <button class="ss-card${m.active ? ' on' : ''}" data-ss="${esc(m.id)}"
             ${(!m.available || locked) ? 'disabled' : ''}>
-      <div class="ss-name"><span>${esc(m.label)}</span>${m.active ? '<span class="ss-tag">In use</span>' : ''}</div>
+      <div class="ss-name"><span>${esc(m.label)}</span>${m.active ? `<span class="ss-tag">${t('ss.inUse', 'In use')}</span>` : ''}</div>
       <div class="ss-desc">${esc(m.description)}</div>
     </button>`).join('');
 
@@ -3681,7 +3689,7 @@ async function loadScreensavers() {
   const ours = d.current !== 'stock';
   q('ss-level-row').hidden = !ours;
   if (ours) {
-    q('ss-level').innerHTML = [['dim', 'Dim'], ['bright', 'Bright']].map(([id, label]) =>
+    q('ss-level').innerHTML = [['dim', t('ss.dim', 'Dim')], ['bright', t('ss.bright', 'Bright')]].map(([id, label]) =>
       `<button class="ss-lvl${d.level === id ? ' on' : ''}" data-level="${id}"
                ${locked ? 'disabled' : ''}>${label}</button>`).join('');
   }
@@ -3690,10 +3698,10 @@ async function loadScreensavers() {
      restart its app manager to move between them, and nothing answers until it
      is back. Say so before, and hold the controls while it happens. */
   q('ss-note').textContent = !d.writable
-    ? 'Controls are disabled in config.json, so the screen saver cannot be changed from here.'
+    ? t('ss.controlsOff', 'Controls are disabled in config.json, so the screen saver cannot be changed from here.')
     : ssSwitching ? SS_SWITCHING
-    : (d.slowSwitch ? 'On this TV, switching to or from the LG default takes about a minute, and the screen goes dark while it does. ' : '')
-      + 'Note: if a firmware update is applied, the screen saver will be restored to the LG default.';
+    : (d.slowSwitch ? t('ss.slowSwitch', 'On this TV, switching to or from the LG default takes about a minute, and the screen goes dark while it does.') + ' ' : '')
+      + t('ss.firmwareNote', 'Note: if a firmware update is applied, the screen saver will be restored to the LG default.');
   ssWritable = d.writable;
   // The status poll sets it from here on; this just saves waiting for it.
   if (ssSwitching) refuseScreensaver(q('ss-toggle'), SS_SWITCHING);

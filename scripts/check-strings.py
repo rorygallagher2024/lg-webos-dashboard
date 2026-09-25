@@ -45,7 +45,7 @@ LANG_DIR = ASSETS / 'i18n'
 # Parts of pages whose visible text must all be keyed, by element id. A part is
 # added here once converted, so the check holds it there from then on.
 CONVERTED = {
-    'ui.html': ['serverpane'],
+    'ui.html': ['serverpane', 'svcpane', 'oledpane', 'advpane', 'sspane'],
 }
 
 KEY_RE = re.compile(r'^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9]+)*$')
@@ -294,6 +294,8 @@ for lang, path in files.items():
         if not isinstance(entry, dict) or not isinstance(entry.get('text'), str) or not isinstance(entry.get('from'), str):
             problems.append('i18n/%s.json: "%s" needs "text" and "from"' % (lang, key))
             continue
+        if re.search(r'[<&]', entry['text']):
+            problems.append('i18n/%s.json: "%s" contains < or &; translations are plain text' % (lang, key))
         if placeholders(entry['text']) != placeholders(english[key]):
             problems.append('i18n/%s.json: "%s" has placeholders %s, the English has %s'
                             % (lang, key, placeholders(entry['text']), placeholders(english[key])))
