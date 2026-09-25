@@ -2471,6 +2471,14 @@
   "text": "Aclara las zonas oscuras para que se vea mejor el detalle en las sombras.",
   "from": "Lifts dark areas so detail in shadows is easier to see."
  },
+ "srv.lgs.btSpeakerMode": {
+  "text": "Modo altavoz Bluetooth",
+  "from": "Bluetooth speaker mode"
+ },
+ "srv.lgs.btSpeakerMode.desc": {
+  "text": "Permite que los teléfonos al alcance del Bluetooth se conecten y reproduzcan música a través de la TV, incluso con la TV apagada. LG lo llama Bluetooth Speaker Mode.",
+  "from": "Lets phones in Bluetooth range connect and play music through the TV, even while it is switched off. LG calls this Bluetooth Speaker Mode."
+ },
  "srv.lgs.contentRecommendation": {
   "text": "Recomendaciones en Inicio",
   "from": "Recommendations on Home"
