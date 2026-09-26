@@ -141,6 +141,8 @@ function init(opts) {
   ), function (response) {
     var rawState = response.state;
     if (!rawState && response.processing) rawState = response.processing;
+    // A reply without a state is a failed read, not a TV switched off.
+    if (!rawState) return null;
     var mapped = opts.mapPowerState ? opts.mapPowerState(rawState) : null;
     if (!mapped) return null;
     var screenOn = !!(mapped.systemOn && mapped.screenOn);

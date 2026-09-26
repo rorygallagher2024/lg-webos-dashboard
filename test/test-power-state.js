@@ -145,4 +145,16 @@ assert.strictEqual(lcdPanel.payload.name, 'Display Panel');
 assert.strictEqual(defPanel.payload.name, 'OLED Display Panel');
 console.log('  ✓ ha entity name is "OLED Display Panel" on OLED and "Display Panel" on LCD');
 
+// A power reply without a state is a failed read: it leaves the TV as it was.
+var live = stateModule.init({ mapPowerState: mapPowerState });
+var feed = live.groups.power.subscription.handlers.message;
+feed({ returnValue: true, subscribed: true });
+assert.strictEqual((live.state.snapshot().power || {}).systemOn, undefined);
+feed({ returnValue: true, state: 'Active' });
+assert.strictEqual(live.state.snapshot().power.systemOn, true);
+feed({ returnValue: true, subscribed: true });
+live.reconcile({ powerState: null });
+assert.strictEqual(live.state.snapshot().power.systemOn, true);
+console.log('  ✓ a power reply or stats read without a state does not switch the TV off');
+
 console.log('ALL test-power-state.js assertions passed!');

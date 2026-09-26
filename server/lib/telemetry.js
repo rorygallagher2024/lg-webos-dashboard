@@ -1101,7 +1101,12 @@ function collectStats(cb) {
   lunaFn('com.webos.service.tvpower/power/getPowerState', {}, function (pw) {
     var rawPower = pw ? (pw.state || pw.processing) : null;
     if (showing && rawPower === 'Active') rawPower = 'Always Ready';
-    out.powerState = mapPowerStateFn ? mapPowerStateFn(rawPower) : null;
+    /*
+     * No answer is not "off". Mapped, a failed read reported the TV switched
+     * off, which Home Assistant showed and which swapped the MQTT will; left
+     * out, the live state keeps what it last knew.
+     */
+    out.powerState = mapPowerStateFn && rawPower ? mapPowerStateFn(rawPower) : null;
     out.screenSaver = isScreenSaverFn ? isScreenSaverFn(out.powerState) : false;
     out.screensaverMode = screensaversModule ? screensaversModule.screensaverMode() : 'stock';
     out.screensaverLevel = screensaversModule ? screensaversModule.screensaverLevel() : 'dim';
