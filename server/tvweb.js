@@ -744,6 +744,7 @@ function setupHomeAssistant() {
       updateTopic: updateTopic,
       installedApps: telemetry.getInstalledApps(),
       pictureModes: telemetry.getPictureModes(),
+      lgRows: lgsRows,
       allowPower: CONFIG.allowPower,
       isOled: oled.getIsOled(),
       updatesElsewhere: fromHomebrewChannel()
@@ -865,11 +866,34 @@ function setupHomeAssistant() {
     publishTelemetry();
   }
 
+  /*
+   * LG's own settings for Home Assistant, from lgsettings.js. An HDMI input's
+   * are not published (see ha.js). The rows decide which entities exist and
+   * a select's options, so a change in them means republishing discovery.
+   */
+  var LGS_SECTIONS = ['sound', 'devices', 'game', 'promotions'];
+  var lgsRows = [];
+  var lastLgsSig = '';
+
   function publishTelemetry() {
     if (!mqttClient.connected) return;
     lastPublish = Date.now();
     mqttClient.publish(statusTopic, statusPayload(), true);
+    lgSettings.collect(LGS_SECTIONS, function (ls) {
     telemetry.collectStats(function(s) {
+      s.lgs = {};
+      ls.rows.forEach(function (r) { s.lgs[r.id] = r.type === 'switch' ? r.on : r.value; });
+      var lgsSig = ls.rows.map(function (r) {
+        return r.id + (r.choices ? ':' + r.choices.map(function (c) { return c.value; }).join('|') : '');
+      }).join(',');
+      if (lgsSig !== lastLgsSig) {
+        lastLgsSig = lgsSig;
+        lgsRows = ls.rows;
+        if (lastLgsSig) {
+          console.log('mqtt: LG settings changed (' + ls.rows.length + ') - republishing discovery');
+          publishDiscovery();
+        }
+      }
       liveState.reconcile(s);
       s.tvOff = tvOff;
       /*
@@ -932,6 +956,7 @@ function setupHomeAssistant() {
         console.log('mqtt: set reported (' + cap + ') for the first time - republishing discovery');
         publishDiscovery();
       }
+    });
     });
   }
 
@@ -1010,6 +1035,21 @@ function setupHomeAssistant() {
 
     if (action === 'input') {
       doControl('input', val.toLowerCase().replace(/\s+/g, ''), function() {
+        setTimeout(publishTelemetry, 400);
+      });
+      return;
+    }
+
+    // One of LG's own settings: lgs/<row>, as ha.js publishes them.
+    if (action.indexOf('lgs/') === 0) {
+      var lgsRow = action.substring(4);
+      var lgsCur = lgsRows.filter(function (r) { return r.id === lgsRow; })[0];
+      if (!lgsCur) return;
+      var lgsVal = lgsCur.type === 'switch' ? { id: lgsRow, on: val.toUpperCase() === 'ON' }
+                 : lgsCur.type === 'number' ? { id: lgsRow, value: num(val, lgsCur.value) }
+                 : { id: lgsRow, value: val };
+      doControl('lgSetting', lgsVal, function (r) {
+        if (!r || !r.ok) console.log('mqtt: ' + lgsRow + ' not set: ' + JSON.stringify(r));
         setTimeout(publishTelemetry, 400);
       });
       return;

@@ -49,7 +49,13 @@ def published():
     in_array = re.findall(DECL, src[open_at:end])
     # The power entities are pushed after the literal, under CONFIG.allowPower.
     pushed = re.findall(r"entities\.push\(\{\s*\n?\s*" + DECL, src[end:])
-    return set(in_array + pushed)
+    # LG's own settings come from a table of their own, one entity per row.
+    table = []
+    if 'var LG_SETTING_ENTITIES = [' in src:
+        t0 = src.index('var LG_SETTING_ENTITIES = [')
+        t1 = src.index('\n];', t0)
+        table = re.findall(DECL, src[t0:t1])
+    return set(in_array + pushed + table)
 
 
 def documented():

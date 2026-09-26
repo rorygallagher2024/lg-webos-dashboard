@@ -219,4 +219,29 @@ console.log('Running test-ha.js ...');
   console.log('  ✓ selectState mappings and appNames collision handling function correctly');
 })();
 
+// LG's own settings: only the ones the TV has, niche ones disabled, selects
+// with the TV's own options
+(function testLgSettingEntities() {
+  var ents = ha.buildEntities({ pfx: 'test/tv', lgRows: [
+    { id: 'soundMode', type: 'choice', value: 'standard',
+      choices: [{ value: 'standard', label: 'Standard' }, { value: 'movie', label: 'Cinema' }] },
+    { id: 'audioBalance', type: 'number', value: 0, min: -50, max: 50 },
+    { id: 'btSpeakerMode', type: 'switch', on: true }
+  ] });
+  var by = {};
+  ents.forEach(function (e) { by[e.id] = e; });
+  assert.ok(by.sound_mode && by.balance && by.bluetooth_speaker_mode);
+  assert.strictEqual(by.game_genre, undefined, 'a setting the TV lacks is not published');
+  assert.deepEqual(by.sound_mode.payload.options, ['Standard', 'Cinema']);
+  assert.strictEqual(by.sound_mode.payload.command_topic, 'test/tv/command/lgs/soundMode');
+  assert.strictEqual(by.sound_mode.payload.enabled_by_default, undefined);
+  assert.strictEqual(by.balance.payload.enabled_by_default, false);
+  assert.strictEqual(by.balance.payload.entity_category, 'config');
+  assert.strictEqual(by.balance.payload.min, -50);
+  assert.ok(/lgs \| default/.test(by.bluetooth_speaker_mode.payload.value_template));
+  var none = ha.buildEntities({ pfx: 'test/tv' }).filter(function (e) { return e.id === 'sound_mode'; });
+  assert.strictEqual(none.length, 0);
+  console.log('  ✓ LG settings become entities only where the TV has them');
+})();
+
 console.log('ALL test-ha.js assertions passed!\n');
