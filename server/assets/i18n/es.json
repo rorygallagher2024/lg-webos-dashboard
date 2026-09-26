@@ -1664,12 +1664,12 @@
   "from": "Updated to v{version}."
  },
  "server.available": {
-  "text": "Ya está disponible la v{version}. Al instalarla, el servidor se sustituye y se reinicia; se conservan la configuración, el bloqueador de publicidad y el salvapantallas.",
-  "from": "v{version} is out. Installing it replaces the server and restarts it; the config, ad blocker and screen saver are kept."
+  "text": "Ya está disponible la v{version}. Al instalarla, el servidor se sustituye y se reinicia.",
+  "from": "v{version} is out. Installing it replaces the server and restarts it."
  },
  "server.available.hbc": {
-  "text": "Ya está disponible v{version}. Actualiza Glasshouse en el Homebrew Channel; el servidor se actualiza en unos minutos, conservando la configuración, el bloqueador de anuncios y el salvapantallas.",
-  "from": "v{version} is out. Update Glasshouse in the Homebrew Channel; the server follows within a few minutes, keeping the config, ad blocker and screen saver."
+  "text": "Ya está disponible v{version}. Actualiza Glasshouse en el Homebrew Channel; el servidor se actualiza en unos minutos.",
+  "from": "v{version} is out. Update Glasshouse in the Homebrew Channel; the server follows within a few minutes."
  },
  "server.checkDaily": {
   "text": "Comprobar a diario",
@@ -1692,8 +1692,8 @@
   "from": "Install v{version}"
  },
  "server.install.confirm": {
-  "text": "¿Instalar la v{version}? El servidor se sustituye y se reinicia. Se conservan los ajustes, el bloqueador de publicidad y el salvapantallas, y la versión anterior queda en la TV para poder volver a ella.",
-  "from": "Install v{version}?\n\nThe server is replaced and restarted. Settings, the ad blocker and the screen saver are kept, and the previous version stays on the TV so it can be rolled back."
+  "text": "¿Instalar la v{version}? El servidor se sustituye y se reinicia, y la versión anterior queda en la TV para poder volver a ella.",
+  "from": "Install v{version}?\n\nThe server is replaced and restarted, and the previous version stays on the TV so it can be rolled back."
  },
  "server.installed": {
   "text": "Instalado. El servidor se está reiniciando; esta página se reconecta sola.",
@@ -4408,8 +4408,8 @@
   "from": "In the Homebrew Channel"
  },
  "tv.update.install.hint": {
-  "text": "Descarga e instala v{version} directamente en la TV. Se conservan los ajustes, el bloqueador de anuncios y el salvapantallas. El servidor de la TV se reinicia automáticamente.",
-  "from": "Downloads and installs v{version} directly on the TV. Settings, ad blocker, and screen saver are preserved. The TV server restarts automatically."
+  "text": "Descarga e instala v{version} directamente en la TV. El servidor de la TV se reinicia automáticamente.",
+  "from": "Downloads and installs v{version} directly on the TV. The TV server restarts automatically."
  },
  "tv.update.install.press": {
   "text": "Pulsa OK para instalar v{version}",
@@ -4424,8 +4424,8 @@
   "from": "Install update"
  },
  "tv.update.installUpdate.hint": {
-  "text": "Actualiza Glasshouse en el Homebrew Channel. El servidor se actualiza en pocos minutos, conservando tus ajustes, bloqueador de anuncios y salvapantallas.",
-  "from": "Update Glasshouse in the Homebrew Channel. The server follows within a few minutes, keeping your settings, ad blocker and screen saver."
+  "text": "Actualiza Glasshouse en el Homebrew Channel. El servidor se actualiza en pocos minutos.",
+  "from": "Update Glasshouse in the Homebrew Channel. The server follows within a few minutes."
  },
  "tv.update.installedVersion": {
   "text": "Versión instalada",

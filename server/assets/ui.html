@@ -2202,8 +2202,8 @@ function renderUpdate(d) {
 
   desc.textContent = !d.available ? ''
     : d.viaHomebrewChannel
-    ? t('server.available.hbc', 'v{version} is out. Update Glasshouse in the Homebrew Channel; the server follows within a few minutes, keeping the config, ad blocker and screen saver.', { version: d.latest })
-    : t('server.available', 'v{version} is out. Installing it replaces the server and restarts it; the config, ad blocker and screen saver are kept.', { version: d.latest });
+    ? t('server.available.hbc', 'v{version} is out. Update Glasshouse in the Homebrew Channel; the server follows within a few minutes.', { version: d.latest })
+    : t('server.available', 'v{version} is out. Installing it replaces the server and restarts it.', { version: d.latest });
   desc.hidden = !d.available;
 
   const auto = q('upd-auto');
@@ -2397,7 +2397,7 @@ async function checkNow() {
 
 async function installUpdate() {
   const v = q('upd-install').dataset.v, from = updInstalled;
-  if (!confirm(t('server.install.confirm', 'Install v{version}?\n\nThe server is replaced and restarted. Settings, the ad blocker and the screen saver are kept, and the previous version stays on the TV so it can be rolled back.', { version: v }))) return;
+  if (!confirm(t('server.install.confirm', 'Install v{version}?\n\nThe server is replaced and restarted, and the previous version stays on the TV so it can be rolled back.', { version: v }))) return;
   updBusy = true;
   updArrival = '';
   q('upd-msg').textContent = '';

@@ -258,8 +258,21 @@ telemetry.refreshInstalledApps(function (apps) {
             assert.strictEqual(second.powerState.raw, 'Always Ready');
             delete settings.lifeOnScreenMode;
             console.log('  ✓ the Always Ready display is reported as its own power state');
-            console.log('ALL test-telemetry.js assertions passed!\n');
-            mockEnv.restore();
+
+            // 12. A clock stepped back does not keep serving the last stats
+            mockEnv.files['/proc/uptime'] = '99999.00 45678.90\n';
+            var realNow = Date.now;
+            Date.now = function () { return realNow() - 600000; };
+            telemetry.collectStats(function (third) {
+              Date.now = realNow;
+              // Asserted outside: collectStats swallows what its callbacks throw.
+              setImmediate(function () {
+                assert.strictEqual(third.uptime, 99999);
+                console.log('  ✓ a clock stepped back does not keep serving the last stats');
+                console.log('ALL test-telemetry.js assertions passed!\n');
+                mockEnv.restore();
+              });
+            });
           });
         });
       });

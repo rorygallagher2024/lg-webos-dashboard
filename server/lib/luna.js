@@ -35,7 +35,16 @@ var GAP_MS = 50;
 // past its 4.5s limit and came back incomplete during start-up.
 var STARTUP_GAP_MS = 150;
 var STARTUP_MS = 30000;
-var bornAt = Date.now();
+/*
+ * Monotonic, not Date.now(): the wall clock can step back, and a start due
+ * "later" by the old clock then waited out the whole step, every call and
+ * subscription with it, while the heartbeat carried on.
+ */
+function mono() {
+  var t = process.hrtime();
+  return t[0] * 1000 + t[1] / 1e6;
+}
+var bornAt = mono();
 var launches = [];
 var launchTimer = null;
 var nextLaunchAt = 0;
@@ -47,11 +56,9 @@ function launch(fn) {
 
 function drainLaunches() {
   if (launchTimer || !launches.length) return;
-  var now = Date.now();
+  var now = mono();
   var gap = now - bornAt < STARTUP_MS ? STARTUP_GAP_MS : GAP_MS;
-  // Capped: the clock can step back on resume from standby, which would
-  // otherwise leave the next start due far in the future.
-  var wait = Math.min(nextLaunchAt - now, gap);
+  var wait = nextLaunchAt - now;
   if (wait > 0) {
     launchTimer = setTimeout(function () { launchTimer = null; drainLaunches(); }, wait);
     return;
