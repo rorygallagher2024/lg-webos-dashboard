@@ -19,7 +19,7 @@
 > Local, transparent, and without requiring a manufacturer cloud service.
 > No nonsense, no data collection, no ads, no dark patterns. I don't want your data.
 
-**glasshouse** is a server that runs directly on a rooted LG webOS TV, providing both a live browser dashboard and a dashboard app.
+**Glasshouse** is a server that runs directly on a rooted LG webOS TV, providing both a live browser dashboard and a dashboard app.
 
 Use it for remote control, app management and removal, OLED panel care, privacy controls, service menu access, and hardware telemetry. It also includes an MQTT bridge for integrating the TV with Home Assistant and other smart-home software.
 
@@ -53,13 +53,13 @@ This project is intended to give a rooted webOS TV a useful local control surfac
 
 1. **[Controlling the TV without the cloud](#remote-control).** A D-pad to navigate the TV itself, volume, mute, media playback keys (play, pause, stop, skip), app launcher, picture presets, sound output routing, power and reboot.
 
-2. **[Seeing what the TV is configured to collect, and switching it off](#privacy-and-data-collection).** Whether LG's content-recognition engine is running and sampling your screen, your advertising identifier and whether ad tracking is limited, and every data agreement recorded on the TV with most of them switchable from the dashboard. Includes an on-TV blocker for LG's ad and telemetry endpoints, and a switch for the two diagnostics services that upload to LG.
+2. **[Seeing what the TV is configured to collect, and switching it off](#privacy-and-data-collection).** Whether LG's content-recognition engine is running and sampling the screen, the advertising identifier and whether ad tracking is limited, and every data agreement recorded on the TV with most of them switchable from the dashboard. Includes an on-TV blocker for LG's ad and telemetry endpoints, and a switch for the two diagnostics services that upload to LG.
 
 3. **[App management, debloating and home screen cleanup](#apps-and-home-screen-launcher).** Permanently uninstall apps to reclaim internal flash storage, disable unnecessary background system services to free up RAM and CPU cycles, and hide non-removable built-in LG system apps from the home launcher.
 
 4. **[Replacing the screen saver](#screen-savers).** A clock, a starfield, fireworks, or the TV's own readings, each dim or bright, in place of LG's.
 
-5. **[Integrating the TV with your smart home](#home-assistant--mqtt).** The MQTT bridge exposes the TV as a single device with its controls and telemetry, with Home Assistant support through MQTT Discovery and the same underlying interface available to other MQTT clients.
+5. **[Integrating the TV with a smart home](#home-assistant--mqtt).** The MQTT bridge exposes the TV as a single device with its controls and telemetry, with Home Assistant support through MQTT Discovery and the same underlying interface available to other MQTT clients.
 
 6. **[Seeing what the TV is actually doing](#telemetry-and-diagnostics).** SoC temperature, per-core CPU load, memory, swap, current draw, Wi-Fi signal and throughput.
 
@@ -98,7 +98,7 @@ The TV arrives over MQTT Discovery as a single unified device:
 A custom Home Assistant dashboard for an LG TV:
 
 <p align="center">
-  <a href="https://github.com/user-attachments/assets/b33d88c1-3c98-4e5f-a503-249e742a2ab1"><img width="800" alt="Custom dashboard leveraging MQTT data" src="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600" /></a>
+  <a href="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600"><img width="800" alt="Custom dashboard leveraging MQTT data" src="https://github.com/user-attachments/assets/737b3106-e8a4-4c6b-ba96-b0bad130b600" /></a>
   <br>
   <sub>A custom Home Assistant dashboard using the TV's MQTT entities.</sub>
 </p>
@@ -113,7 +113,7 @@ Each has a tab of its own in the dashboard, and a deep link to it. OLED Care app
 
 The **Control** tab, `/?tab=control`, turns the TV itself into a locally controlled device. Instead of relying on LG's cloud services or a phone app, the dashboard talks directly to webOS over the local network.
 
-From a browser you can navigate the TV, change inputs, control playback and volume, launch applications, change picture and sound settings, blank the screen, set a sleep timer, and send notifications.
+From a browser, the dashboard can navigate the TV, change inputs, control playback and volume, launch applications, change picture and sound settings, blank the screen, set a sleep timer, and send notifications.
 
 * A D-pad — arrows, OK, Back and Home — to navigate the TV's own interface.
 * Volume, mute, input select, and media playback — play, pause, stop, skip.
@@ -133,7 +133,7 @@ The **Advanced** tab, `/?tab=advanced`, holds the TV's own settings that LG keep
 
 The **Metrics** tab, `/?tab=metrics`, exposes information about what the TV is doing and what hardware it contains — most of which is absent from its own settings menu.
 
-This is useful both for monitoring and for troubleshooting. You can see whether a high-temperature condition is accompanied by CPU load, what Wi-Fi signal the TV actually has, what HDMI mode a connected device negotiated, and what software is currently running.
+This is useful both for monitoring and for troubleshooting. It shows whether a high-temperature condition is accompanied by CPU load, what Wi-Fi signal the TV actually has, what HDMI mode a connected device negotiated, and what software is currently running.
 
 * SoC temperature and current draw, CPU and per-core load, GPU clock, memory and swap, Wi-Fi RSSI and network throughput.
 * eMMC flash wear with JEDEC health translation, and free space on the app partition.
@@ -150,12 +150,12 @@ This is useful both for monitoring and for troubleshooting. You can see whether 
 
 ### Apps and home screen launcher
 
-The **Apps** tab, `/?tab=apps`, gives you three different ways to manage software on the TV.
+The **Apps** tab, `/?tab=apps`, offers three different ways to manage software on the TV.
 
 **Uninstall** removes an application completely and frees its storage. **Disable** stops selected background services without deleting them. **Hide** removes built-in LG system apps from the home launcher without touching the underlying application.
 
 * **Uninstall applications:** Store downloads and sideloaded packages with version and vendor details, and a one-click uninstall action to permanently delete apps and free up internal eMMC flash storage.
-* **Turn off background services:** Safely disable unnecessary background services and daemons that consume RAM and CPU cycles (such as USB camera watcher, Connected Car listeners, and browser preloading). Only services actually present on your TV model are displayed, and disabled states are persisted across reboots.
+* **Turn off background services:** Safely disable unnecessary background services and daemons that consume RAM and CPU cycles (such as USB camera watcher, Connected Car listeners, and browser preloading). Only services actually present on the TV are displayed, and disabled states are persisted across reboots.
 * **Hide home screen system apps:** Hide non-removable LG system apps (Gallery, Music, Sports, Always Ready, Camera, User Guide, Device Connector, Alexa, Google Assistant, etc.) from the home launcher ribbon. Operates non-destructively via reversible `appinfo.json` bind-mounts. Includes a master toggle to instantly return to stock behavior.
 * **Strict system safeguards:** Core TV services (`Live TV`, `Settings`, `Launcher`, input switchers, and the dashboard itself) are strictly protected and can never be hidden or uninstalled.
 * **Available on TV and Web:** Manage apps from any browser or directly on the TV using the remote control in the on-TV dashboard app.
@@ -172,7 +172,7 @@ The **Privacy** tab, `/?tab=privacy`, reports what the TV is configured to do ra
 
 It opens with a summary of screen recognition, ad tracking and usage reports, what is still on under each, and a button that switches all of it off while leaving voice and LG Channels alone. Everything below it is the detail.
 
-It shows whether the content-recognition engine is running and sampling frames, your advertising ID and whether ad tracking is limited, recorded data agreements, and toggles to disable LG's background collection and diagnostics services.
+It shows whether the content-recognition engine is running and sampling frames, the advertising ID and whether ad tracking is limited, recorded data agreements, and toggles to disable LG's background collection and diagnostics services.
 
 Most data agreements can be switched off from here (persisting across reboots), and the advertising ID can be reset and its cookies cleared. Acceptance of new terms is left to the TV's own menus.
 
@@ -238,11 +238,12 @@ Newer firmware shows a cut-down version until it is unlocked, and the dashboard 
 
 ### Screen savers
 
-The **Screensaver** tab, `/?tab=screensaver`, provides four alternatives to LG's default:
+The **Screensaver** tab, `/?tab=screensaver`, provides five alternatives to LG's default:
 
 * Clock
 * Starfield
 * Fireworks
+* Bokeh, soft circles of light drifting in and out
 * Panel vitals, showing the TV's own panel hours and refresher countdown
 
 Each mode offers dim and bright variants, and visual elements continuously drift across the screen to prevent OLED burn-in or image retention.
@@ -256,7 +257,7 @@ A firmware update restores the LG default.
 </p>
 
 <p align="center">
-  <a href="docs/screenshots/screensaver-starfield.png"><img src="docs/screenshots/screensaver-starfield.png" alt="Starscape screen saver on OLED: drifting stars and meteor with ion trail" width="700"></a>
+  <a href="docs/screenshots/screensaver-starfield.png"><img src="docs/screenshots/screensaver-starfield.png" alt="Starfield screen saver on OLED: drifting stars and meteor with ion trail" width="700"></a>
   <br>
   <sub>The Starfield screen saver with continuously moving elements.</sub>
 </p>
@@ -316,7 +317,7 @@ It also adds or removes [the app on the TV's home screen](#the-dashboard-on-the-
 * A rooted LG webOS TV ([Root tool here](https://github.com/throwaway96/dejavuln-autoroot/)) with the [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel).
 * A computer on the same network to install from: a Mac, a Linux machine, or a Windows PC. The installation uses Git and requires no other software on the computer. The TV does not need internet access.
 
-If you want to use the MQTT bridge, you will also need an MQTT broker on the network. Home Assistant's Mosquitto add-on is one option, but any compatible MQTT broker works.
+The MQTT bridge also needs an MQTT broker on the network. Home Assistant's Mosquitto add-on is one option, but any compatible MQTT broker works.
 
 ### Tested TVs
 
@@ -347,7 +348,7 @@ Tested across the following TVs so far. The Luna service names and `/proc/lg` pa
 | OLED48C55LA | 25 (10.3.1)  | 33.31.68 | OLED  | Installed over telnet; in-app update to 0.37.2 confirmed       |
 | OLED77C57LA | 25 (10.3.1)  | 33.31.68 | OLED  | MQTT, privacy, screen saver and web dashboard confirmed        |
 
-**Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with your TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` — whether everything worked or something broke — and we will add a row.
+**Tested on another model?** Please [open an issue](https://github.com/rorygallagher2024/lg-webos-dashboard/issues/new) with the TV model, webOS version, and the contents of `/var/lib/tvweb/tvweb.log` — whether everything worked or something broke — and we will add a row.
 
 ### 1. Get the files
 
@@ -366,11 +367,11 @@ cd lg-webos-dashboard/server
 Find the TV's address under Settings → Network on the TV, or in the router's list of devices. The installer automatically uses SSH if the TV has it, and falls back to the Homebrew Channel's telnet if not.
 
 > [!CAUTION]
-> Telnet leaves an unauthenticated root shell open on your local network.
+> Telnet leaves an unauthenticated root shell open on the local network.
 > [Moving from telnet to SSH](docs/SECURITY.md#moving-from-telnet-to-ssh)
 > takes about five minutes and is strongly recommended.
 
-Then, from the `server/` directory in your terminal:
+Then, from the `server/` directory in a terminal:
 
 ```bash
 ./deploy.sh <tv-ip>
@@ -456,7 +457,7 @@ Edit those in `config.json` and redeploy, or edit `/var/lib/tvweb/config.json` o
 `allowPower` is on, like the other controls: who on the network can use them is decided by opening the dashboard to the network in setup, and by `token`. `"allowPower": false` hides and refuses power off, power on and reboot, in the dashboard and in Home Assistant.
 
 > [!NOTE]
-> Give the TV its own MQTT user with a restricted topic ACL rather than reusing your main Home Assistant credentials. See [docs/SECURITY.md](docs/SECURITY.md).
+> Give the TV its own MQTT user with a restricted topic ACL rather than reusing the main Home Assistant credentials. See [docs/SECURITY.md](docs/SECURITY.md).
 
 </details>
 
@@ -531,7 +532,7 @@ git pull
 ./deploy.sh <tv-ip>
 ```
 
-Only the server's own files are replaced: your configuration, ad blocker hosts, screen saver, and stopped services are preserved.
+Only the server's own files are replaced; settings are kept.
 
 Previous versions are saved to allow instant rollback via `tvwebctl rollback`.
 
@@ -567,7 +568,7 @@ Nothing on the TV's read-only rootfs is ever modified. [What the dashboard chang
 
 ## Security
 
-The dashboard binds to `0.0.0.0` with **no authentication by default**, allowing frictionless control from any phone or browser on your trusted local network.
+The dashboard binds to `0.0.0.0` with **no authentication by default**, allowing frictionless control from any phone or browser on a trusted local network.
 
 **Never expose port 8080 directly to the internet (do not port-forward).**
 
@@ -600,6 +601,10 @@ Full detail, including the MQTT ACL guidance and optional TLS, is in [docs/SECUR
 * [docs/SECURITY.md](docs/SECURITY.md) — threat model, SSH migration, MQTT hardening
 * [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md) — the entity reference, universal media player, example automations
 * [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) — architecture, `/proc/lg` reference, platform quirks
+* [docs/TV-CHANGES.md](docs/TV-CHANGES.md) — everything the dashboard changes on the TV, and what uninstalling leaves
+* [docs/ACR.md](docs/ACR.md) — what LG's content recognition collects
+* [docs/TV-SPECS.md](docs/TV-SPECS.md) — hardware specifications of the tested TVs
+* [docs/STRINGS.md](docs/STRINGS.md) — how the dashboards' text is keyed for translation
 
 ---
 
