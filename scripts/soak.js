@@ -12,6 +12,11 @@
  * dashboard and MQTT take to come back. With --ssh, it also reads the
  * watchdog's restart log at the end.
  *
+ * With --restarts N (needs ssh as root), it instead restarts the server N
+ * times, the moment the server has been seen to freeze, and times each start
+ * until the dashboard answers. Any restart or stuck child the watchdog logs in
+ * the meantime is reported.
+ *
  * Options: --tv IP (required), --port 8080, --broker HOST[:PORT],
  * --prefix lgtv, --hours 1, --cycle 0 (minutes; 0 = never switch off),
  * --asleep 3 (minutes to leave the TV off), --mac (default: from the TV),
@@ -30,7 +35,8 @@ for (let i = 2; i < process.argv.length; i++) {
   const next = process.argv[i + 1];
   args[a.slice(2)] = next && !next.startsWith('--') ? (i++, next) : true;
 }
-if (!args.tv) { console.error('usage: soak.js --tv IP [--broker HOST] [--hours 1] [--cycle 0] [--ssh]'); process.exit(2); }
+if (args.restarts) args.ssh = true;
+if (!args.tv) { console.error('usage: soak.js --tv IP [--broker HOST] [--hours 1] [--cycle 0] [--ssh] [--restarts N]'); process.exit(2); }
 
 const TV = args.tv, PORT = +args.port || 8080;
 const HOURS = +args.hours || 1, CYCLE_MIN = +args.cycle || 0, ASLEEP_MIN = +args.asleep || 3;
@@ -161,6 +167,34 @@ async function cycleLoop(mac) {
   }
 }
 
+// ---- restarts: the server's own start, repeated ----
+async function restartLoop(count) {
+  for (let i = 1; i <= count; i++) {
+    const t0 = Date.now();
+    try {
+      execFileSync('ssh', ['-o', 'ConnectTimeout=8', 'root@' + TV, '/var/lib/tvweb/tvwebctl restart'], { stdio: 'ignore' });
+    } catch (e) { log('restart ' + i + ': ssh failed'); }
+    let up = null;
+    while (Date.now() - t0 < 180e3) {
+      const r = await request('GET', '/api/stats', null, 4000);
+      if (r.ok) { up = Date.now(); break; }
+      await sleep(1000);
+    }
+    const res = { n: i, answeredSecs: up ? Math.round((up - t0) / 1000) : null };
+    // A start that froze late still answered once; watch it through the
+    // window the watchdog judges a start by.
+    if (up) {
+      while (Date.now() - up < 60e3) {
+        const r = await request('GET', '/api/stats', null, 4000);
+        if (!r.ok) { res.stalled = true; break; }
+        await sleep(5000);
+      }
+    }
+    log('restart ' + JSON.stringify(res));
+    results.cycles.push(res.answeredSecs && !res.stalled ? res : Object.assign(res, { failed: 'did not start cleanly' }));
+  }
+}
+
 (async function main() {
   log('soak: ' + TV + ' for ' + HOURS + 'h' + (CYCLE_MIN ? ', power cycle every ' + CYCLE_MIN + ' min' : ''));
   let mac = args.mac;
@@ -169,14 +203,21 @@ async function cycleLoop(mac) {
     mac = r.json && r.json.mac;
     if (!mac) { console.error('no MAC address from the TV; pass --mac'); process.exit(2); }
   }
-  const restartsBefore = args.ssh ? readRestarts().length : 0;
-  await Promise.all([probeLoop(), CYCLE_MIN ? cycleLoop(mac) : Promise.resolve()]);
-  if (args.ssh) results.restarts = readRestarts().slice(restartsBefore);
+  // By content, not count: the watchdog trims the file to its tail.
+  const seen = args.ssh ? readRestarts() : [];
+  const lastSeen = seen[seen.length - 1];
+  if (args.restarts) await restartLoop(+args.restarts);
+  else await Promise.all([probeLoop(), CYCLE_MIN ? cycleLoop(mac) : Promise.resolve()]);
+  if (args.ssh) {
+    const now = readRestarts();
+    const at = lastSeen ? now.lastIndexOf(lastSeen) : -1;
+    results.restarts = now.slice(at + 1);
+  }
   const summary = {
     tv: TV, hours: HOURS, probes: results.probes, failedProbes: results.failed, slowProbes: results.slow,
     outages: results.outages, mqttGaps: results.mqttGaps,
     cycles: results.cycles.length, failedCycles: results.cycles.filter(c => c.failed),
-    worstDashboardSecs: Math.max(0, ...results.cycles.map(c => c.dashboardSecs || 0)),
+    worstDashboardSecs: Math.max(0, ...results.cycles.map(c => c.dashboardSecs || c.answeredSecs || 0)),
     worstMqttSecs: Math.max(0, ...results.cycles.map(c => c.mqttSecs || 0)),
     restarts: results.restarts
   };
