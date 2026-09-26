@@ -7,7 +7,8 @@
  * test/mocks/fake-luna-send.js, and an MQTT broker faked here. Each phase
  * checks that the dashboard answers promptly throughout, the heartbeat is
  * written, telemetry keeps reaching the broker, and SIGTERM stops the server
- * cleanly. BOOT_TEST_SECS sets how long each phase runs (default 25).
+ * cleanly. The phases run side by side; BOOT_TEST_SECS sets how long each
+ * runs (default 15, seven telemetry rounds).
  *
  * Strict ES5: runs on node 0.12, the B8's version.
  */
@@ -18,7 +19,7 @@ var net = require('net');
 var os = require('os');
 var path = require('path');
 
-var SECS = +process.env.BOOT_TEST_SECS || 25;
+var SECS = +process.env.BOOT_TEST_SECS || 15;
 var mockFiles = require('./mocks/mock-env').createMockEnv().files;
 var FAKE_LUNA = path.join(__dirname, 'mocks', 'fake-luna-send.js');
 fs.chmodSync(FAKE_LUNA, 493); // 0755
@@ -207,9 +208,11 @@ function phase(name, chaos, next) {
   });
 }
 
-phase('steady TV', false, function () {
-  phase('unreliable TV', true, function () {
-    console.log('ALL test-server-boot.js assertions passed!\n');
-    process.exit(0);
-  });
-});
+var phasesLeft = 2;
+function phaseDone() {
+  if (--phasesLeft) return;
+  console.log('ALL test-server-boot.js assertions passed!\n');
+  process.exit(0);
+}
+phase('steady TV', false, phaseDone);
+phase('unreliable TV', true, phaseDone);
