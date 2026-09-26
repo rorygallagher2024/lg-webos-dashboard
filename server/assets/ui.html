@@ -186,6 +186,15 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
    padding:15px 0;border-bottom:1px solid var(--w06)}
 .r .v{font-family:'Outfit';font-weight:200;font-size:26px;color:var(--w100);text-align:right;line-height:1}
 .r .v small{font-size:13px;color:var(--w60);margin-left:4px;font-family:'Manrope';font-weight:400}
+.r-mid{display:flex;flex-direction:column;gap:5px;min-width:0;justify-content:center}
+.r-spark{display:flex;align-items:flex-end;gap:2px;height:20px;overflow:hidden}
+.r-spark i{flex:1;background:var(--w20);min-height:1px;display:block;transition:height .3s cubic-bezier(0,0,.2,1),background .4s ease;border-radius:1px 1px 0 0}
+.r-spark i.hi{background:var(--cand)}
+.r-spark i.crit{background:var(--red)}
+.r-spark i.now{background:var(--w100)}
+.r-spark i.hi.now{background:var(--cand);filter:brightness(1.2)}
+.r-spark i.crit.now{background:var(--red);filter:brightness(1.2)}
+.r-spark i.void{background:transparent}
 .track{height:2px;background:var(--w06);position:relative;overflow:hidden}
 .track b{position:absolute;inset:0 auto 0 0;background:var(--w60);transition:width .45s cubic-bezier(.4,0,.2,1),background .5s ease}
 
@@ -1763,8 +1772,8 @@ function updateToggle(btnOrId, opts) {
 /* Level is carried by fill and opacity, never by hue - so "hi" is a state
    class that brightens the row rather than turning it red. */
 const ROWS = [
-  { k: 'cpu',   label: t('metrics.processor', 'Processor'), warn: 85 },
-  { k: 'mem',   label: t('metrics.memory', 'Memory'),       warn: 90 },
+  { k: 'cpu',   label: t('metrics.processor', 'Processor'), warn: 85, spark: true },
+  { k: 'mem',   label: t('metrics.memory', 'Memory'),       warn: 90, spark: true },
   { k: 'swap',  label: t('metrics.swap', 'Swap'),           warn: 70 },
   /* Throughput and draw have no threshold to cross - warn: 101 was the tell.
      A level hue on them would be a lie, and the fixed blue and amber they used
@@ -1799,7 +1808,10 @@ function headroom(pct, warn) {
 q('readouts').innerHTML = ROWS.map(r =>
   `<div class="r" id="row-${r.k}">
      <div><div class="lbl">${r.label}</div><div class="sub" id="sub-${r.k}"></div></div>
-     <div class="track"><b id="bar-${r.k}" style="width:0%"></b></div>
+     <div class="r-mid">
+       ${r.spark ? `<div class="r-spark" id="spark-${r.k}"></div>` : ''}
+       <div class="track"><b id="bar-${r.k}" style="width:0%"></b></div>
+     </div>
      <div class="v num" id="val-${r.k}">—</div>
    </div>`).join('');
 
@@ -1891,6 +1903,29 @@ function trace(vals) {
     out += `<i class="${cls}" style="height:${8 + (v - lo) / span * 92}%"></i>`;
   });
   q('trace').innerHTML = out;
+}
+
+const SPARK_SLOTS = 42;
+let cpuHist = [], memHist = [];
+
+function spark(id, vals, warn) {
+  const el = q(id);
+  if (!el || !vals || !vals.length) return;
+  const recent = vals.slice(-SPARK_SLOTS);
+  const pad = SPARK_SLOTS - recent.length;
+  let out = '';
+  for (let i = 0; i < pad; i++) out += '<i class="void"></i>';
+  const len = recent.length;
+  recent.forEach((v, i) => {
+    const isNow = i === len - 1;
+    const isCrit = v >= warn;
+    const isHi = v >= warn * 0.8;
+    let cls = isCrit ? 'crit' : (isHi ? 'hi' : '');
+    if (isNow) cls = (cls ? cls + ' ' : '') + 'now';
+    const h = Math.max(6, Math.min(100, Math.round(v)));
+    out += `<i class="${cls}" style="height:${h}%"></i>`;
+  });
+  el.innerHTML = out;
 }
 
 function row(k, val, pct, sub, warn) {
@@ -2054,10 +2089,20 @@ async function tick() {
     const cores = live.map(v => v + '%').join('  ·  ') +
       (parked ? '  ·  ' + t('metrics.cpu.parked', '{n} parked', { n: parked }) : '');
     row('cpu', d.load + '<small>%</small>', d.load, cores, 85);
+    if (typeof d.load === 'number' && !isNaN(d.load)) {
+      if (!cpuHist.length && Array.isArray(d.cpus) && d.cpus.length) cpuHist = d.cpus.slice(-120);
+      else { cpuHist.push(Math.round(d.load)); if (cpuHist.length > 120) cpuHist.shift(); }
+    }
+    spark('spark-cpu', cpuHist, 85);
 
     const mu = d.mem.total ? 100 * (d.mem.total - d.mem.avail) / d.mem.total : 0;
     row('mem', mu.toFixed(0) + '<small>%</small>', mu,
         mb(d.mem.total - d.mem.avail) + ' / ' + mb(d.mem.total) + ' MB', 90);
+    if (d.mem && d.mem.total) {
+      if (!memHist.length && Array.isArray(d.mems) && d.mems.length) memHist = d.mems.slice(-120);
+      else { memHist.push(Math.round(mu)); if (memHist.length > 120) memHist.shift(); }
+    }
+    spark('spark-mem', memHist, 90);
 
     const su = d.swap.total ? 100 * (d.swap.total - d.swap.free) / d.swap.total : 0;
     row('swap', su.toFixed(0) + '<small>%</small>', su,

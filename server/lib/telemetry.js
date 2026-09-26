@@ -85,6 +85,8 @@ function noteHdmiSeen(diag) {
 var prevNet = null;
 var TEMP_HISTORY_MAX = 120;
 var tempHistory = [];
+var cpuHistory = [];
+var memHistory = [];
 var bootEpoch = 0;
 
 var lastStats = null;
@@ -942,6 +944,12 @@ function pushTemp(t) {
   if (tempHistory.length > TEMP_HISTORY_MAX) tempHistory.shift();
 }
 
+function pushLoad(history, val) {
+  if (typeof val !== 'number' || isNaN(val) || val < 0) return;
+  history.push(Math.round(val));
+  if (history.length > TEMP_HISTORY_MAX) history.shift();
+}
+
 function bootTime(uptimeSec) {
   var computed = Date.now() - uptimeSec * 1000;
   if (Math.abs(computed - bootEpoch) > 30000) bootEpoch = computed;
@@ -1080,6 +1088,13 @@ function collectStats(cb) {
 
   pushTemp(out.temp);
   out.temps = tempHistory.slice();
+
+  pushLoad(cpuHistory, out.load);
+  out.cpus = cpuHistory.slice();
+
+  var memPct = (out.mem && out.mem.total) ? 100 * (out.mem.total - out.mem.avail) / out.mem.total : null;
+  pushLoad(memHistory, memPct);
+  out.mems = memHistory.slice();
 
   refreshInputNames();
 

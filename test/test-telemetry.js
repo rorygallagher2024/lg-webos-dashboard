@@ -242,6 +242,8 @@ telemetry.refreshInstalledApps(function (apps) {
         assert.strictEqual(stats.wifi.level, -63);
         assert.ok(stats.oled && stats.oled.panel_hours === 3500);
         assert.ok(Array.isArray(stats.apps) && stats.apps.length === 2);
+        assert.ok(Array.isArray(stats.cpus) && stats.cpus.length > 0, 'Expected cpus history array');
+        assert.ok(Array.isArray(stats.mems) && stats.mems.length > 0, 'Expected mems history array');
 
         console.log('  ✓ collectStats aggregates full telemetry payload including apps');
 
