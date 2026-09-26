@@ -7,6 +7,9 @@ var childProcess = require('child_process');
 var execFile = childProcess.execFile;
 var spawn = childProcess.spawn;
 
+// Overridable so the start-up test can run the whole server against a stand-in.
+var LUNA_SEND = process.env.TVWEB_LUNA_SEND || '/usr/bin/luna-send';
+
 /*
  * One-shot calls run at most two at a time, the rest in turn. Node 0.12 on a
  * B8 (webOS 4) has frozen in its first second at start: a luna-send child
@@ -39,7 +42,7 @@ function diedEarly(err) {
 }
 
 function run(job) {
-  execFile('/usr/bin/luna-send', job.args, { timeout: 3500 }, function (err, stdout) {
+  execFile(LUNA_SEND, job.args, { timeout: 3500 }, function (err, stdout) {
     running--;
     if (diedEarly(err)) {
       var uri = job.args[job.args.length - 2];
@@ -108,7 +111,7 @@ Subscription.prototype._connect = function () {
   // as one compact JSON response per line instead.
   args = args.concat(['-i', 'luna://' + self.uri, JSON.stringify(self.payload)]);
   self.buffer = '';
-  self.child = spawn('/usr/bin/luna-send', args);
+  self.child = spawn(LUNA_SEND, args);
 
   self.child.stdout.on('data', function (chunk) {
     self._consume(String(chunk));
