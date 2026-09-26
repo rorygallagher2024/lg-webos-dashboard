@@ -98,6 +98,34 @@ start_watch() {
   start-stop-daemon -S -b -m -p "$WATCHPID" -x /bin/sh -- -c "exec $SELF watch"
 }
 
+# A child of the server that is still node, rather than the program it was
+# started to run, is stuck between fork and exec. On a B8 (webOS 4, node 0.12)
+# such a child sits on a lock it inherited held, and the server waits on it with
+# its event loop frozen: "heartbeat 149s old" after a resume from standby, the
+# child a copy of tvweb.js in futex_wait_queue_me. The server starts nothing
+# that runs node, so the name alone identifies one. The window is normally
+# microseconds; one still there seconds later is killed, which frees the server,
+# and luna.js runs the call again.
+stuck_children() {
+  for st in /proc/[0-9]*/stat; do
+    read -r cpid comm _ ppid _ < "$st" 2>/dev/null || continue
+    [ "$ppid" = "$1" ] && [ "$comm" = "(node)" ] && printf "%s " "$cpid"
+  done
+}
+
+free_stuck_children() {
+  [ -n "$1" ] || return
+  first=$(stuck_children "$1")
+  [ -n "$first" ] || return
+  sleep 3
+  for cpid in $(stuck_children "$1"); do
+    case " $first " in *" $cpid "*)
+      kill -9 "$cpid" 2>/dev/null &&
+        echo "$(date): child $cpid stuck before exec - killed it" >> "$RESTARTS" ;;
+    esac
+  done
+}
+
 # The watchdog loop. Runs as its own detached process; restarts only the app,
 # never itself, so a restart cannot orphan the watchdog.
 #
@@ -133,6 +161,7 @@ watch_loop() {
     fi
 
     [ -f "$PIDFILE" ] || { stale=0; continue; }       # stopped on purpose
+    free_stuck_children "$(cat "$PIDFILE" 2>/dev/null)"
     if ! kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
       echo "$(date): process gone - starting" >> "$RESTARTS"
       start_app
