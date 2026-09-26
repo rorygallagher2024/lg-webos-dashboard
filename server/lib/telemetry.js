@@ -953,7 +953,7 @@ function clearCache() {
 
 function collectStats(cb) {
   var now = Date.now();
-  if (lastStats && (now - lastStatsTime < 1500)) {
+  if (lastStats && now >= lastStatsTime && now - lastStatsTime < 1500) {
     return cb(lastStats);
   }
 

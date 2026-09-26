@@ -259,7 +259,9 @@ var lunaCache = {};
 function lunaCached(uri, payload, ttlMs, cb) {
   var key = uri + '|' + JSON.stringify(payload || {});
   var hit = lunaCache[key];
-  if (hit && (Date.now() - hit.t < ttlMs)) return cb(hit.v, hit.raw);
+  // A negative age is a clock that stepped back: treat the entry as stale.
+  var age = hit ? Date.now() - hit.t : -1;
+  if (hit && age >= 0 && age < ttlMs) return cb(hit.v, hit.raw);
   luna(uri, payload, function (parsed, raw) {
     // Only a real answer is worth pinning; a failed read should be retried.
     if (parsed) lunaCache[key] = { t: Date.now(), v: parsed, raw: raw };

@@ -17,6 +17,17 @@ child.execFile = function (file, args, opts, cb) {
   process.nextTick(function () { cb(next.err || null, next.out || ''); });
 };
 
+var EventEmitter = require('events').EventEmitter;
+var spawnedAt = [];
+child.spawn = function () {
+  spawnedAt.push(Date.now());
+  var c = new EventEmitter();
+  c.stdout = new EventEmitter();
+  c.stderr = new EventEmitter();
+  c.kill = function () {};
+  return c;
+};
+
 var luna = require('../server/lib/luna');
 var aborted = function () { var e = new Error('Command failed'); e.signal = 'SIGABRT'; e.killed = false; return e; };
 var timedOut = function () { var e = new Error('Command failed'); e.signal = 'SIGTERM'; e.killed = true; return e; };
@@ -60,7 +71,42 @@ luna.call('com.webos.service.tv.systemproperty/getSystemProperties', { keys: ['m
         assert.strictEqual(runs.length, 2);
         assert.ok(startedAt[1] - startedAt[0] >= 130, 'second start ' + (startedAt[1] - startedAt[0]) + 'ms after the first');
         console.log('  ✓ two calls made together start 150ms apart after start-up');
-        console.log('ALL test-luna.js assertions passed!\n');
+
+        // 5. Subscriptions wait their turn with the calls
+        runs = []; startedAt = []; spawnedAt = [];
+        script = [{ out: '{}' }];
+        var subA = new luna.Subscription('com.webos.audio/getVolume', { subscribe: true }, null, {});
+        var subB = new luna.Subscription('com.webos.service.tvpower/power/getPowerState', { subscribe: true }, null, {});
+        subA.start(); subB.start();
+        luna.call('com.webos.service.settings/getSystemSettings', {}, function () {});
+        setTimeout(function () {
+          var starts = spawnedAt.concat(startedAt).sort();
+          assert.strictEqual(starts.length, 3);
+          assert.ok(starts[1] - starts[0] >= 130 && starts[2] - starts[1] >= 130,
+                    'starts ' + (starts[1] - starts[0]) + 'ms and ' + (starts[2] - starts[1]) + 'ms apart');
+          subA.stop(); subB.stop();
+          console.log('  ✓ subscriptions start in turn with calls, spaced the same');
+
+          // 6. A clock stepped back, as on resume from standby, does not hold starts up
+          var realNow = Date.now;
+          Date.now = function () { return realNow() - 600000; };
+          runs = [];
+          script = [{ out: '{}' }];
+          var t0 = realNow();
+          // Fails rather than hangs: a stalled queue never calls back.
+          var guard = setTimeout(function () {
+            console.error('  ✗ a call made after the clock stepped back never started');
+            process.exit(1);
+          }, 2000);
+          luna.call('com.webos.audio/getVolume', {}, function () {
+            clearTimeout(guard);
+            Date.now = realNow;
+            var waited = realNow() - t0;
+            assert.ok(waited < 1000, 'a call waited ' + waited + 'ms after the clock stepped back');
+            console.log('  ✓ a clock stepped back does not hold starts up');
+            console.log('ALL test-luna.js assertions passed!\n');
+          });
+        }, 800);
       };
       luna.call('com.webos.service.tvpower/power/getPowerState', {}, both);
       luna.call('com.webos.audio/getVolume', {}, both);
