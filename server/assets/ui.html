@@ -279,10 +279,10 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 /* ---- controls ---- */
 .set{margin-top:22px}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:11px}
-.vol-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
+.vol-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px;align-items:stretch}
 .vol-wrap{
   grid-column:span 2;position:relative;display:flex;align-items:center;
-  height:48px;min-height:48px;background:transparent;border:1px solid var(--edge);
+  min-height:48px;background:transparent;border:1px solid var(--edge);
   box-sizing:border-box;cursor:pointer;overflow:hidden;transition:border-color .16s ease;
   user-select:none;-webkit-user-select:none;touch-action:none;
 }
@@ -943,7 +943,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="btns" id="inputs"></div>
     </div>
 
-    <div class="set"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
+    <div class="set" data-col="0"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
       <div class="vol-row">
         <div class="vol-wrap" id="vol-wrap" role="group" aria-label="Volume" data-t-aria-label="ctl.volume">
           <div class="vol-fill" id="vol-fill"></div>
