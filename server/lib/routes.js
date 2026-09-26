@@ -21,10 +21,15 @@ var MIME = {
   '.png': 'image/png', '.svg': 'image/svg+xml'
 };
 
+/**
+ * @param {string|undefined} reqUrl
+ * @returns {{ pathname: string, query: Object.<string, any> }}
+ */
 function parseUrl(reqUrl) {
   if (typeof URL === 'function') {
     try {
       var p = new URL(reqUrl || '/', 'http://127.0.0.1');
+      /** @type {Object.<string, any>} */
       var q = {};
       p.searchParams.forEach(function (v, k) { q[k] = v; });
       return { pathname: p.pathname, query: q };
