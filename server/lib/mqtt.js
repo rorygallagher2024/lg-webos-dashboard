@@ -34,6 +34,7 @@ function MiniMQTT(opts) {
   this.packetId = 1;
   this.buffer = toBuffer([]);
   this.pingTimer = null;
+  this.lastRx = 0;
   this.retryTimer = null;
   this.subscriptions = [];
   this.listeners = {};
@@ -130,6 +131,7 @@ MiniMQTT.prototype.connect = function() {
   });
 
   socket.on('data', function(chunk) {
+    self.lastRx = Date.now();
     self.buffer = Buffer.concat([self.buffer, chunk]);
     self._parse();
   });
@@ -183,10 +185,21 @@ MiniMQTT.prototype._parse = function() {
         this.connected = true;
         var self = this;
         clearInterval(this.pingTimer);
+        /*
+         * A broker that has dropped the connection does not always say so: a
+         * TV back from standby still holds a socket the broker closed while it
+         * slept, and writes to it go nowhere. Every ping is answered, so no
+         * packet at all since the one before last means the broker is gone.
+         * Date.now() also runs through standby, so the first round after a
+         * resume finds the gap and reconnects.
+         */
         this.pingTimer = setInterval(function() {
-          if (self.client && self.connected) {
-            self.client.write(toBuffer([0xc0, 0x00])); // PINGREQ
+          if (!self.client || !self.connected) return;
+          if (Date.now() - self.lastRx > 45000) {
+            console.log('mqtt: no answer from ' + self.opts.host + ' - reconnecting');
+            return self.client.destroy();
           }
+          self.client.write(toBuffer([0xc0, 0x00])); // PINGREQ
         }, 30000);
         // Resubscribe to all saved subscriptions
         for (var i = 0; i < this.subscriptions.length; i++) {
@@ -264,6 +277,14 @@ MiniMQTT.prototype.disconnect = function() {
     try {
       this.client.end();
     } catch (e) {}
+    /*
+     * end() waits for the broker to acknowledge the close. One that already
+     * dropped the connection never does, and the socket sat in FIN_WAIT1 for
+     * the kernel's full retry time (about 15 minutes on a B8) with nothing
+     * published: connect() does nothing while it exists.
+     */
+    var sock = this.client;
+    setTimeout(function() { sock.destroy(); }, 3000);
   }
 };
 
