@@ -279,6 +279,28 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 /* ---- controls ---- */
 .set{margin-top:22px}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:11px}
+.vol-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
+.vol-wrap{
+  grid-column:span 2;position:relative;display:flex;align-items:center;
+  height:48px;min-height:48px;background:transparent;border:1px solid var(--edge);
+  box-sizing:border-box;cursor:pointer;overflow:hidden;transition:border-color .16s ease;
+  user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.vol-wrap:hover{border-color:var(--w70)}
+.vol-wrap.dragging{border-color:var(--w100)}
+.vol-wrap:focus-within{outline:2px solid var(--w80);outline-offset:2px}
+.vol-fill{
+  position:absolute;top:0;bottom:0;left:0;width:0%;
+  background:var(--w100);pointer-events:none;
+  transition:width .08s ease, opacity .16s ease;
+}
+.vol-wrap.muted .vol-fill{opacity:.35}
+.vol-wrap.dragging .vol-fill{transition:none}
+.vol-wrap input[type=range]{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  opacity:0;margin:0;padding:0;cursor:pointer;pointer-events:none;
+}
+.vol-wrap input[type=range]:focus{outline:none}
 #picmodes,#energysteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
 #picmodes button,#energysteps button{
   font-size:11.5px;letter-spacing:.06em;padding:12px 6px;line-height:1.25;
@@ -922,9 +944,11 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
 
     <div class="set"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
-      <div class="btns">
-        <button onclick="c('volumeStep',-1)" data-t="ctl.volDown">Vol &minus;</button>
-        <button onclick="c('volumeStep',1)" data-t="ctl.volUp">Vol &plus;</button>
+      <div class="vol-row">
+        <div class="vol-wrap" id="vol-wrap" role="group" aria-label="Volume" data-t-aria-label="ctl.volume">
+          <div class="vol-fill" id="vol-fill"></div>
+          <input type="range" id="vol-slider" min="0" max="100" value="0" aria-label="Volume" data-t-aria-label="ctl.volume">
+        </div>
         <button id="mute" onclick="toggleMute()" data-t="ctl.mute">Mute</button>
       </div>
     </div>
@@ -2030,7 +2054,13 @@ async function tick() {
     pruneEmptySections();
 
     muted = !!d.muted;
-    q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : d.volume;
+    if (!volDragging) {
+      const v = typeof d.volume === 'number' ? d.volume : 0;
+      if (q('vol-slider')) q('vol-slider').value = v;
+      if (q('vol-fill')) q('vol-fill').style.width = v + '%';
+      q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : d.volume;
+      if (q('vol-wrap')) q('vol-wrap').classList.toggle('muted', muted);
+    }
     q('mute').classList.toggle('on', muted);
 
     if (d.inputs && !q('inputs').dataset.built) {
@@ -2577,7 +2607,119 @@ function arOffRow(win) {
   }
 }
 
-function toggleMute() { c('mute', !muted); }
+let volDragging = false;
+let volActive = false;
+
+function setVolFromPointer(e) {
+  const wrap = q('vol-wrap');
+  if (!wrap) return 0;
+  const rect = wrap.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+  const slider = q('vol-slider');
+  const fill = q('vol-fill');
+  if (slider) slider.value = pct;
+  if (fill) fill.style.width = pct + '%';
+  const volEl = q('vol');
+  if (volEl) volEl.textContent = pct;
+  wrap.classList.remove('muted');
+  muted = false;
+  const muteBtn = q('mute');
+  if (muteBtn) muteBtn.classList.remove('on');
+  return pct;
+}
+
+function initVolSlider() {
+  const wrap = q('vol-wrap');
+  const slider = q('vol-slider');
+  if (!wrap || !slider) return;
+
+  wrap.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    volActive = true;
+    volDragging = true;
+    wrap.classList.add('dragging');
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+    setVolFromPointer(e);
+  });
+
+  wrap.addEventListener('pointermove', e => {
+    if (!volActive) return;
+    setVolFromPointer(e);
+  });
+
+  async function finishVol(e) {
+    if (!volActive) return;
+    volActive = false;
+    volDragging = false;
+    wrap.classList.remove('dragging');
+    try { wrap.releasePointerCapture(e.pointerId); } catch (err) {}
+    const val = setVolFromPointer(e);
+    await c('volume', val);
+  }
+
+  function cancelVol(e) {
+    if (!volActive) return;
+    volActive = false;
+    volDragging = false;
+    wrap.classList.remove('dragging');
+    try { wrap.releasePointerCapture(e.pointerId); } catch (err) {}
+    setTimeout(tick, 0);
+  }
+
+  wrap.addEventListener('pointerup', finishVol);
+  wrap.addEventListener('pointercancel', cancelVol);
+
+  slider.addEventListener('keydown', async e => {
+    let step = 0;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') step = 1;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') step = -1;
+    else if (e.key === 'PageUp') step = 10;
+    else if (e.key === 'PageDown') step = -10;
+    else if (e.key === 'Home') {
+      e.preventDefault();
+      slider.value = 0;
+      if (q('vol-fill')) q('vol-fill').style.width = '0%';
+      if (q('vol')) q('vol').textContent = 0;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      await c('volume', 0);
+      return;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      slider.value = 100;
+      if (q('vol-fill')) q('vol-fill').style.width = '100%';
+      if (q('vol')) q('vol').textContent = 100;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      await c('volume', 100);
+      return;
+    }
+    if (step !== 0) {
+      e.preventDefault();
+      const current = Number(slider.value) || 0;
+      const next = Math.max(0, Math.min(100, current + step));
+      slider.value = next;
+      if (q('vol-fill')) q('vol-fill').style.width = next + '%';
+      if (q('vol')) q('vol').textContent = next;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      await c('volume', next);
+    }
+  });
+}
+initVolSlider();
+
+function toggleMute() {
+  muted = !muted;
+  q('mute').classList.toggle('on', muted);
+  if (q('vol-wrap')) q('vol-wrap').classList.toggle('muted', muted);
+  const curVol = q('vol-slider') ? q('vol-slider').value : '';
+  q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : curVol;
+  c('mute', muted);
+}
 async function sendToast() {
   const inp = q('toast-input');
   const msg = inp ? inp.value.trim() : '';

@@ -603,14 +603,6 @@
   "text": "Activa ",
   "from": "Up"
  },
- "ctl.volDown": {
-  "text": "Vol −",
-  "from": "Vol −"
- },
- "ctl.volUp": {
-  "text": "Vol +",
-  "from": "Vol +"
- },
  "ctl.volume": {
   "text": "Volumen",
   "from": "Volume"
