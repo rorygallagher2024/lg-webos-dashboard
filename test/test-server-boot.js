@@ -46,13 +46,21 @@ function freePort(cb) {
   s.listen(0, '127.0.0.1', function () { var p = s.address().port; s.close(function () { cb(p); }); });
 }
 
+function bufFrom(bytes) {
+  return (typeof Buffer.from === 'function') ? Buffer.from(bytes) : new Buffer(bytes);
+}
+
+function bufAlloc(n) {
+  return (typeof Buffer.alloc === 'function') ? Buffer.alloc(n) : new Buffer(n);
+}
+
 // ---- a broker that answers CONNECT, SUBSCRIBE and PINGREQ, and logs PUBLISH ----
 function Broker(cb) {
   var self = this;
   self.published = [];
   self.disconnects = 0;
   self.server = net.createServer(function (sock) {
-    var buf = new Buffer(0);
+    var buf = bufAlloc(0);
     sock.on('error', function () {});
     sock.on('data', function (d) {
       buf = Buffer.concat([buf, d]);
@@ -65,9 +73,9 @@ function Broker(cb) {
         if (buf.length < idx + len) return;
         var type = buf[0] >> 4, body = buf.slice(idx, idx + len);
         buf = buf.slice(idx + len);
-        if (type === 1) sock.write(new Buffer([0x20, 2, 0, 0]));
-        else if (type === 8) sock.write(new Buffer([0x90, 3, body[0], body[1], 0]));
-        else if (type === 12) sock.write(new Buffer([0xd0, 0]));
+        if (type === 1) sock.write(bufFrom([0x20, 2, 0, 0]));
+        else if (type === 8) sock.write(bufFrom([0x90, 3, body[0], body[1], 0]));
+        else if (type === 12) sock.write(bufFrom([0xd0, 0]));
         else if (type === 14) self.disconnects++;
         else if (type === 3) {
           var tl = (body[0] << 8) | body[1];

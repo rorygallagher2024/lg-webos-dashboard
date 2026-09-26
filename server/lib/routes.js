@@ -21,6 +21,23 @@ var MIME = {
   '.png': 'image/png', '.svg': 'image/svg+xml'
 };
 
+/**
+ * @param {string|undefined} reqUrl
+ * @returns {{ pathname: string, query: Object.<string, any> }}
+ */
+function parseUrl(reqUrl) {
+  if (typeof URL === 'function') {
+    try {
+      var p = new URL(reqUrl || '/', 'http://127.0.0.1');
+      /** @type {Object.<string, any>} */
+      var q = {};
+      p.searchParams.forEach(function (v, k) { q[k] = v; });
+      return { pathname: p.pathname, query: q };
+    } catch (e) {}
+  }
+  return url.parse(reqUrl || '/', true);
+}
+
 var config = {};
 var configFilePath = '';
 var controlsModule = null;
@@ -300,7 +317,7 @@ function startHandoff(cb) {
   if (!lanAddress()) return cb(new Error('this TV has no network address'));
   var code = crypto.randomBytes(8).toString('hex');
   var srv = http.createServer(function (req, res) {
-    var u = url.parse(req.url, true);
+    var u = parseUrl(req.url);
     if (!HANDOFF.code || u.query.c !== HANDOFF.code) {
       return send(res, 403, 'This link has expired. Start again on the TV.', 'text/plain; charset=utf-8');
     }
@@ -505,12 +522,15 @@ function readJsonBody(req, res, cb) {
     try { j = JSON.parse(body); } catch (e) {
       return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
     }
+    if (!j || typeof j !== 'object') {
+      return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+    }
     cb(j);
   });
 }
 
 function handleRequest(req, res) {
-  var u = url.parse(req.url, true);
+  var u = parseUrl(req.url);
   var pathname = u.pathname;
   /** @type {any} */ (res).glasshouseLang = say.langOf(req);
 
@@ -545,23 +565,27 @@ function handleRequest(req, res) {
     // longer has, or miss text it now does.
     var fresh = ext === '.html' || ext === '.json' || /(^|\/)i18n\.js$/.test(file);
     var cacheHdr = fresh ? 'no-cache' : 'public, max-age=86400';
-    if (ASSET_CACHE[file]) {
+    var respondWithBuf = function (buf) {
+      var etag = '"' + (versionStr || '1') + '-' + buf.length.toString(16) + '"';
+      if (req.headers && req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { 'ETag': etag, 'Cache-Control': cacheHdr });
+        return res.end();
+      }
       res.writeHead(200, {
         'Content-Type': mime,
-        'Content-Length': ASSET_CACHE[file].length,
-        'Cache-Control': cacheHdr
+        'Content-Length': buf.length,
+        'Cache-Control': cacheHdr,
+        'ETag': etag
       });
-      return res.end(ASSET_CACHE[file]);
+      res.end(buf);
+    };
+    if (ASSET_CACHE[file]) {
+      return respondWithBuf(ASSET_CACHE[file]);
     }
     return fs.readFile(file, function (e, buf) {
       if (e) return send(res, 500, JSON.stringify({ ok: false, error: 'read failed' }));
       ASSET_CACHE[file] = buf;
-      res.writeHead(200, {
-        'Content-Type': mime,
-        'Content-Length': buf.length,
-        'Cache-Control': cacheHdr
-      });
-      res.end(buf);
+      respondWithBuf(buf);
     });
   }
 
@@ -771,11 +795,17 @@ function handleRequest(req, res) {
       if (!iconPath) return send(res, 404, JSON.stringify({ ok: false, error: 'icon not found' }));
       fs.stat(iconPath, function (err, st) {
         if (err || !st) return send(res, 404, JSON.stringify({ ok: false, error: 'icon read failed' }));
+        var etag = '"' + st.size.toString(16) + '-' + Number(st.mtime).toString(16) + '"';
         var headers = {
           'Content-Type': 'image/png',
           'Content-Length': st.size,
-          'Cache-Control': 'public, max-age=86400'
+          'Cache-Control': 'public, max-age=86400',
+          'ETag': etag
         };
+        if (req.headers && req.headers['if-none-match'] === etag) {
+          res.writeHead(304, { 'ETag': etag, 'Cache-Control': headers['Cache-Control'] });
+          return res.end();
+        }
         if (req.method === 'HEAD') {
           res.writeHead(200, headers);
           return res.end();
@@ -998,8 +1028,13 @@ function handleRequest(req, res) {
       if (body.length > 4096) req.destroy();   // do not buffer junk
     });
     req.on('end', function () {
-      var j = {};
-      try { j = JSON.parse(body); } catch (e) {}
+      var j = null;
+      try { j = JSON.parse(body); } catch (e) {
+        return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+      }
+      if (!j || typeof j !== 'object') {
+        return send(res, 400, JSON.stringify({ ok: false, error: 'malformed JSON' }));
+      }
       doControl(j.action, j.value, function (r) { send(res, 200, JSON.stringify(r)); });
     });
     return;
@@ -1074,5 +1109,6 @@ module.exports = {
   loadUI: loadUI,
   updateSummary: updateSummary,
   missingAssetsPage: missingAssetsPage,
+  parseUrl: parseUrl,
   MIME: MIME
 };

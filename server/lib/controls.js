@@ -103,7 +103,7 @@ function injectKey(code, cb, delayMs) {
       return;
     }
   }
-  var delay = (typeof delayMs === 'number') ? delayMs : 50;
+  var delay = (typeof delayMs === 'number') ? Math.max(10, Math.min(2000, delayMs)) : 50;
   function makeEv(type, c, val) {
     var b = zeroBuffer(16);
     b.writeUInt16LE(type, 8);
@@ -186,7 +186,7 @@ function doControl(action, value, cb) {
                   function (r) { cb({ ok: !!(r && r.returnValue) }); });
 
     case 'volumeStep':
-      var step = num(value, 1);
+      var step = Math.max(-100, Math.min(100, num(value, 1)));
       if (step === 1) {
         return luna('com.webos.audio/volumeUp', {}, function (r) { cb({ ok: !!(r && r.returnValue) }); });
       }
@@ -555,7 +555,11 @@ function doControl(action, value, cb) {
 
     case 'oledProtection':
       var prot = (value && typeof value === 'object') ? value : {};
-      return oled.setOledProtection(String(prot.key || ''), !!prot.enabled, cb);
+      var protKey = String(prot.key || '');
+      if (protKey !== 'gsr' && protKey !== 'tpc') {
+        return cb({ ok: false, error: 'unknown protection: ' + protKey });
+      }
+      return oled.setOledProtection(protKey, !!prot.enabled, cb);
 
     case 'tvAppInstall':
       return doTvApp('install', cb);
