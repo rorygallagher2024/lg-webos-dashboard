@@ -162,6 +162,10 @@ function phase(name, chaos, next) {
              * TV nothing: a slow answer there means the server is stuck.
              */
             var statsLimit = chaos ? 12000 : 4000;
+            // A misbehaving TV slows telemetry without stopping it: LG's settings
+            // are read a group at a time, and each call that never answers is
+            // cut off at 3.5s. CI on node 8.12 saw a 12s gap.
+            var gapLimit = chaos ? 25000 : 12000;
             var until = Date.now() + SECS * 1000, worst = 0, worstPage = 0, pending = false;
             var probe = setInterval(function () {
               if (exited) { clearInterval(probe); return fail('server exited: ' + JSON.stringify(exited)); }
@@ -177,7 +181,7 @@ function phase(name, chaos, next) {
                   worstPage = Math.max(worstPage, pms);
                 });
                 var t = broker.last(/^boot\/telemetry$/);
-                if (Date.now() - t.at > 12000) { clearInterval(probe); return fail('no telemetry for ' + Math.round((Date.now() - t.at) / 1000) + 's'); }
+                if (Date.now() - t.at > gapLimit) { clearInterval(probe); return fail('no telemetry for ' + Math.round((Date.now() - t.at) / 1000) + 's'); }
                 if (Date.now() < until) return;
                 clearInterval(probe);
                 if (worst >= statsLimit) return fail('slowest stats answer ' + worst + 'ms');

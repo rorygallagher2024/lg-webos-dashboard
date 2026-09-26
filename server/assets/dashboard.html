@@ -970,7 +970,7 @@ function updateRows(d) {
       r.push({
         label: t('tv.update.installUpdate', 'Install update'),
         value: t('tv.update.inHbc', 'In the Homebrew Channel'),
-        hint: t('tv.update.installUpdate.hint', 'Update Glasshouse in the Homebrew Channel. The server follows within a few minutes, keeping your settings, ad blocker and screen saver.')
+        hint: t('tv.update.installUpdate.hint', 'Update Glasshouse in the Homebrew Channel. The server follows within a few minutes.')
       });
     } else if (d.writable) {
       r.push({
@@ -980,7 +980,7 @@ function updateRows(d) {
         act: 'update',
         targetVer: d.latest,
         press: t('tv.update.install.press', 'Press OK to install v{version}', { version: d.latest }),
-        hint: t('tv.update.install.hint', 'Downloads and installs v{version} directly on the TV. Settings, ad blocker, and screen saver are preserved. The TV server restarts automatically.', { version: d.latest })
+        hint: t('tv.update.install.hint', 'Downloads and installs v{version} directly on the TV. The TV server restarts automatically.', { version: d.latest })
       });
     }
   } else if (d.latest) {
