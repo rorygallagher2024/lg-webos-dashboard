@@ -9,30 +9,32 @@
 #
 # Usage: tvwebctl {start|stop|restart|status|watch|update|rollback}
 
-APP=/var/lib/tvweb/tvweb.js
-LOG=/var/lib/tvweb/tvweb.log
-PIDFILE=/var/run/tvweb.pid
-WATCHPID=/var/run/tvwebwatch.pid
-BEAT=/var/run/tvweb.beat
+# Each can be moved by a TVWEB_ variable of the same name, which only
+# test/test-tvwebctl.js sets: it runs this script against a stand-in server.
+APP=${TVWEB_APP:-/var/lib/tvweb/tvweb.js}
+LOG=${TVWEB_LOG:-/var/lib/tvweb/tvweb.log}
+PIDFILE=${TVWEB_PIDFILE:-/var/run/tvweb.pid}
+WATCHPID=${TVWEB_WATCHPID:-/var/run/tvwebwatch.pid}
+BEAT=${TVWEB_BEAT:-/var/run/tvweb.beat}
 # Restarts are recorded here rather than in $LOG, which is rotated - a
 # watchdog whose evidence is discarded with the next 256k of log is no use.
-RESTARTS=/var/lib/tvweb/tvweb.restarts
-NODE=/usr/bin/node
+RESTARTS=${TVWEB_RESTARTS:-/var/lib/tvweb/tvweb.restarts}
+NODE=${TVWEB_NODE:-/usr/bin/node}
 SELF=$(readlink -f "$0" 2>/dev/null || echo /var/lib/tvweb/tvwebctl)
 
 # How long the heartbeat may go unwritten before the server is considered
 # wedged. The server writes it every 20s, so this is five missed beats - long
 # enough that a busy TV delaying a timer is never mistaken for a hang.
-STALE=90
-CHECK=30
+STALE=${TVWEB_STALE:-90}
+CHECK=${TVWEB_CHECK:-30}
 
 # In its first minutes a server has less slack: node 0.12 on a B8 (webOS 4) has
 # stalled mid-start, its child frozen between fork and exec and the server
 # waiting on it for good, and boot is when most of those children are started.
 # A shorter limit then brings the TV back in under two minutes rather than two
 # and a half. Measured from the pid file, which every start writes.
-STARTUP=300
-STARTUP_STALE=45
+STARTUP=${TVWEB_STARTUP:-300}
+STARTUP_STALE=${TVWEB_STARTUP_STALE:-45}
 
 # Log rotation. /var/lib is flash, and nothing else trims this file: a broker
 # the TV cannot reach, or a chatty automation, appends to it indefinitely.
@@ -251,16 +253,16 @@ case "$1" in
     sleep 4
     "$SELF" status ;;
   status)
-    if [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
-      echo "running (pid $(cat $PIDFILE))"
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+      echo "running (pid $(cat "$PIDFILE"))"
     else
       echo "not running"
     fi
-    if [ -f "$WATCHPID" ] && kill -0 "$(cat $WATCHPID)" 2>/dev/null; then
+    if [ -f "$WATCHPID" ] && kill -0 "$(cat "$WATCHPID")" 2>/dev/null; then
       beat=$(cat "$BEAT" 2>/dev/null)
       case "$beat" in
-        ''|*[!0-9]*) echo "watchdog running (pid $(cat $WATCHPID)), no heartbeat yet" ;;
-        *) echo "watchdog running (pid $(cat $WATCHPID)), heartbeat $(( $(date +%s) - beat ))s old" ;;
+        ''|*[!0-9]*) echo "watchdog running (pid $(cat "$WATCHPID")), no heartbeat yet" ;;
+        *) echo "watchdog running (pid $(cat "$WATCHPID")), heartbeat $(( $(date +%s) - beat ))s old" ;;
       esac
     else
       echo "watchdog not running"
