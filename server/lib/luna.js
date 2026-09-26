@@ -22,6 +22,45 @@ var PARALLEL = 2;
 var running = 0;
 var waiting = [];
 
+/*
+ * Every process start, one-shot or subscription, waits its turn here, with a
+ * gap between starts. Starting a child is the moment the freeze above can
+ * happen, and it is likeliest while node's own threads are busy, as they are
+ * just after start: 6 of 11 wedges a B8 logged in a fortnight came within 5
+ * minutes of the server starting. The first 30s get a wider gap, so the
+ * start-up calls and subscriptions spread out instead of landing together.
+ */
+var GAP_MS = 50;
+// Not wider: a stats read makes about a dozen calls, and at 400ms apart it ran
+// past its 4.5s limit and came back incomplete during start-up.
+var STARTUP_GAP_MS = 150;
+var STARTUP_MS = 30000;
+var bornAt = Date.now();
+var launches = [];
+var launchTimer = null;
+var nextLaunchAt = 0;
+
+function launch(fn) {
+  launches.push(fn);
+  drainLaunches();
+}
+
+function drainLaunches() {
+  if (launchTimer || !launches.length) return;
+  var now = Date.now();
+  var gap = now - bornAt < STARTUP_MS ? STARTUP_GAP_MS : GAP_MS;
+  // Capped: the clock can step back on resume from standby, which would
+  // otherwise leave the next start due far in the future.
+  var wait = Math.min(nextLaunchAt - now, gap);
+  if (wait > 0) {
+    launchTimer = setTimeout(function () { launchTimer = null; drainLaunches(); }, wait);
+    return;
+  }
+  nextLaunchAt = now + gap;
+  launches.shift()();
+  drainLaunches();
+}
+
 function pump() {
   while (running < PARALLEL && waiting.length) {
     var job = waiting.shift();
@@ -42,6 +81,10 @@ function diedEarly(err) {
 }
 
 function run(job) {
+  launch(function () { runNow(job); });
+}
+
+function runNow(job) {
   execFile(LUNA_SEND, job.args, { timeout: 3500 }, function (err, stdout) {
     running--;
     if (diedEarly(err)) {
@@ -80,6 +123,7 @@ function Subscription(uri, payload, appId, handlers) {
   this.stopped = true;
   this.retryTimer = null;
   this.retryMs = 1000;
+  this.launching = false;
 }
 
 Subscription.prototype.start = function () {
@@ -103,6 +147,16 @@ Subscription.prototype.stop = function () {
 };
 
 Subscription.prototype._connect = function () {
+  var self = this;
+  if (self.stopped || self.child || self.launching) return;
+  self.launching = true;
+  launch(function () {
+    self.launching = false;
+    self._spawn();
+  });
+};
+
+Subscription.prototype._spawn = function () {
   var self = this;
   if (self.stopped || self.child) return;
 

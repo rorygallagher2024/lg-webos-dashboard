@@ -9,8 +9,10 @@ var runs = [];
 var script = [];
 // The module keeps its own reference to execFile, so this has to be in place
 // before it is required.
+var startedAt = [];
 child.execFile = function (file, args, opts, cb) {
   runs.push(args[args.length - 2]);
+  startedAt.push(Date.now());
   var next = script.shift();
   process.nextTick(function () { cb(next.err || null, next.out || ''); });
 };
@@ -48,7 +50,20 @@ luna.call('com.webos.service.tv.systemproperty/getSystemProperties', { keys: ['m
       assert.strictEqual(r3, null);
       assert.strictEqual(errors.length, 0);
       console.log('  ✓ a call stopped by the timeout is not retried');
-      console.log('ALL test-luna.js assertions passed!\n');
+
+      // 4. Calls made together start one at a time, spaced out just after start
+      runs = []; startedAt = [];
+      script = [{ out: '{}' }, { out: '{}' }];
+      var done = 0;
+      var both = function () {
+        if (++done < 2) return;
+        assert.strictEqual(runs.length, 2);
+        assert.ok(startedAt[1] - startedAt[0] >= 130, 'second start ' + (startedAt[1] - startedAt[0]) + 'ms after the first');
+        console.log('  ✓ two calls made together start 150ms apart after start-up');
+        console.log('ALL test-luna.js assertions passed!\n');
+      };
+      luna.call('com.webos.service.tvpower/power/getPowerState', {}, both);
+      luna.call('com.webos.audio/getVolume', {}, both);
     });
   });
 });
