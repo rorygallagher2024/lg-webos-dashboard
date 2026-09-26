@@ -48,6 +48,8 @@ var HARDWARE_INFO = {
 
 var hasLogoLight = null;   // null = not yet determined
 var hasLightSensor = false;
+var lightSensorFailures = 0;
+var lastLightSensorProbe = 0;
 var hasMediaState = false;
 
 // HDMI fields the TV has reported. Home Assistant only gets the entities for
@@ -949,6 +951,7 @@ function bootTime(uptimeSec) {
 function clearCache() {
   lastStats = null;
   lastAppsScan = 0;
+  lastLightSensorProbe = 0;
 }
 
 function collectStats(cb) {
@@ -1184,19 +1187,36 @@ function collectStats(cb) {
     var w = cm && cm.wifi;
     out.ssid = (w && w.ssid) ? w.ssid : null;
 
+  function probeLightSensor(next) {
+    if (!hasLightSensor && lightSensorFailures >= 3 && (Date.now() - lastLightSensorProbe < 600000)) {
+      out.lightSensor = null;
+      out.backlight = null;
+      return next();
+    }
+    lastLightSensorProbe = Date.now();
+    lunaCachedFn('com.webos.service.tv.display/getLightSensorData', {}, 30000, function (ls) {
+      if (!ls || ls.returnValue === false) {
+        lightSensorFailures++;
+      } else {
+        lightSensorFailures = 0;
+      }
+      var lux = null, sd = (ls && ls.sensorData) || [];
+      for (var li = 0; li < sd.length; li++) {
+        if (sd[li].property === 'visibleLuminance' || sd[li].property === 'luminance') {
+          if (sd[li].value !== 65535 && sd[li].value !== null) lux = sd[li].value;
+        }
+      }
+      out.lightSensor = (lux === null) ? null : { lux: lux };
+      if (out.lightSensor) hasLightSensor = true;
+      out.backlight = (ls && typeof ls.backlightValue === 'number') ? ls.backlightValue : null;
+      next();
+    });
+  }
+
   lunaCachedFn('com.webos.service.tv.display/getDimmingStatus', {}, 15000, function (dim) {
     out.dimming = (dim && dim.status) || null;
 
-  lunaCachedFn('com.webos.service.tv.display/getLightSensorData', {}, 30000, function (ls) {
-    var lux = null, sd = (ls && ls.sensorData) || [];
-    for (var li = 0; li < sd.length; li++) {
-      if (sd[li].property === 'visibleLuminance' || sd[li].property === 'luminance') {
-        if (sd[li].value !== 65535 && sd[li].value !== null) lux = sd[li].value;
-      }
-    }
-    out.lightSensor = (lux === null) ? null : { lux: lux };
-    if (out.lightSensor) hasLightSensor = true;
-    out.backlight = (ls && typeof ls.backlightValue === 'number') ? ls.backlightValue : null;
+  probeLightSensor(function () {
 
   appStorage(function (st) {
     out.appStorage = st;
