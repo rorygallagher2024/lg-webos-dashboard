@@ -150,6 +150,87 @@ var HA_ENTITIES = [
   { id: 'server_update', type: 'update', name: 'Server Update', cat: 'diagnostics' }
 ];
 
+/*
+ * LG's own settings (lgsettings.js) as entities: a switch, a select or a
+ * number each, published only where the TV has the setting - buildEntities is
+ * given its rows. Those an automation is likely to want are enabled; the rest
+ * are published disabled, as configuration, for anyone to enable. An HDMI
+ * input's settings are left out, since LG changes them only while that input
+ * is on screen, and Sound output has its own entity already.
+ */
+var LG_SETTING_ENTITIES = [
+  { type: 'select', id: 'sound_mode', row: 'soundMode', name: 'Sound Mode', cat: 'controls', enabled: true, icon: 'mdi:tune-vertical' },
+  { type: 'switch', id: 'bluetooth_speaker_mode', row: 'btSpeakerMode', name: 'Bluetooth Speaker Mode', cat: 'controls', enabled: true, icon: 'mdi:bluetooth-audio' },
+  { type: 'switch', id: 'simplink', row: 'simplinkEnable', name: 'SIMPLINK (HDMI-CEC)', cat: 'controls', enabled: true, icon: 'mdi:link-variant' },
+  { type: 'switch', id: 'auto_power_sync', row: 'simplinkAutoPowerOn', name: 'Auto Power Sync', cat: 'controls', enabled: true, icon: 'mdi:power-plug' },
+  { type: 'select', id: 'game_genre', row: 'gameGenre', name: 'Game Genre', cat: 'video', enabled: true, icon: 'mdi:gamepad-variant' },
+  { type: 'select', id: 'prevent_input_delay', row: 'inputOptimization', name: 'Prevent Input Delay', cat: 'video', enabled: true, icon: 'mdi:timer-outline' },
+  { type: 'switch', id: 'allm_setting', row: 'enableALLM', name: 'ALLM', cat: 'video', enabled: true, icon: 'mdi:gamepad-square' },
+  { type: 'select', id: 'digital_sound_output', row: 'soundOutputDigital', name: 'Digital Sound Output', cat: 'controls', icon: 'mdi:surround-sound' },
+  { type: 'number', id: 'balance', row: 'audioBalance', name: 'Balance', cat: 'controls', icon: 'mdi:scale-balance' },
+  { type: 'switch', id: 'automatic_volume', row: 'autoVolume', name: 'Automatic Volume', cat: 'controls', icon: 'mdi:volume-equal' },
+  { type: 'switch', id: 'earc', row: 'eArcSupport', name: 'eARC', cat: 'controls', icon: 'mdi:audio-input-rca' },
+  { type: 'switch', id: 'ip_control', row: 'ipControl', name: 'IP Control', cat: 'controls', icon: 'mdi:lan' },
+  { type: 'switch', id: 'vrr_gsync', row: 'gameOptimization', name: 'VRR & G-Sync', cat: 'video', icon: 'mdi:sync' },
+  { type: 'switch', id: 'freesync_premium', row: 'freesync', name: 'AMD FreeSync Premium', cat: 'video', icon: 'mdi:sync' },
+  { type: 'select', id: 'dark_room_mode', row: 'darkMode', name: 'Dark Room Mode', cat: 'video', icon: 'mdi:weather-night' },
+  { type: 'number', id: 'black_stabilizer', row: 'blackStabilizer', name: 'Black Stabilizer', cat: 'video', icon: 'mdi:brightness-4' },
+  { type: 'number', id: 'white_stabilizer', row: 'whiteStabilizer', name: 'White Stabilizer', cat: 'video', icon: 'mdi:brightness-5' },
+  { type: 'switch', id: 'ai_game_sound', row: 'aigamesound', name: 'AI Game Sound', cat: 'video', icon: 'mdi:speaker-wireless' },
+  { type: 'switch', id: 'screen_saver_ads', row: 'screenSaverAd', name: 'Screen Saver Ads', cat: 'diagnostics', icon: 'mdi:advertisements' },
+  { type: 'switch', id: 'home_sponsored_tiles', row: 'homePromotion', name: 'Sponsored Tiles on Home', cat: 'diagnostics', icon: 'mdi:advertisements' },
+  { type: 'switch', id: 'home_recommendations', row: 'contentRecommendation', name: 'Recommendations on Home', cat: 'diagnostics', icon: 'mdi:advertisements' },
+  { type: 'switch', id: 'ads_while_watching', row: 'livePromotion', name: 'Ads While Watching', cat: 'diagnostics', icon: 'mdi:advertisements' },
+  { type: 'switch', id: 'smart_tips', row: 'aiNudge', name: 'Smart Tips', cat: 'diagnostics', icon: 'mdi:lightbulb-outline' },
+  { type: 'switch', id: 'smart_tips_in_settings', row: 'aiSettingsNudge', name: 'Smart Tips in Settings', cat: 'diagnostics', icon: 'mdi:lightbulb-outline' }
+];
+for (var le = 0; le < LG_SETTING_ENTITIES.length; le++) {
+  var _l = LG_SETTING_ENTITIES[le];
+  HA_ENTITIES.push({ id: _l.id, type: _l.type, name: _l.name, cat: _l.cat });
+}
+
+/*
+ * One entity per row the TV has. Values come in telemetry as lgs, keyed by
+ * row; commands go to <prefix>/command/lgs/<row>.
+ */
+function lgSettingEntities(rows, pfx, telemetryTopic) {
+  var byRow = {}, out = [];
+  (rows || []).forEach(function (r) { byRow[r.id] = r; });
+  LG_SETTING_ENTITIES.forEach(function (e) {
+    var r = byRow[e.row];
+    if (!r) return;
+    // A retained message from before the settings were published has no lgs.
+    var state = '(value_json.lgs | default({})).get("' + e.row + '")';
+    var payload = {
+      name: e.name,
+      command_topic: pfx + '/command/lgs/' + e.row,
+      state_topic: telemetryTopic,
+      icon: e.icon
+    };
+    if (!e.enabled) {
+      payload.enabled_by_default = false;
+      payload.entity_category = 'config';
+    }
+    if (e.type === 'switch') {
+      payload.value_template = '{{ "ON" if ' + state + ' else "OFF" }}';
+      payload.payload_on = 'ON';
+      payload.payload_off = 'OFF';
+    } else if (e.type === 'number') {
+      payload.value_template = '{{ ' + state + ' }}';
+      payload.min = r.min;
+      payload.max = r.max;
+      payload.step = 1;
+      payload.mode = 'slider';
+    } else {
+      var ids = [], names = {};
+      r.choices.forEach(function (c) { ids.push(c.value); names[c.value] = c.label; });
+      withSelect(payload, namedSelect(ids, names, state));
+    }
+    out.push({ type: e.type, id: e.id, payload: payload });
+  });
+  return out;
+}
+
 var ENTITY_CATEGORIES = {};
 for (var i = 0; i < HA_ENTITIES.length; i++) {
   var _ent = HA_ENTITIES[i];
@@ -1095,6 +1176,8 @@ function buildEntities(opts) {
     }
   });
 
+  entities = entities.concat(lgSettingEntities(opts.lgRows, pfx, telemetryTopic));
+
   return withOffStates(entities);
 }
 
@@ -1218,6 +1301,7 @@ function filterWithholds(entities, opts) {
 }
 
 module.exports = {
+  LG_SETTING_ENTITIES: LG_SETTING_ENTITIES,
   INPUTS: INPUTS,
   SOUND_OUTPUT_MAP: SOUND_OUTPUT_MAP,
   PIC_MODE_MAP: PIC_MODE_MAP,

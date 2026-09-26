@@ -116,6 +116,37 @@ of Unknowns and a cable error count of zero.
 | `sensor` | `sensor.lg_tv_tvweb_version` | Server Version | Version of this server, not TV firmware (diagnostic) |
 | `update` | `update.lg_tv_server_update` | Server Update | Latest release, its notes and an install button. Published only while **Check daily** is on in the dashboard's Server tab &mdash; see [Updating](../README.md#updating) |
 
+### LG settings
+
+The TV's own settings that the dashboard's Advanced, Game and Privacy tabs change, as switches, selects and numbers. Each is published only on TVs that have it: a webOS 4 TV has no Game Optimizer, eARC or Bluetooth speaker mode, for example. Those marked disabled by default appear under the device's configuration and can be enabled in Home Assistant. An HDMI input's own settings, such as Deep Colour, are not published: LG changes them only while that input is on screen.
+
+| Domain | Entity ID | Name | Description |
+| :--- | :--- | :--- | :--- |
+| `select` | `select.lg_tv_sound_mode` | Sound Mode | The TV's sound mode, from the modes it offers (AI Sound Pro, Standard, Cinema, and so on). TV speakers only |
+| `switch` | `switch.lg_tv_bluetooth_speaker_mode` | Bluetooth Speaker Mode | Lets phones in range play music through the TV, even while it is off |
+| `switch` | `switch.lg_tv_simplink` | SIMPLINK (HDMI-CEC) | Lets the TV remote control devices connected over HDMI |
+| `switch` | `switch.lg_tv_auto_power_sync` | Auto Power Sync | Switching the TV off switches connected devices off, and a device switching on switches the TV on |
+| `select` | `select.lg_tv_game_genre` | Game Genre | Game Optimizer genre: Standard, First-person shooter, Role-playing, Real-time strategy, Sports or User |
+| `select` | `select.lg_tv_prevent_input_delay` | Prevent Input Delay | Game Optimizer input lag reduction: Standard or Boost |
+| `switch` | `switch.lg_tv_allm_setting` | ALLM | Whether the TV switches to low-latency mode when a device starts a game |
+| `select` | `select.lg_tv_digital_sound_output` | Digital Sound Output | *Disabled by default.* Auto, PCM or Pass Through, where the TV offers them |
+| `number` | `number.lg_tv_balance` | Balance | *Disabled by default.* Left and right TV speaker balance, -50 to 50 |
+| `switch` | `switch.lg_tv_automatic_volume` | Automatic Volume | *Disabled by default.* Keeps the volume level when switching channels |
+| `switch` | `switch.lg_tv_earc` | eARC | *Disabled by default.* Lossless and Dolby Atmos audio to an eARC soundbar or receiver |
+| `switch` | `switch.lg_tv_ip_control` | IP Control | *Disabled by default.* LG's own network control protocol |
+| `switch` | `switch.lg_tv_vrr_gsync` | VRR & G-Sync | *Disabled by default.* Variable refresh rate, for the game input in use |
+| `switch` | `switch.lg_tv_freesync_premium` | AMD FreeSync Premium | *Disabled by default.* AMD's variable refresh rate, for the game input in use |
+| `select` | `select.lg_tv_dark_room_mode` | Dark Room Mode | *Disabled by default.* Off, Level 1 or Level 2 |
+| `number` | `number.lg_tv_black_stabilizer` | Black Stabilizer | *Disabled by default.* 0 to 20, for the game input and genre in use |
+| `number` | `number.lg_tv_white_stabilizer` | White Stabilizer | *Disabled by default.* 0 to 20, for the game input and genre in use |
+| `switch` | `switch.lg_tv_ai_game_sound` | AI Game Sound | *Disabled by default.* Sound tuned to the game being played |
+| `switch` | `switch.lg_tv_screen_saver_ads` | Screen Saver Ads | *Disabled by default.* Adverts some apps show in the screen saver |
+| `switch` | `switch.lg_tv_home_sponsored_tiles` | Sponsored Tiles on Home | *Disabled by default.* Adverts marked Sponsored on the Home screen |
+| `switch` | `switch.lg_tv_home_recommendations` | Recommendations on Home | *Disabled by default.* Recommended programmes and films on the Home screen |
+| `switch` | `switch.lg_tv_ads_while_watching` | Ads While Watching | *Disabled by default.* Adverts and offers shown over what is on screen, with Live Plus on |
+| `switch` | `switch.lg_tv_smart_tips` | Smart Tips | *Disabled by default.* Feature suggestions that pop up while watching |
+| `switch` | `switch.lg_tv_smart_tips_in_settings` | Smart Tips in Settings | *Disabled by default.* Suggested settings in LG's Settings menu |
+
 ---
 
 ## Multiple TVs
