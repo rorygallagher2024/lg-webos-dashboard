@@ -679,6 +679,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 #version-new{text-transform:none;color:var(--cand);text-decoration:none;margin-left:.5em}
 #version-new:hover{text-decoration:underline}
 .stale{opacity:.35;transition:opacity .3s}
+#offline{margin:18px 0 0;font-size:14px;border-left:2px solid var(--red);padding:9px 13px;background:var(--w06)}
+#offline b{font-weight:600;margin-right:6px}
 
 /* ---- hardware specifications strip ---- */
 .hw-specs{
@@ -751,6 +753,8 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     </div>
   </div>
 </header>
+
+<div id="offline" role="status" hidden><b data-t="offline.title">Can’t reach the TV.</b><span data-t="offline.body">It may be switched off or in standby. This page reconnects by itself when the TV is back.</span></div>
 
 
 
@@ -1546,6 +1550,17 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 const K = new URLSearchParams(location.search).get('k') || '';
 const q = id => document.getElementById(id);
 
+// A request that never reaches the TV rejects with the browser's own wording
+// ("Failed to fetch" in Chrome, "Load failed" in Safari), which reads as a
+// fault in the page rather than a TV that is off.
+const netFetch = window.fetch.bind(window);
+window.fetch = (...a) => netFetch(...a).catch(e => {
+  if (e && e.name === 'AbortError') throw e;
+  const x = new Error(t('common.unreachable', 'Can’t reach the TV'));
+  x.offline = true;
+  throw x;
+});
+
 // ---- theme toggle (auto / dark / light) ----
 (function initTheme() {
   const html = document.documentElement;
@@ -1783,7 +1798,8 @@ async function tick() {
     const r = await fetch(api('/api/stats'), { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status === 401 ? t('common.unauthorised', 'Unauthorised \u2014 token missing or wrong') : 'HTTP ' + r.status);
     const d = await r.json();
-    document.body.classList.remove('stale');
+    q('panels').classList.remove('stale');
+    q('offline').hidden = true;
     q('err').style.display = 'none';
     const firstData = !lastOk;
     lastOk = Date.now();
@@ -2127,8 +2143,10 @@ async function tick() {
     if (firstData) relayout(true);
   } catch (e) {
     if (updRestarting) return;
-    document.body.classList.add('stale');
-    if (Date.now() - lastOk > 6000) showErr(e.message || t('common.unreachable', 'TV unreachable'));
+    q('panels').classList.add('stale');
+    if (Date.now() - lastOk <= 6000) return;
+    if (e.offline) q('offline').hidden = false;
+    else showErr(e.message || t('common.unreachable', 'Can’t reach the TV'));
   }
 }
 

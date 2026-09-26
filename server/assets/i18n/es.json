@@ -412,8 +412,8 @@
   "from": "unknown error"
  },
  "common.unreachable": {
-  "text": "TV inalcanzable",
-  "from": "TV unreachable"
+  "text": "No se puede conectar con la TV",
+  "from": "Can’t reach the TV"
  },
  "ctl.app.maintenance": {
   "text": "MANTENIMIENTO",
@@ -1186,6 +1186,14 @@
  "mqtt.verify": {
   "text": "Verificar certificado",
   "from": "Verify certificate"
+ },
+ "offline.body": {
+  "text": "Puede estar apagada o en espera. Esta página se vuelve a conectar sola cuando la TV esté disponible.",
+  "from": "It may be switched off or in standby. This page reconnects by itself when the TV is back."
+ },
+ "offline.title": {
+  "text": "No se puede conectar con la TV.",
+  "from": "Can’t reach the TV."
  },
  "oled.comp.sub": {
   "text": "ciclo corto de 4 horas",
