@@ -701,20 +701,25 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 #version:hover{color:var(--w80);text-decoration:underline}
 #version-new{text-transform:none;color:var(--cand);text-decoration:none;margin-left:.5em}
 #version-new:hover{text-decoration:underline}
-.spinner{
+.activity-led{
   display:inline-block;
-  width:10px;
-  height:10px;
-  margin-right:8px;
-  border:1.5px solid var(--w25);
-  border-top-color:var(--w90);
+  width:5px;
+  height:5px;
   border-radius:50%;
-  animation:spin .8s linear infinite;
-  flex-shrink:0;
+  background:var(--w15);
+  margin-right:7px;
   vertical-align:middle;
+  flex-shrink:0;
+  transition:background .15s,box-shadow .15s;
 }
-@keyframes spin{
-  to{transform:rotate(360deg)}
+.activity-led.active{
+  background:var(--w100);
+  box-shadow:0 0 6px var(--w100);
+  animation:led-flicker .25s infinite alternate;
+}
+@keyframes led-flicker{
+  0%{opacity:.45}
+  100%{opacity:1}
 }
 .stale{opacity:.35;transition:opacity .3s}
 #offline{margin:18px 0 0;font-size:14px;border-left:2px solid var(--red);padding:9px 13px;background:var(--w06)}
@@ -1582,7 +1587,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span class="foot-end"><span id="busy-spinner" class="spinner" hidden aria-hidden="true"></span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
+  <span class="foot-end"><span id="activity-led" class="activity-led" aria-hidden="true"></span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
 </footer>
 
 <script src="/assets/i18n.js"></script>
@@ -1593,8 +1598,8 @@ const q = id => document.getElementById(id);
 let inFlight = 0;
 function setBusy(on) {
   if (on) inFlight++; else inFlight = Math.max(0, inFlight - 1);
-  const sp = q('busy-spinner');
-  if (sp) sp.hidden = inFlight === 0;
+  const led = q('activity-led');
+  if (led) led.classList.toggle('active', inFlight > 0);
 }
 
 const leases = {};
