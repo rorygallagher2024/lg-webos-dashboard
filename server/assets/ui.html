@@ -701,25 +701,24 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 #version:hover{color:var(--w80);text-decoration:underline}
 #version-new{text-transform:none;color:var(--cand);text-decoration:none;margin-left:.5em}
 #version-new:hover{text-decoration:underline}
-.activity-led{
-  display:inline-block;
-  width:5px;
-  height:5px;
-  border-radius:50%;
-  background:var(--w15);
-  margin-right:7px;
+.activity-txrx{
+  display:inline-flex;
+  gap:3px;
+  align-items:center;
+  margin-right:8px;
   vertical-align:middle;
   flex-shrink:0;
-  transition:background .15s,box-shadow .15s;
 }
-.activity-led.active{
+.txrx-pip{
+  width:4px;
+  height:4px;
+  border-radius:1px;
+  background:var(--w15);
+  transition:background .12s,box-shadow .12s;
+}
+.txrx-pip.lit{
   background:var(--w100);
-  box-shadow:0 0 6px var(--w100);
-  animation:led-flicker .25s infinite alternate;
-}
-@keyframes led-flicker{
-  0%{opacity:.45}
-  100%{opacity:1}
+  box-shadow:0 0 5px var(--w100);
 }
 .stale{opacity:.35;transition:opacity .3s}
 #offline{margin:18px 0 0;font-size:14px;border-left:2px solid var(--red);padding:9px 13px;background:var(--w06)}
@@ -1587,7 +1586,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span class="foot-end"><span id="activity-led" class="activity-led" aria-hidden="true"></span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
+  <span class="foot-end"><span id="activity-txrx" class="activity-txrx" aria-hidden="true"><span id="act-tx" class="txrx-pip"></span><span id="act-rx" class="txrx-pip"></span></span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
 </footer>
 
 <script src="/assets/i18n.js"></script>
@@ -1596,10 +1595,28 @@ const K = new URLSearchParams(location.search).get('k') || '';
 const q = id => document.getElementById(id);
 
 let inFlight = 0;
-function setBusy(on) {
-  if (on) inFlight++; else inFlight = Math.max(0, inFlight - 1);
-  const led = q('activity-led');
-  if (led) led.classList.toggle('active', inFlight > 0);
+let rxTimer = null;
+function setBusy(on, stage) {
+  const tx = q('act-tx');
+  const rx = q('act-rx');
+  if (on) {
+    inFlight++;
+    if (stage === 'rx') {
+      if (tx) tx.classList.remove('lit');
+      if (rx) rx.classList.add('lit');
+      if (rxTimer) clearTimeout(rxTimer);
+      rxTimer = setTimeout(() => {
+        if (rx) rx.classList.remove('lit');
+      }, 200);
+    } else {
+      if (tx) tx.classList.add('lit');
+    }
+  } else {
+    inFlight = Math.max(0, inFlight - 1);
+    if (inFlight === 0 && tx) {
+      tx.classList.remove('lit');
+    }
+  }
 }
 
 const leases = {};
@@ -2765,13 +2782,14 @@ function applyOptimistic(action, value) {
 }
 
 async function c(action, value) {
-  setBusy(true);
+  setBusy(true, 'tx');
   applyOptimistic(action, value);
   try {
     const r = await fetch(api('/api/control'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, value })
     });
+    setBusy(true, 'rx');
     const j = await r.json();
     if (!j.ok) {
       clearLease(action);
@@ -4454,12 +4472,13 @@ async function privAction(action) {
   const question = action === 'resetAdId' ? t('pv.adid.reset.confirm', 'Really reset the advertising ID?')
     : t('pv.cookies.clear.confirm', 'Really clear ad cookies?');
   if (!confirm(question)) return;
-  setBusy(true);
+  setBusy(true, 'tx');
   try {
     const r = await fetch(api('/api/control'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     });
+    setBusy(true, 'rx');
     const j = await r.json();
     if (!j.ok) { showErr(j.error || t('common.actionFailed', 'Action failed')); return; }
     if (action === 'resetAdId') {
