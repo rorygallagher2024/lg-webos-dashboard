@@ -386,7 +386,6 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
           margin-left:8px}
 .oled-desc{font-size:13px;color:var(--w60);margin-top:7px;line-height:1.5}
 .oled-ctl{flex:0 0 auto;display:flex;gap:8px;align-items:center}
-.oled-ctl .pill{min-width:96px}
 /* The service-menu ones are set apart: they are the reason the warning below
    the list is there. */
 .oled-row.guarded .oled-name{color:var(--cand)}
@@ -514,15 +513,15 @@ button.btn-off:hover{color:var(--w60);border-color:var(--w12);background:transpa
         padding:13px 0;border-bottom:1px solid var(--w06)}
 .pv-row .n{font-size:15px;color:var(--w100)}
 .pv-row .d{font-size:13px;color:var(--w60);margin-top:3px;max-width:58ch}
-.pill{font-family:'Manrope';font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+.pill, .pill-toggle{font-family:'Manrope';font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
       display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
       min-width:112px;height:28px;padding:0 12px;line-height:1;
       border:1px solid;border-radius:2px;white-space:nowrap}
-button.pill{min-height:0;color:inherit}
-.pill.good{color:var(--green);border-color:var(--green)}
-.pill.warn{color:var(--cand);border-color:var(--cand)}
-.pill.bad{color:var(--red);border-color:var(--red)}
-.pill.idle{color:var(--w60);border-color:var(--edge)}
+button.pill, button.pill-toggle{min-height:0;color:inherit}
+.pill.good, .pill-toggle.good{color:var(--green);border-color:var(--green)}
+.pill.warn, .pill-toggle.warn{color:var(--cand);border-color:var(--cand)}
+.pill.bad, .pill-toggle.bad{color:var(--red);border-color:var(--red)}
+.pill.idle, .pill-toggle.idle{color:var(--w60);border-color:var(--edge)}
 /* A border means it can be pressed. A status that is only reported (a span)
    reads as text, with a dot in its state colour where it has one. The state
    classes are repeated because .pill.good and the like outrank span.pill. */
@@ -535,14 +534,14 @@ span.pill.good::before,span.pill.warn::before,span.pill.bad::before{
 .pill-sel option{color:initial}
 /* A settable flag keeps the pill vocabulary of the read-only rows: the row
    should read the same, it just answers to a click. */
-button.pill{background:transparent;font-family:'Manrope';cursor:pointer}
-button.pill:hover:not([disabled]){background:rgba(var(--fg),.08)}
-button.pill[disabled]{cursor:default;opacity:.45}
+button.pill, button.pill-toggle{background:transparent;font-family:'Manrope';cursor:pointer}
+button.pill:hover:not([disabled]), button.pill-toggle:hover:not([disabled]){background:rgba(var(--fg),.08)}
+button.pill[disabled], button.pill-toggle[disabled]{cursor:default;opacity:.45}
 /* A flag the panel will not write keeps its colour - the value still matters -
    but has to read as inert next to 19 rows that respond to a click. */
 /* Read-only: a dashed edge says it cannot be pressed. It was 45% opacity,
    which took an amber pill to 2.9:1 on black and 1.8:1 on the light theme. */
-.pill.fixed{border-style:dashed}
+.pill.fixed, .pill-toggle.fixed{border-style:dashed}
 .pv-g{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--w60);
       margin:22px 0 2px;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .pv-g:first-child{margin-top:4px}
@@ -1739,6 +1738,28 @@ const bytes = n => {
   return (i === 0 || v >= 100 ? Math.round(v) : v.toFixed(1)) + ' ' + u[i];
 };
 
+/* Standardized interactive toggle pill component helpers */
+function renderToggle(opts) {
+  const cls = 'pill ' + (opts.cls || 'idle');
+  const id = opts.id ? ' id="' + esc(opts.id) + '"' : '';
+  const on = opts.on !== undefined ? ' data-on="' + (opts.on ? '1' : '') + '"' : '';
+  const next = opts.next !== undefined ? ' data-next="' + esc(opts.next) + '"' : '';
+  const dis = opts.disabled ? ' disabled' : '';
+  const onclick = opts.onclick ? ' onclick="' + opts.onclick + '"' : '';
+  const extra = opts.attrs ? ' ' + opts.attrs : '';
+  return '<button type="button" class="' + cls + '"' + id + on + next + dis + onclick + extra + '>' +
+         esc(opts.label) + '</button>';
+}
+
+function updateToggle(btnOrId, opts) {
+  const b = typeof btnOrId === 'string' ? q(btnOrId) : btnOrId;
+  if (!b) return;
+  if (opts.cls !== undefined) b.className = 'pill ' + opts.cls;
+  if (opts.label !== undefined) b.textContent = opts.label;
+  if (opts.on !== undefined) b.dataset.on = opts.on ? '1' : '';
+  if (opts.disabled !== undefined) b.disabled = !!opts.disabled;
+}
+
 /* Level is carried by fill and opacity, never by hue - so "hi" is a state
    class that brightens the row rather than turning it red. */
 const ROWS = [
@@ -2342,19 +2363,21 @@ function renderUpdate(d) {
     : t('server.available', 'v{version} is out. Installing it replaces the server and restarts it.', { version: d.latest });
   desc.hidden = !d.available;
 
-  const auto = q('upd-auto');
-  auto.className = 'pill ' + (d.autoCheck ? 'good' : 'idle');
-  auto.textContent = d.autoCheck ? t('common.on', 'On') : t('common.off', 'Off');
-  auto.dataset.on = d.autoCheck ? '1' : '';
-  auto.disabled = !d.writable;
+  updateToggle('upd-auto', {
+    cls: d.autoCheck ? 'good' : 'idle',
+    label: d.autoCheck ? t('common.on', 'On') : t('common.off', 'Off'),
+    on: d.autoCheck,
+    disabled: !d.writable
+  });
 
   // Answers from actions that predate the setting leave it as it was.
   if (typeof d.tvUpdatesBlocked === 'boolean') {
-    const tb = q('upd-tvblock');
-    tb.className = 'pill ' + (d.tvUpdatesBlocked ? 'good' : 'idle');
-    tb.textContent = d.tvUpdatesBlocked ? t('server.tvUpdates.blocked', 'Blocked') : t('server.tvUpdates.allowed', 'Allowed');
-    tb.dataset.on = d.tvUpdatesBlocked ? '1' : '';
-    tb.disabled = !d.writable;
+    updateToggle('upd-tvblock', {
+      cls: d.tvUpdatesBlocked ? 'good' : 'idle',
+      label: d.tvUpdatesBlocked ? t('server.tvUpdates.blocked', 'Blocked') : t('server.tvUpdates.allowed', 'Allowed'),
+      on: d.tvUpdatesBlocked,
+      disabled: !d.writable
+    });
   }
 
   msg.textContent = (d.state === 'error' || d.state === 'offline') ? (d.error || t('server.checkFailed', 'the check failed'))
@@ -2583,12 +2606,12 @@ function renderTvApp(d) {
   const row = q('tvapp-row');
   if (!row) return;
   row.hidden = !(d && d.supported);
-  if (!d || !d.supported) return;
-  const btn = q('tvapp-btn');
-  btn.textContent = d.installed ? t('server.tvApp.added', 'Added') : t('server.tvApp.notAdded', 'Not added');
-  btn.dataset.on = d.installed ? '1' : '';
-  btn.className = 'pill ' + (d.installed ? 'good' : 'idle');
-  btn.disabled = !d.writable || tvAppBusy;
+  updateToggle('tvapp-btn', {
+    cls: d.installed ? 'good' : 'idle',
+    label: d.installed ? t('server.tvApp.added', 'Added') : t('server.tvApp.notAdded', 'Not added'),
+    on: d.installed,
+    disabled: !d.writable || tvAppBusy
+  });
   q('tvapp-desc').textContent = d.installed
     ? t('server.tvApp.desc.added', 'Opens this dashboard on the TV itself, driven by the remote. Remove it to take the tile off the home screen.')
     : t('server.tvApp.desc', 'Adds a tile that opens this dashboard on the TV itself, driven by the remote.');
@@ -2657,9 +2680,11 @@ function advPill(row, id, on) {
   const r = q('row-' + row), b = q(id);
   if (r) r.hidden = on === undefined;
   if (!b || on === undefined) return;
-  b.className = 'pill ' + (on ? 'good' : 'idle');
-  b.textContent = on ? t('common.on', 'On') : t('common.off', 'Off');
-  b.dataset.on = on ? '1' : '';
+  updateToggle(b, {
+    cls: on ? 'good' : 'idle',
+    label: on ? t('common.on', 'On') : t('common.off', 'Off'),
+    on: on
+  });
 }
 function flip(id) { const el = q(id); return el && el.dataset.on ? 'off' : 'on'; }
 function toggleLight(which) { c(which, flip(which === 'standbyLight' ? 'lt_standby' : 'lt_logo')); }
@@ -3044,8 +3069,12 @@ function pvPill(on, goodWhenOff) {
 function pvConsentPill(f, writable) {
   if (!writable) return pvPill(f.enabled, true);
   if (!f.settable) return pvPill(f.enabled, true).replace('class="pill ', 'class="pill fixed ');
-  return `<button class="pill ${f.enabled ? 'warn' : 'good'}" data-key="${esc(f.key)}" ` +
-         `data-next="${f.enabled ? '0' : '1'}">${esc(f.enabled ? t('common.on', 'On') : t('common.off', 'Off'))}</button>`;
+  return renderToggle({
+    cls: f.enabled ? 'warn' : 'good',
+    label: f.enabled ? t('common.on', 'On') : t('common.off', 'Off'),
+    next: f.enabled ? '0' : '1',
+    attrs: 'data-key="' + esc(f.key) + '"'
+  });
 }
 
 function pvRow(name, detail, pillHtml) {
@@ -3115,9 +3144,12 @@ function renderLgSettings(rows) {
   q('pv-promo').innerHTML = promo.map(r =>
     `<div class="prot-row"><div class="prot-main"><div class="prot-title">${esc(r.title)}</div>` +
     `<div class="prot-desc">${esc(r.desc)}</div></div>` +
-    `<div class="prot-status"><button type="button" class="pill ${r.on ? 'warn' : 'good'}" ` +
-    `data-id="${esc(r.id)}" data-next="${r.on ? '0' : '1'}">` +
-    `${esc(r.on ? t('common.on', 'On') : t('common.off', 'Off'))}</button></div></div>`).join('');
+    `<div class="prot-status">${renderToggle({
+      cls: r.on ? 'warn' : 'good',
+      label: r.on ? t('common.on', 'On') : t('common.off', 'Off'),
+      next: r.on ? '0' : '1',
+      attrs: 'data-id="' + esc(r.id) + '"'
+    })}</div></div>`).join('');
 }
 document.addEventListener('click', async e => {
   const b = e.target.closest('#pv-promo button[data-id]');
@@ -3151,7 +3183,7 @@ async function loadGame() {
     (d.pictureMode && d.pictureMode !== 'game' ? ' ' + t('game.notGameMode', 'They apply while the picture mode is Game Optimizer.') : '');
   q('game-rows').innerHTML = d.rows.map(r =>
     '<div class="oled-row"><div><div class="oled-name">' + esc(r.title) + '</div>' +
-    '<div class="oled-desc">' + esc(r.desc) + '</div></div><div>' + lgsControl(r) + '</div></div>').join('');
+    '<div class="oled-desc">' + esc(r.desc) + '</div></div><div class="oled-ctl">' + lgsControl(r) + '</div></div>').join('');
 }
 
 /* ---- LG's own settings --------------------------------------------------
@@ -3170,8 +3202,11 @@ function lgsControl(r) {
     return '<label class="lgs-range"><input type="range"' + id + ' min="' + r.min + '" max="' + r.max + '" step="1" value="' + r.value + '"' +
       ' aria-label="' + esc(r.title) + '"><span class="num">' + esc(lgsNumber(r.min, r.value)) + '</span></label>';
   }
-  return '<button class="pill ' + (r.on ? 'good' : 'idle') + '"' + id + ' data-on="' + (r.on ? '0' : '1') + '">' +
-    esc(r.on ? t('common.on', 'On') : t('common.off', 'Off')) + '</button>';
+  return renderToggle({
+    cls: r.on ? 'good' : 'idle',
+    label: r.on ? t('common.on', 'On') : t('common.off', 'Off'),
+    attrs: 'data-lgs="' + esc(r.id) + '" data-on="' + (r.on ? '0' : '1') + '"' + (r.active === false ? ' disabled' : '')
+  });
 }
 
 // A range either side of 0, as balance's is, reads the way LG labels it.
@@ -3335,7 +3370,12 @@ async function loadPrivacy() {
       esc(adOk ? (ad.limitTrackingDetail || '') : t('pv.lmt.unknown', 'Read from the same call, so it is unknown here.')),
       !adOk ? `<span class="pill idle">${esc(t('pv.unknown', 'Unknown'))}</span>`
             : d.consentWritable
-            ? `<button class="pill ${ad.limitTracking ? 'good' : 'warn'}" id="lmt-toggle" data-next="${ad.limitTracking ? '0' : '1'}">${esc(ad.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'))}</button>`
+            ? renderToggle({
+                id: 'lmt-toggle',
+                cls: ad.limitTracking ? 'good' : 'warn',
+                label: ad.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'),
+                next: ad.limitTracking ? '0' : '1'
+              })
             : `<span class="pill ${ad.limitTracking ? 'good' : 'warn'}">${esc(ad.limitTracking ? t('common.on', 'On') : t('common.off', 'Off'))}</span>`);
     // The two ad actions go through the same service, so they cannot work either.
     for (const id of ['adid-reset', 'adcookies-clear']) {
@@ -3874,7 +3914,13 @@ function renderAppsPanel() {
             <div class="prot-desc">${esc(isHidden ? t('apps.tile.hidden.desc', 'Hidden from home launcher ribbon') : t('apps.tile.visible.desc', 'Visible on home launcher ribbon'))}</div>
           </div>
           <div class="prot-status">
-            <button type="button" class="pill ${isHidden ? 'warn' : 'good'}" id="btn-tile-${id}" onclick="toggleTileVisibility('${id}', ${!isHidden})" ${!d.writable ? 'disabled' : ''}>${esc(isHidden ? t('apps.tile.hidden', 'Hidden') : t('apps.tile.visible', 'Visible'))}</button>
+            ${renderToggle({
+              id: 'btn-tile-' + id,
+              cls: isHidden ? 'warn' : 'good',
+              label: isHidden ? t('apps.tile.hidden', 'Hidden') : t('apps.tile.visible', 'Visible'),
+              disabled: !d.writable,
+              onclick: "toggleTileVisibility('" + id + "', " + (!isHidden) + ")"
+            })}
           </div>
         </div>`;
       }).join('');
@@ -3914,8 +3960,14 @@ function renderAppsPanel() {
             </div>
             <div class="prot-status" style="display:flex;align-items:center;gap:10px">
               ${badge ? `<span class="pv-badge" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--w06);color:var(--t2)">${badge}</span>` : ''}
-              <button type="button" class="pill ${isDisabled ? 'warn' : 'good'}" id="btn-svc-${id}" onclick="toggleService('${id}', ${!isDisabled})" ${!d.writable ? 'disabled' : ''}${stillRunning ? ` title="${esc(t('apps.service.restarted', 'Switched off, but something on the TV has started it again.'))}"` : ''}>${esc(stillRunning
-                ? t('apps.service.stillRunning', 'Disabled, still running') : isDisabled ? t('apps.service.disabled', 'Disabled') : t('apps.service.active', 'Active'))}</button>
+              ${renderToggle({
+                id: 'btn-svc-' + id,
+                cls: isDisabled ? 'warn' : 'good',
+                label: stillRunning ? t('apps.service.stillRunning', 'Disabled, still running') : isDisabled ? t('apps.service.disabled', 'Disabled') : t('apps.service.active', 'Active'),
+                disabled: !d.writable,
+                onclick: "toggleService('" + id + "', " + (!isDisabled) + ")",
+                attrs: stillRunning ? `title="${esc(t('apps.service.restarted', 'Switched off, but something on the TV has started it again.'))}"` : ''
+              })}
             </div>
           </div>`;
         }).join('');
@@ -4208,8 +4260,13 @@ async function loadServiceMenu() {
             <strong>${t('svc.unlock.restart', 'The TV has to be switched off and on again before this takes effect.')}</strong></div>
         </div>
         <div class="oled-ctl">
-          <button class="pill ${locked ? 'bad' : 'good'}" data-svc="lock" data-next="${locked ? '0' : '1'}" ${dis}>${locked
-            ? t('svc.locked', 'Locked') : t('svc.unlocked', 'Unlocked')}</button>
+          ${renderToggle({
+            cls: locked ? 'bad' : 'good',
+            label: locked ? t('svc.locked', 'Locked') : t('svc.unlocked', 'Unlocked'),
+            next: locked ? '0' : '1',
+            disabled: !d.writable,
+            attrs: 'data-svc="lock"'
+          })}
         </div>
       </div>`;
   }
@@ -4281,11 +4338,21 @@ async function loadOledCare() {
     let pill, cls = (r.guarded && d.serviceControls) ? ' guarded' : '';
     if (r.kind === 'shift') {
       const on = /on/i.test(d.screenShift || '');
-      pill = `<button class="pill ${on ? 'good' : 'idle'}" data-oled="screenShift" data-next="${on ? 'off' : 'on'}">${onOff(on)}</button>`;
+      pill = renderToggle({
+        cls: on ? 'good' : 'idle',
+        label: onOff(on),
+        next: on ? 'off' : 'on',
+        attrs: 'data-oled="screenShift"'
+      });
     } else if (r.kind === 'logo') {
       const v = String(d.logoDimming || 'off').toLowerCase();
       const label = v === 'strong' ? t('oled.logo.high', 'High') : v === 'light' ? t('oled.logo.light', 'Light') : t('common.off', 'Off');
-      pill = `<button class="pill ${v === 'off' ? 'idle' : 'good'}" data-oled="logoDimming" data-next="${v === 'off' ? 'light' : (v === 'light' ? 'strong' : 'off')}">${label}</button>`;
+      pill = renderToggle({
+        cls: v === 'off' ? 'idle' : 'good',
+        label: label,
+        next: v === 'off' ? 'light' : (v === 'light' ? 'strong' : 'off'),
+        attrs: 'data-oled="logoDimming"'
+      });
     } else {
       const on = state(d[r.key]);
       if (on === null) {
@@ -4300,7 +4367,12 @@ async function loadOledCare() {
       } else if (!d.serviceControls) {
         pill = `<span class="pill ${on ? 'good' : 'bad'} fixed">${onOff(on)}</span>`;
       } else {
-        pill = `<button class="pill ${on ? 'good' : 'bad'}" data-oled="${r.key}" data-next="${on ? '0' : '1'}">${onOff(on)}</button>`;
+        pill = renderToggle({
+          cls: on ? 'good' : 'bad',
+          label: onOff(on),
+          next: on ? '0' : '1',
+          attrs: 'data-oled="' + esc(r.key) + '"'
+        });
       }
     }
     return `<div class="oled-row${cls}">
@@ -4612,9 +4684,12 @@ function renderEntitiesUI() {
           <div class="n">${esc(cat.name)} <span class="cnt">${esc(count === 1 ? t('mqtt.entities.one', '(1 entity)') : t('mqtt.entities.count', '({n} entities)', { n: count }))}</span></div>
           <div class="d">${esc(cat.desc)}</div>
         </div>
-        <button type="button" class="pill ${catOn ? 'good' : 'idle'}" id="cfg-cat-${cat.id}" onclick="cfgToggleCat('${cat.id}')">
-          ${esc(catOn ? t('mqtt.cat.enabled', 'Enabled') : t('mqtt.cat.disabled', 'Disabled'))}
-        </button>
+        ${renderToggle({
+          id: 'cfg-cat-' + cat.id,
+          cls: catOn ? 'good' : 'idle',
+          label: catOn ? t('mqtt.cat.enabled', 'Enabled') : t('mqtt.cat.disabled', 'Disabled'),
+          onclick: "cfgToggleCat('" + cat.id + "')"
+        })}
       </div>`;
   }
   container.innerHTML = entsHtml;
