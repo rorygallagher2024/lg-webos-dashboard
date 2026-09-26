@@ -113,6 +113,23 @@ stuck_children() {
   done
 }
 
+# Where a stuck child is waiting: its system call and the library holding the
+# instruction it stopped at, which names the lock it is stuck on.
+where_stuck() {
+  read -r nr _ _ _ _ _ _ _ pc < "/proc/$1/syscall" 2>/dev/null || return
+  # awk rather than $(( )): busybox sh arithmetic is 32-bit signed here, and
+  # addresses above 0x7fffffff would compare wrongly.
+  lib=$(awk -v pc="$pc" '
+    function hex(s,  i, n) { n = 0; s = tolower(s); sub(/^0x/, "", s)
+      for (i = 1; i <= length(s); i++) n = n * 16 + index("0123456789abcdef", substr(s, i, 1)) - 1
+      return n }
+    BEGIN { p = hex(pc) }
+    { split($1, r, "-"); if (hex(r[1]) <= p && p < hex(r[2])) {
+      printf "%s+0x%x", ($6 == "" ? "anon" : $6), p - hex(r[1]) + hex($3); exit } }
+  ' "/proc/$1/maps" 2>/dev/null)
+  echo "syscall $nr at $pc in ${lib:-?}"
+}
+
 free_stuck_children() {
   [ -n "$1" ] || return
   first=$(stuck_children "$1")
@@ -120,8 +137,9 @@ free_stuck_children() {
   sleep 3
   for cpid in $(stuck_children "$1"); do
     case " $first " in *" $cpid "*)
+      where=$(where_stuck "$cpid")
       kill -9 "$cpid" 2>/dev/null &&
-        echo "$(date): child $cpid stuck before exec - killed it" >> "$RESTARTS" ;;
+        echo "$(date): child $cpid stuck before exec ($where) - killed it" >> "$RESTARTS" ;;
     esac
   done
 }
@@ -164,6 +182,10 @@ watch_loop() {
     free_stuck_children "$(cat "$PIDFILE" 2>/dev/null)"
     if ! kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
       echo "$(date): process gone - starting" >> "$RESTARTS"
+      # A child the server left stuck before exec outlives it, still holding
+      # the port: each new server then died on EADDRINUSE, restarted every
+      # round for ten minutes on a B8. stop_app clears every copy first.
+      stop_app
       start_app
       stale=0
       continue
