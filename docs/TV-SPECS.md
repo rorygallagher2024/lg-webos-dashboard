@@ -1,7 +1,7 @@
 # TV Hardware Specifications
 
 Low-level hardware reference for the LG webOS TVs tested with this project.
-All data gathered from the live sets via root shell access.
+All data gathered from the live TVs via root shell access.
 
 ---
 
