@@ -279,6 +279,28 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
 /* ---- controls ---- */
 .set{margin-top:22px}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:11px}
+.vol-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px;align-items:stretch}
+.vol-wrap{
+  grid-column:span 2;position:relative;display:flex;align-items:center;
+  min-height:48px;background:transparent;border:1px solid var(--edge);
+  box-sizing:border-box;cursor:pointer;overflow:hidden;transition:border-color .16s ease;
+  user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.vol-wrap:hover{border-color:var(--w70)}
+.vol-wrap.dragging{border-color:var(--w100)}
+.vol-wrap:focus-within{outline:2px solid var(--w80);outline-offset:2px}
+.vol-fill{
+  position:absolute;top:0;bottom:0;left:0;width:0%;
+  background:var(--w100);pointer-events:none;
+  transition:width .08s ease, opacity .16s ease;
+}
+.vol-wrap.muted .vol-fill{opacity:.35}
+.vol-wrap.dragging .vol-fill{transition:none}
+.vol-wrap input[type=range]{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  opacity:0;margin:0;padding:0;cursor:pointer;pointer-events:none;
+}
+.vol-wrap input[type=range]:focus{outline:none}
 #picmodes,#energysteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
 #picmodes button,#energysteps button{
   font-size:11.5px;letter-spacing:.06em;padding:12px 6px;line-height:1.25;
@@ -679,6 +701,21 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 #version:hover{color:var(--w80);text-decoration:underline}
 #version-new{text-transform:none;color:var(--cand);text-decoration:none;margin-left:.5em}
 #version-new:hover{text-decoration:underline}
+.spinner{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  margin-right:8px;
+  border:1.5px solid var(--w25);
+  border-top-color:var(--w90);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+  flex-shrink:0;
+  vertical-align:middle;
+}
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
 .stale{opacity:.35;transition:opacity .3s}
 #offline{margin:18px 0 0;font-size:14px;border-left:2px solid var(--red);padding:9px 13px;background:var(--w06)}
 #offline b{font-weight:600;margin-right:6px}
@@ -921,10 +958,12 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       <div class="btns" id="inputs"></div>
     </div>
 
-    <div class="set"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
-      <div class="btns">
-        <button onclick="c('volumeStep',-1)" data-t="ctl.volDown">Vol &minus;</button>
-        <button onclick="c('volumeStep',1)" data-t="ctl.volUp">Vol &plus;</button>
+    <div class="set" data-col="0"><div class="lbl"><span data-t="ctl.volume">Volume</span> &middot; <span id="vol" class="num">&mdash;</span></div>
+      <div class="vol-row">
+        <div class="vol-wrap" id="vol-wrap" role="group" aria-label="Volume" data-t-aria-label="ctl.volume">
+          <div class="vol-fill" id="vol-fill"></div>
+          <input type="range" id="vol-slider" min="0" max="100" value="0" aria-label="Volume" data-t-aria-label="ctl.volume">
+        </div>
         <button id="mute" onclick="toggleMute()" data-t="ctl.mute">Mute</button>
       </div>
     </div>
@@ -1543,13 +1582,42 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 
 <footer>
   <span id="uptime">&mdash;</span>
-  <span class="foot-end"><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
+  <span class="foot-end"><span id="busy-spinner" class="spinner" hidden aria-hidden="true"></span><span id="clock">&mdash;</span><a id="version" hidden target="_blank" rel="noopener noreferrer"></a><a id="version-new" hidden target="_blank" rel="noopener noreferrer"></a><button type="button" class="theme-toggle" id="theme-toggle">☾</button></span>
 </footer>
 
 <script src="/assets/i18n.js"></script>
 <script>
 const K = new URLSearchParams(location.search).get('k') || '';
 const q = id => document.getElementById(id);
+
+let inFlight = 0;
+function setBusy(on) {
+  if (on) inFlight++; else inFlight = Math.max(0, inFlight - 1);
+  const sp = q('busy-spinner');
+  if (sp) sp.hidden = inFlight === 0;
+}
+
+const leases = {};
+function setLease(key, val, ttl = 3000) {
+  leases[key] = { val: val, exp: Date.now() + ttl };
+}
+function getLease(key, currentVal) {
+  const l = leases[key];
+  if (!l) return undefined;
+  if (Date.now() > l.exp) {
+    delete leases[key];
+    return undefined;
+  }
+  if (currentVal !== undefined && currentVal !== null && currentVal === l.val) {
+    delete leases[key];
+    return undefined;
+  }
+  return l.val;
+}
+function clearLease(key) {
+  delete leases[key];
+}
+let lastArOff = null;
 
 // A request that never reaches the TV rejects with the browser's own wording
 // ("Failed to fetch" in Chrome, "Load failed" in Safari), which reads as a
@@ -1842,23 +1910,34 @@ async function tick() {
     // for the first six seconds, so the whole render just stops updating.
     if (q('ds-cur')) {
       // sleep timer + front lights
-      const st = d.sleepTimer || 'off';
+      const stLeased = getLease('sleepTimer', d.sleepTimer || 'off');
+      const st = stLeased !== undefined ? stLeased : (d.sleepTimer || 'off');
       ['off','10','30','60','90','120'].forEach(v => {
         const b = q('sl_' + v);
         if (b) b.classList.toggle('on', st === v);
       });
       const lights = d.lights || {};
       // Each setting shows only where the TV has it; Display only when it has any.
-      advPill('quickboot', 'btn_quickboot', d.quickBoot);
-      advPill('ar', 'btn_ar', d.alwaysReady);
-      advPill('ars', 'btn_ars', d.alwaysReadyScreen);
-      arOffRow(d.alwaysReady ? d.alwaysReadyOff : undefined);
-      advPill('wol', 'btn_wol', d.wakeOnLan);
-      advPill('lglogo', 'btn_lglogo', d.lgLogo);
-      advPill('standby', 'lt_standby', lights.standby);
-      advPill('logolight', 'lt_logo', lights.hasLogo ? lights.logo : undefined);
+      const qbVal = getLease('quickBoot', d.quickBoot);
+      advPill('quickboot', 'btn_quickboot', qbVal !== undefined ? qbVal : d.quickBoot);
+      lastArOff = d.alwaysReadyOff;
+      const arLeased = getLease('alwaysReady', d.alwaysReady);
+      const arVal = arLeased !== undefined ? arLeased : d.alwaysReady;
+      advPill('ar', 'btn_ar', arVal);
+      const arsVal = getLease('alwaysReadyScreen', d.alwaysReadyScreen);
+      advPill('ars', 'btn_ars', arsVal !== undefined ? arsVal : d.alwaysReadyScreen);
+      arOffRow(arVal ? d.alwaysReadyOff : undefined);
+      const wolVal = getLease('wakeOnLan', d.wakeOnLan);
+      advPill('wol', 'btn_wol', wolVal !== undefined ? wolVal : d.wakeOnLan);
+      const logoVal = getLease('lgLogo', d.lgLogo);
+      advPill('lglogo', 'btn_lglogo', logoVal !== undefined ? logoVal : d.lgLogo);
+      const sbVal = getLease('standbyLight', lights.standby);
+      advPill('standby', 'lt_standby', sbVal !== undefined ? sbVal : lights.standby);
+      const ltLogoVal = getLease('logoLight', lights.logo);
+      advPill('logolight', 'lt_logo', lights.hasLogo ? (ltLogoVal !== undefined ? ltLogoVal : lights.logo) : undefined);
       if (q('adv-display')) q('adv-display').hidden = d.lgLogo === undefined;
-      advPill('devdetect', 'btn_devdetect', d.deviceDetection);
+      const devVal = getLease('deviceDetection', d.deviceDetection);
+      advPill('devdetect', 'btn_devdetect', devVal !== undefined ? devVal : d.deviceDetection);
       if (q('adv-devices')) q('adv-devices').hidden = d.deviceDetection === undefined && !advLgsDevices;
       if (q('tl-cur')) {
         q('tl-cur').textContent = st === 'off' ? t('common.off', 'Off') : t('ctl.sleep.minutes', '{n} min', { n: st });
@@ -2029,8 +2108,16 @@ async function tick() {
     }
     pruneEmptySections();
 
-    muted = !!d.muted;
-    q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : d.volume;
+    const mLeased = getLease('mute', d.muted);
+    muted = mLeased !== undefined ? mLeased : !!d.muted;
+    if (!volDragging) {
+      const vLeased = getLease('volume', d.volume);
+      const v = vLeased !== undefined ? vLeased : (typeof d.volume === 'number' ? d.volume : 0);
+      if (q('vol-slider')) q('vol-slider').value = v;
+      if (q('vol-fill')) q('vol-fill').style.width = v + '%';
+      q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : v;
+      if (q('vol-wrap')) q('vol-wrap').classList.toggle('muted', muted);
+    }
     q('mute').classList.toggle('on', muted);
 
     if (d.inputs && !q('inputs').dataset.built) {
@@ -2040,12 +2127,22 @@ async function tick() {
       q('inputs').dataset.built = '1';
     }
 
-    if (d.app) {
-      lastAppId = d.app;
-      if (q('currapp-lbl')) q('currapp-lbl').textContent = (d.app_name || d.display_title || d.app).toUpperCase();
+    const inLeased = getLease('input', d.app);
+    const activeApp = inLeased !== undefined ? inLeased : d.app;
+    if (activeApp) {
+      lastAppId = activeApp;
       const inBtns = q('inputs') ? q('inputs').querySelectorAll('button') : [];
+      let foundInBtn = false;
       for (let b of inBtns) {
-        b.classList.toggle('on', b.id === 'in_' + d.app);
+        const isCur = b.id === 'in_' + activeApp;
+        b.classList.toggle('on', isCur);
+        if (isCur) {
+          if (q('currapp-lbl')) q('currapp-lbl').textContent = b.textContent.toUpperCase();
+          foundInBtn = true;
+        }
+      }
+      if (!foundInBtn && q('currapp-lbl')) {
+        q('currapp-lbl').textContent = (d.app_name || d.display_title || activeApp).toUpperCase();
       }
     } else {
       if (q('currapp-lbl')) q('currapp-lbl').textContent = isComp ? t('ctl.app.maintenance', 'MAINTENANCE')
@@ -2059,11 +2156,11 @@ async function tick() {
     if (d.apps && d.apps.length) {
       if (!installedApps.length) {
         installedApps = d.apps;
-        renderApps(d.app);
+        renderApps(activeApp);
       } else {
         const appBtns = q('apps') ? q('apps').querySelectorAll('button') : [];
         for (let b of appBtns) {
-          b.classList.toggle('on', !!(d.app && (b.id === 'app_' + d.app.replace(/[^a-zA-Z0-9_-]/g, '_') || b.id === 'app_com_webos_app_' + d.app)));
+          b.classList.toggle('on', !!(activeApp && (b.id === 'app_' + activeApp.replace(/[^a-zA-Z0-9_-]/g, '_') || b.id === 'app_com_webos_app_' + activeApp)));
         }
       }
     }
@@ -2098,7 +2195,9 @@ async function tick() {
     }
 
     if (d.picture) {
-      if (q('picmode-lbl')) q('picmode-lbl').textContent = (d.picture.mode || d.picture.mode_raw || '').toUpperCase();
+      const pmLeased = getLease('pictureMode', d.picture.mode_raw);
+      const curPm = pmLeased !== undefined ? pmLeased : d.picture.mode_raw;
+      if (q('picmode-lbl') && !pmLeased) q('picmode-lbl').textContent = (d.picture.mode || d.picture.mode_raw || '').toUpperCase();
       /* Rebuild only when the set actually changes - it changes when the source
          does, and rewriting the buttons on every tick would kill the :active
          state mid-press. */
@@ -2113,11 +2212,14 @@ async function tick() {
       }
       if (box) {
         for (let b of box.querySelectorAll('button')) {
-          b.classList.toggle('on', b.id.replace('pm_', '') === d.picture.mode_raw);
+          const isCur = b.id.replace('pm_', '') === curPm;
+          b.classList.toggle('on', isCur);
+          if (isCur && pmLeased && q('picmode-lbl')) q('picmode-lbl').textContent = b.textContent.toUpperCase();
         }
       }
 
-      const es = d.picture.energySaving || '';
+      const esLeased = getLease('energySaving', d.picture.energySaving);
+      const es = esLeased !== undefined ? esLeased : (d.picture.energySaving || '');
       if (q('energy-lbl')) q('energy-lbl').textContent = (ENERGY_STEPS[es] || es || '—').toUpperCase();
       const esBox = q('energysteps');
       if (esBox) {
@@ -2128,11 +2230,14 @@ async function tick() {
     }
 
     if (d.sound) {
-      if (q('soundout-lbl')) q('soundout-lbl').textContent = (d.sound.output || d.sound.output_raw || '').toUpperCase();
+      const soLeased = getLease('soundOutput', d.sound.output_raw);
+      const curSo = soLeased !== undefined ? soLeased : (d.sound.output_raw || '');
+      if (q('soundout-lbl') && !soLeased) q('soundout-lbl').textContent = (d.sound.output || d.sound.output_raw || '').toUpperCase();
       const soBtns = q('soundouts') ? q('soundouts').querySelectorAll('button') : [];
       for (let b of soBtns) {
-        const so = b.id.replace('so_', '');
-        b.classList.toggle('on', d.sound.output_raw === so);
+        const isCur = b.id.replace('so_', '') === curSo;
+        b.classList.toggle('on', isCur);
+        if (isCur && soLeased && q('soundout-lbl')) q('soundout-lbl').textContent = b.textContent.toUpperCase();
       }
     }
 
@@ -2525,18 +2630,6 @@ function showErr(m) {
   errTimer = setTimeout(clearErr, 6000);
 }
 
-async function c(action, value) {
-  try {
-    const r = await fetch(api('/api/control'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, value })
-    });
-    const j = await r.json();
-    if (!j.ok) showErr(j.error || t('common.actionFailed', 'Action failed')); else clearErr();
-    setTimeout(tick, 320);
-    return j;
-  } catch (e) { showErr(e.message); }
-}
 // An Advanced tab setting: its row shows only once the TV reports a value.
 function advPill(row, id, on) {
   const r = q('row-' + row), b = q(id);
@@ -2554,6 +2647,144 @@ function toggleWol() { c('wakeOnLan', flip('btn_wol')); }
 function toggleDeviceDetection() { c('deviceDetection', flip('btn_devdetect')); }
 function toggleAlwaysReady() { c('alwaysReady', flip('btn_ar')); }
 function toggleAlwaysReadyScreen() { c('alwaysReadyScreen', flip('btn_ars')); }
+
+function applyOptimistic(action, value) {
+  if (action === 'volume') {
+    const v = Number(value) || 0;
+    setLease('volume', v);
+    if (q('vol-slider')) q('vol-slider').value = v;
+    if (q('vol-fill')) q('vol-fill').style.width = v + '%';
+    if (q('vol') && !muted) q('vol').textContent = v;
+  } else if (action === 'mute') {
+    const m = !!value;
+    setLease('mute', m);
+    muted = m;
+    if (q('mute')) q('mute').classList.toggle('on', m);
+    if (q('vol-wrap')) q('vol-wrap').classList.toggle('muted', m);
+    const curVol = q('vol-slider') ? q('vol-slider').value : '';
+    if (q('vol')) q('vol').textContent = m ? t('ctl.muted', 'MUTED') : curVol;
+  } else if (action === 'sleepTimer') {
+    const st = String(value);
+    setLease('sleepTimer', st);
+    ['off','10','30','60','90','120'].forEach(v => {
+      const b = q('sl_' + v);
+      if (b) b.classList.toggle('on', st === v);
+    });
+    if (q('tl-cur')) {
+      q('tl-cur').textContent = st === 'off' ? t('common.off', 'Off') : t('ctl.sleep.minutes', '{n} min', { n: st });
+    }
+  } else if (action === 'pictureMode') {
+    const pm = String(value);
+    setLease('pictureMode', pm);
+    const box = q('picmodes');
+    if (box) {
+      for (let b of box.querySelectorAll('button')) {
+        const matches = b.id.replace('pm_', '') === pm;
+        b.classList.toggle('on', matches);
+        if (matches && q('picmode-lbl')) q('picmode-lbl').textContent = b.textContent.toUpperCase();
+      }
+    }
+  } else if (action === 'energySaving') {
+    const es = String(value);
+    setLease('energySaving', es);
+    if (q('energy-lbl')) q('energy-lbl').textContent = (ENERGY_STEPS[es] || es || '—').toUpperCase();
+    const esBox = q('energysteps');
+    if (esBox) {
+      for (let b of esBox.querySelectorAll('button')) {
+        b.classList.toggle('on', b.id.replace('es_', '') === es);
+      }
+    }
+  } else if (action === 'soundOutput') {
+    const so = String(value);
+    setLease('soundOutput', so);
+    const soBtns = q('soundouts') ? q('soundouts').querySelectorAll('button') : [];
+    for (let b of soBtns) {
+      const matches = b.id.replace('so_', '') === so;
+      b.classList.toggle('on', matches);
+      if (matches && q('soundout-lbl')) q('soundout-lbl').textContent = b.textContent.toUpperCase();
+    }
+  } else if (action === 'input') {
+    const inp = String(value);
+    setLease('input', inp);
+    const inBtns = q('inputs') ? q('inputs').querySelectorAll('button') : [];
+    for (let b of inBtns) {
+      const matches = b.id === 'in_' + inp;
+      b.classList.toggle('on', matches);
+      if (matches && q('currapp-lbl')) q('currapp-lbl').textContent = b.textContent.toUpperCase();
+    }
+  } else if (action === 'launchApp') {
+    const appId = String(value);
+    setLease('input', appId);
+    const inBtns = q('inputs') ? q('inputs').querySelectorAll('button') : [];
+    for (let b of inBtns) b.classList.toggle('on', false);
+    const appBtns = q('apps') ? q('apps').querySelectorAll('button') : [];
+    for (let b of appBtns) {
+      const matches = b.id === 'app_' + appId.replace(/[^a-zA-Z0-9_-]/g, '_') || b.id === 'app_com_webos_app_' + appId;
+      b.classList.toggle('on', matches);
+      if (matches && q('currapp-lbl')) q('currapp-lbl').textContent = b.textContent.toUpperCase();
+    }
+  } else if (action === 'quickBoot') {
+    const on = value === 'on' || value === true;
+    setLease('quickBoot', on);
+    advPill('quickboot', 'btn_quickboot', on);
+  } else if (action === 'alwaysReady') {
+    const on = value === 'on' || value === true;
+    setLease('alwaysReady', on);
+    advPill('ar', 'btn_ar', on);
+    arOffRow(on ? lastArOff : undefined);
+  } else if (action === 'alwaysReadyScreen') {
+    const on = value === 'on' || value === true;
+    setLease('alwaysReadyScreen', on);
+    advPill('ars', 'btn_ars', on);
+  } else if (action === 'wakeOnLan') {
+    const on = value === 'on' || value === true;
+    setLease('wakeOnLan', on);
+    advPill('wol', 'btn_wol', on);
+  } else if (action === 'lgLogo') {
+    const on = value === 'on' || value === true;
+    setLease('lgLogo', on);
+    advPill('lglogo', 'btn_lglogo', on);
+  } else if (action === 'standbyLight') {
+    const on = value === 'on' || value === true;
+    setLease('standbyLight', on);
+    advPill('standby', 'lt_standby', on);
+  } else if (action === 'logoLight') {
+    const on = value === 'on' || value === true;
+    setLease('logoLight', on);
+    advPill('logolight', 'lt_logo', on);
+  } else if (action === 'deviceDetection') {
+    const on = value === 'on' || value === true;
+    setLease('deviceDetection', on);
+    advPill('devdetect', 'btn_devdetect', on);
+  }
+}
+
+async function c(action, value) {
+  setBusy(true);
+  applyOptimistic(action, value);
+  try {
+    const r = await fetch(api('/api/control'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, value })
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      clearLease(action);
+      showErr(j.error || t('common.actionFailed', 'Action failed'));
+      setTimeout(tick, 0);
+    } else {
+      clearErr();
+    }
+    setTimeout(tick, 320);
+    return j;
+  } catch (e) {
+    clearLease(action);
+    showErr(e.message);
+    setTimeout(tick, 0);
+  } finally {
+    setBusy(false);
+  }
+}
 // Shown only while Always-on is on: with it off, the TV sleeps every night anyway.
 function arOffRow(win) {
   const row = q('row-aroff'), sel = q('sel_aroff');
@@ -2577,7 +2808,125 @@ function arOffRow(win) {
   }
 }
 
-function toggleMute() { c('mute', !muted); }
+let volDragging = false;
+let volActive = false;
+
+function setVolFromPointer(e) {
+  const wrap = q('vol-wrap');
+  if (!wrap) return 0;
+  const rect = wrap.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+  const slider = q('vol-slider');
+  const fill = q('vol-fill');
+  if (slider) slider.value = pct;
+  if (fill) fill.style.width = pct + '%';
+  const volEl = q('vol');
+  if (volEl) volEl.textContent = pct;
+  wrap.classList.remove('muted');
+  muted = false;
+  const muteBtn = q('mute');
+  if (muteBtn) muteBtn.classList.remove('on');
+  return pct;
+}
+
+function initVolSlider() {
+  const wrap = q('vol-wrap');
+  const slider = q('vol-slider');
+  if (!wrap || !slider) return;
+
+  wrap.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    volActive = true;
+    volDragging = true;
+    wrap.classList.add('dragging');
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+    setVolFromPointer(e);
+  });
+
+  wrap.addEventListener('pointermove', e => {
+    if (!volActive) return;
+    setVolFromPointer(e);
+  });
+
+  async function finishVol(e) {
+    if (!volActive) return;
+    volActive = false;
+    wrap.classList.remove('dragging');
+    try { wrap.releasePointerCapture(e.pointerId); } catch (err) {}
+    const val = setVolFromPointer(e);
+    setLease('volume', val);
+    volDragging = false;
+    await c('volume', val);
+  }
+
+  function cancelVol(e) {
+    if (!volActive) return;
+    volActive = false;
+    volDragging = false;
+    wrap.classList.remove('dragging');
+    try { wrap.releasePointerCapture(e.pointerId); } catch (err) {}
+    clearLease('volume');
+    setTimeout(tick, 0);
+  }
+
+  wrap.addEventListener('pointerup', finishVol);
+  wrap.addEventListener('pointercancel', cancelVol);
+
+  slider.addEventListener('keydown', async e => {
+    let step = 0;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') step = 1;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') step = -1;
+    else if (e.key === 'PageUp') step = 10;
+    else if (e.key === 'PageDown') step = -10;
+    else if (e.key === 'Home') {
+      e.preventDefault();
+      slider.value = 0;
+      if (q('vol-fill')) q('vol-fill').style.width = '0%';
+      if (q('vol')) q('vol').textContent = 0;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      setLease('volume', 0);
+      await c('volume', 0);
+      return;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      slider.value = 100;
+      if (q('vol-fill')) q('vol-fill').style.width = '100%';
+      if (q('vol')) q('vol').textContent = 100;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      setLease('volume', 100);
+      await c('volume', 100);
+      return;
+    }
+    if (step !== 0) {
+      e.preventDefault();
+      const current = Number(slider.value) || 0;
+      const next = Math.max(0, Math.min(100, current + step));
+      slider.value = next;
+      if (q('vol-fill')) q('vol-fill').style.width = next + '%';
+      if (q('vol')) q('vol').textContent = next;
+      wrap.classList.remove('muted');
+      muted = false;
+      if (q('mute')) q('mute').classList.remove('on');
+      setLease('volume', next);
+      await c('volume', next);
+    }
+  });
+}
+initVolSlider();
+
+function toggleMute() {
+  muted = !muted;
+  setLease('mute', muted);
+  q('mute').classList.toggle('on', muted);
+  if (q('vol-wrap')) q('vol-wrap').classList.toggle('muted', muted);
+  const curVol = q('vol-slider') ? q('vol-slider').value : '';
+  q('vol').textContent = muted ? t('ctl.muted', 'MUTED') : curVol;
+  c('mute', muted);
+}
 async function sendToast() {
   const inp = q('toast-input');
   const msg = inp ? inp.value.trim() : '';
@@ -4100,6 +4449,7 @@ async function privAction(action) {
   const question = action === 'resetAdId' ? t('pv.adid.reset.confirm', 'Really reset the advertising ID?')
     : t('pv.cookies.clear.confirm', 'Really clear ad cookies?');
   if (!confirm(question)) return;
+  setBusy(true);
   try {
     const r = await fetch(api('/api/control'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -4114,6 +4464,7 @@ async function privAction(action) {
         : t('pv.adid.reset.same', 'Reset was accepted, but the identifier did not change.');
     }
   } catch (e) { showErr(e.message); return; }
+  finally { setBusy(false); }
   setTimeout(loadPrivacy, 800);
 }
 
