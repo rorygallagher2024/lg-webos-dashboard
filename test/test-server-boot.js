@@ -162,7 +162,7 @@ function phase(name, chaos, next) {
         var beat = path.join(root, 'var/run/tvweb.beat');
         waitFor('the heartbeat', function () { return fs.existsSync(beat); }, 5000, function () {
           waitFor('telemetry at the broker', function () { return broker.last(/^boot\/telemetry$/); }, 20000, function () {
-            if (!broker.last(/^homeassistant\/.*\/config$/)) return fail('no discovery published');
+            waitFor('discovery at the broker', function () { return broker.last(/^homeassistant\/.*\/config$/); }, 20000, function () {
 
             /*
              * Steady use: the dashboard asked once a second, telemetry every 2s.
@@ -212,6 +212,7 @@ function phase(name, chaos, next) {
           }, fail);
         }, fail);
       }, fail);
+    }, fail);
     });
   });
 }

@@ -216,6 +216,7 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:24p
       text-transform:uppercase;color:var(--w60);padding:12px 16px;cursor:pointer;
       white-space:nowrap;margin-bottom:-1px}
 .tabs button:hover{color:var(--w80)}
+.tabs button:focus-visible{outline:2px solid var(--w80);outline-offset:-2px}
 @media (max-width:560px){ .tabs button{padding:12px 10px;letter-spacing:.1em} }
 .tabs button[aria-selected="true"]{color:var(--w100);border-bottom-color:var(--w100)}
 /* The strip scrolls when the tabs do not fit, and its scrollbar is hidden, so
@@ -330,6 +331,7 @@ button{
 }
 button:hover{color:var(--w100);border-color:var(--w70)}
 button:active{background:var(--w10)}
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible{outline:2px solid var(--w80);outline-offset:2px}
 /* Selected, not "good". Green means healthy headroom elsewhere in this UI, so
    selection is shown by inversion instead of by borrowing that meaning. */
 button.on{color:var(--btn-on-fg);background:var(--w100);border-color:var(--w100);font-weight:500}
@@ -669,7 +671,6 @@ button.pill[disabled]{cursor:default;opacity:.45}
 .port.live .pl{color:var(--w100)}
 .port.live .pd{color:var(--w60)}
 @media (max-width:420px){.ports{grid-template-columns:1fr}}
-#err{margin-top:18px;font-size:14px;color:var(--red);border-left:2px solid var(--red);padding:9px 13px;background:var(--w06);display:none}
 @media (max-width:620px){.src{text-align:left}.hero{gap:22px}}
 footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:uppercase;color:var(--w60);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 /* The separator rides on the link so both appear only once a version is known. */
@@ -681,6 +682,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 .stale{opacity:.35;transition:opacity .3s}
 #offline{margin:18px 0 0;font-size:14px;border-left:2px solid var(--red);padding:9px 13px;background:var(--w06)}
 #offline b{font-weight:600;margin-right:6px}
+#err{color:inherit;display:none}
 
 /* ---- hardware specifications strip ---- */
 .hw-specs{
@@ -754,7 +756,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
   </div>
 </header>
 
-<div id="offline" role="status" hidden><b data-t="offline.title">Can’t reach the TV.</b><span data-t="offline.body">It may be switched off or in standby. This page reconnects by itself when the TV is back.</span></div>
+<div id="offline" role="status" hidden><span id="offline-msg"><b data-t="offline.title">Can’t reach the TV.</b> <span data-t="offline.body">It may be switched off or in standby. This page reconnects by itself when the TV is back.</span></span><span id="err" role="alert" style="display:none"></span></div>
 
 
 
@@ -904,7 +906,6 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
 <section class="panel" id="tab-control" role="tabpanel" hidden>
   <div class="col-controls">
     <div class="col-sec" data-t="tab.control">Control</div>
-    <div id="err"></div>
 
     <!-- Panel first: it is the control the remote cannot do easily, and the
          reason a lot of people install this at all. -->
@@ -1015,7 +1016,7 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
       </div>
     </details>
 
-    <div class="set"><div class="lbl" data-t="ctl.toast">Screen notification</div>
+    <div class="set"><div class="lbl"><span data-t="ctl.toast">Screen notification</span> <span class="sub" id="toast-count" translate="no" style="float:right;margin:0">0/120</span></div>
       <form class="toast-form" onsubmit="event.preventDefault();sendToast();">
         <input type="text" id="toast-input" placeholder="Message to display on TV screen..." data-t-placeholder="ctl.toast.placeholder" maxlength="120" autocomplete="off">
         <button type="submit" id="btn-toast" data-t="ctl.toast.send">Send</button>
@@ -1799,8 +1800,11 @@ async function tick() {
     if (!r.ok) throw new Error(r.status === 401 ? t('common.unauthorised', 'Unauthorised \u2014 token missing or wrong') : 'HTTP ' + r.status);
     const d = await r.json();
     q('panels').classList.remove('stale');
-    q('offline').hidden = true;
-    q('err').style.display = 'none';
+    if (!errTimer) {
+      q('offline').hidden = true;
+      if (q('offline-msg')) q('offline-msg').style.display = '';
+      if (q('err')) q('err').style.display = 'none';
+    }
     const firstData = !lastOk;
     lastOk = Date.now();
 
@@ -2145,8 +2149,13 @@ async function tick() {
     if (updRestarting) return;
     q('panels').classList.add('stale');
     if (Date.now() - lastOk <= 6000) return;
-    if (e.offline) q('offline').hidden = false;
-    else showErr(e.message || t('common.unreachable', 'Can’t reach the TV'));
+    if (e.offline) {
+      if (q('offline-msg')) q('offline-msg').style.display = '';
+      if (q('err')) q('err').style.display = 'none';
+      q('offline').hidden = false;
+    } else {
+      showErr(e.message || t('common.unreachable', 'Can’t reach the TV'));
+    }
   }
 }
 
@@ -2495,7 +2504,26 @@ async function rollbackUpdate() {
   q('upd-msg').textContent = r.error || t('server.rollbackFailed', 'The rollback failed.');
 }
 
-function showErr(m) { const e = q('err'); e.textContent = m; e.style.display = 'block'; }
+let errTimer = null;
+function clearErr() {
+  if (errTimer) { clearTimeout(errTimer); errTimer = null; }
+  const e = q('err');
+  if (e) { e.textContent = ''; e.style.display = 'none'; }
+  const offMsg = q('offline-msg');
+  if (offMsg) offMsg.style.display = '';
+  const off = q('offline');
+  const isOffline = q('panels') && q('panels').classList.contains('stale') && (Date.now() - lastOk > 6000);
+  if (off && !isOffline) off.hidden = true;
+}
+
+function showErr(m) {
+  if (errTimer) clearTimeout(errTimer);
+  const off = q('offline'), offMsg = q('offline-msg'), e = q('err');
+  if (offMsg) offMsg.style.display = 'none';
+  if (e) { e.textContent = m; e.style.display = 'inline'; }
+  if (off) off.hidden = false;
+  errTimer = setTimeout(clearErr, 6000);
+}
 
 async function c(action, value) {
   try {
@@ -2504,7 +2532,7 @@ async function c(action, value) {
       body: JSON.stringify({ action, value })
     });
     const j = await r.json();
-    if (!j.ok) showErr(j.error || t('common.actionFailed', 'Action failed')); else q('err').style.display = 'none';
+    if (!j.ok) showErr(j.error || t('common.actionFailed', 'Action failed')); else clearErr();
     setTimeout(tick, 320);
     return j;
   } catch (e) { showErr(e.message); }
@@ -2559,6 +2587,8 @@ async function sendToast() {
   try {
     await c('toast', msg);
     if (inp) inp.value = '';
+    const tc = q('toast-count');
+    if (tc) tc.textContent = '0/120';
     if (btn) {
       const label = btn.textContent;
       btn.textContent = t('ctl.toast.sent', 'Sent');
@@ -2572,6 +2602,13 @@ async function sendToast() {
   } catch (e) {
     if (btn) btn.disabled = false;
   }
+}
+const toastInp = q('toast-input');
+if (toastInp) {
+  toastInp.addEventListener('input', () => {
+    const el = q('toast-count');
+    if (el) el.textContent = toastInp.value.length + '/120';
+  });
 }
 async function openUrl() {
   const inp = q('url-input');
@@ -3686,6 +3723,7 @@ let activeTab = null;
 let isOledSet = null;
 
 function showTab(name) {
+  clearErr();
   // The tab was System for a while, and links and remembered tabs still say so.
   if (name === 'system') name = 'metrics';
   if (!TABS[name]) name = 'control';
@@ -3704,8 +3742,11 @@ function showTab(name) {
     const el = q(id);
     if (el) el.hidden = key !== name;
   }
-  document.querySelectorAll('#tabs button').forEach(b =>
-    b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  document.querySelectorAll('#tabs button').forEach(b => {
+    const isSel = b.dataset.tab === name;
+    b.setAttribute('aria-selected', String(isSel));
+    b.tabIndex = isSel ? 0 : -1;
+  });
   const selected = document.querySelector('#tabs button[aria-selected="true"]');
   if (selected && selected.scrollIntoView) selected.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   try { localStorage.setItem('tab', name); } catch (e) { /* private window */ }
@@ -3726,6 +3767,23 @@ function showTab(name) {
 
 document.querySelectorAll('#tabs button').forEach(b =>
   b.addEventListener('click', () => showTab(b.dataset.tab)));
+const tabsNav = q('tabs');
+if (tabsNav) {
+  tabsNav.addEventListener('keydown', e => {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) === -1) return;
+    const tabs = Array.from(tabsNav.querySelectorAll('button:not([hidden])'));
+    const idx = tabs.indexOf(document.activeElement);
+    if (idx === -1) return;
+    let nextIdx = idx;
+    if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length;
+    else if (e.key === 'Home') nextIdx = 0;
+    else if (e.key === 'End') nextIdx = tabs.length - 1;
+    e.preventDefault();
+    tabs[nextIdx].focus();
+    showTab(tabs[nextIdx].dataset.tab);
+  });
+}
 // Reveals the Game tab on TVs with LG's Game Optimizer.
 loadGame();
 
