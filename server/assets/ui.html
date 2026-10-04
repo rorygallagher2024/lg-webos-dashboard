@@ -1579,6 +1579,14 @@ footer{margin-top:38px;font-size:12px;letter-spacing:.10em;text-transform:upperc
     <div id="cfg-subents" style="padding:10px 0 20px"></div>
   </details>
 
+  <div id="cfg-piccap-box" hidden>
+    <div class="pv-h" data-t="mqtt.piccap">PicCap</div>
+    <div class="pv-sub" data-t="mqtt.piccap.desc">Adds a PicCap Capture switch to Home Assistant, to start and stop the screen capture that drives an ambient light.</div>
+    <div class="cfg-toggles">
+      <button id="cfg-piccap" onclick="cfgToggle('cfg-piccap')" data-t="mqtt.piccap.toggle">PicCap switch</button>
+    </div>
+  </div>
+
   <div class="cfg-save">
     <button id="cfg-save-btn" onclick="saveSettings()" data-t="mqtt.save">Save &amp; restart</button>
     <span class="cfg-msg" id="cfg-msg"></span>
@@ -5305,6 +5313,9 @@ async function loadSettings() {
     if (m.categories) cfgCategories = m.categories;
     if (m.entityCatalogue) cfgCatalogue = m.entityCatalogue;
     renderEntitiesUI();
+    const pc = j.piccap || {};
+    q('cfg-piccap-box').hidden = !(pc.installed || pc.enabled);
+    q('cfg-piccap').classList.toggle('on', !!pc.enabled);
     q('cfg-save-btn').disabled = !j.writable;
     cfgMsg(j.writable
       ? t('mqtt.save.note', 'Saving restarts the server. The dashboard reconnects on its own.')
@@ -5335,6 +5346,7 @@ async function saveSettings() {
     },
     device: { id: q('cfg-devid').value, name: q('cfg-devname').value }
   };
+  if (!q('cfg-piccap-box').hidden) body.piccap = { enabled: q('cfg-piccap').classList.contains('on') };
   // An untouched password field means "keep the stored one", not "clear it".
   const pass = q('cfg-pass').value;
   if (pass !== '' || !cfgPasswordSet) body.mqtt.password = pass;

@@ -70,6 +70,7 @@ var HA_ENTITIES = [
   { id: 'mute', type: 'switch', name: 'Mute', cat: 'controls' },
   { id: 'volume', type: 'number', name: 'Volume', cat: 'controls' },
   { id: 'input_source', type: 'select', name: 'Input Source', cat: 'controls' },
+  { id: 'piccap', type: 'switch', name: 'PicCap Capture', cat: 'controls' },
   { id: 'screen_notification', type: 'text', name: 'Screen Notification', cat: 'controls' },
   { id: 'picture_mode', type: 'select', name: 'Picture Mode (Select)', cat: 'controls' },
   { id: 'energy_saving', type: 'select', name: 'Energy Saving Step', cat: 'controls' },
@@ -1165,6 +1166,22 @@ function buildEntities(opts) {
         }
       });
     }
+
+  // PicCap's screen capture, which feeds an ambient light. Only while PicCap
+  // answers: the server publishes its state, and nothing at all without it.
+  if (opts.piccap) {
+    entities.push({
+      type: 'switch', id: 'piccap',
+      payload: {
+        name: 'PicCap Capture',
+        command_topic: pfx + '/command/piccap/power',
+        state_topic: pfx + '/state/piccap/power',
+        payload_on: 'ON',
+        payload_off: 'OFF',
+        icon: 'mdi:television-ambient-light'
+      }
+    });
+  }
 
   entities.push({
     type: 'binary_sensor', id: 'power',

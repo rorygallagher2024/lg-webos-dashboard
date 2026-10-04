@@ -1,6 +1,8 @@
 /* PicCap's Luna and MQTT controls. Strict ES5. */
+var fs = require('fs');
 var msg = require('./say').msg;
 var SERVICE = 'org.webosbrew.piccap.service/';
+var APP_DIR = '/media/developer/apps/usr/palm/applications/org.webosbrew.piccap';
 var STATUS_CACHE_MS = 4000;
 var lunaFn = null;
 var available = false;
@@ -15,6 +17,8 @@ var lastPublishedState = null;
 var allowControl = false;
 var pollTimer = null;
 var pollIntervalMs = 30000;
+/** @type {function(boolean): void} */
+var onAvailableChange = function () {};
 
 function current() {
   return { available: available, isRunning: isRunning };
@@ -34,6 +38,7 @@ function flush(callbacks, value) {
 function requestStatus() {
   checkedAt = Date.now();
   lunaFn(SERVICE + 'status', {}, function (response, raw) {
+    var was = available;
     if (response && response.returnValue !== false && typeof response.isRunning === 'boolean') {
       available = true;
       isRunning = response.isRunning;
@@ -41,6 +46,8 @@ function requestStatus() {
       available = false;
       isRunning = null;
     }
+    // Home Assistant's switch exists only while PicCap answers.
+    if (available !== was) onAvailableChange(available);
 
     var callbacks = waiters;
     waiters = [];
@@ -148,6 +155,7 @@ function handleMqttCommand(action, value, cb) {
 function init(opts) {
   opts = opts || {};
   lunaFn = opts.luna;
+  if (typeof opts.onAvailableChange === 'function') onAvailableChange = opts.onAvailableChange;
   var interval = parseInt(opts.pollIntervalMs, 10);
   pollIntervalMs = interval >= 1000 && interval <= 600000 ? interval : 30000;
   return {
@@ -167,4 +175,9 @@ function initNoop() {
   };
 }
 
-module.exports = { init: init, initNoop: initNoop };
+/* Whether the app is on the TV: a look at its folder, without asking its service. */
+function installed() {
+  try { return fs.existsSync(APP_DIR); } catch (e) { return false; }
+}
+
+module.exports = { init: init, initNoop: initNoop, installed: installed, APP_DIR: APP_DIR };

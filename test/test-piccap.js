@@ -37,7 +37,8 @@ function luna(uri, payload, cb) {
   process.nextTick(function () { cb(response || null, JSON.stringify(response || {})); });
 }
 
-var piccap = piccapModule.init({ luna: luna });
+var availability = [];
+var piccap = piccapModule.init({ luna: luna, onAvailableChange: function (a) { availability.push(a); } });
 piccap.attachMqtt({ client: client, prefix: 'room/tv', allowControl: true });
 
 function status(isRunning) {
@@ -65,6 +66,7 @@ function testInitialStatus() {
   assert.strictEqual(lastState().payload, 'OFF');
   assert.strictEqual(lastState().retain, true);
   assert.deepEqual(piccap.getState(), { isRunning: false }, 'a valid status discovers PicCap');
+  assert.deepEqual(availability, [true], 'discovery hears once that PicCap answers, not on the missing check before');
   var publishedCount = publishes.length;
   replies.push(status(false));
   pollThen(function () {
@@ -185,6 +187,8 @@ function testPollingTimer() {
   setTimeout(function () {
     assert.strictEqual(calls.length, callsBeforeTimer + 1, 'periodic refresh checks PicCap status');
     assert.strictEqual(calls[callsBeforeTimer].uri, 'org.webosbrew.piccap.service/status');
+    assert.deepEqual(availability, [true, false, true], 'and again each time it goes and comes back, not while it keeps answering');
+    assert.strictEqual(piccapModule.installed(), require('fs').existsSync(piccapModule.APP_DIR), 'installed is the app folder');
     console.log('  ✓ PicCap detection, MQTT commands, telemetry, and retained state');
     console.log('ALL test-piccap.js assertions passed!\n');
     process.exit(0);

@@ -359,10 +359,13 @@ var liveState = stateModule.init({
   }
 });
 
+// Set once MQTT is up: PicCap appearing or going changes the discovery.
+var piccapChanged = function () {};
 var piccap = CONFIG.piccap && CONFIG.piccap.enabled === true
   ? piccapTransport.init({
       luna: luna,
-      pollIntervalMs: CONFIG.piccap.pollIntervalMs
+      pollIntervalMs: CONFIG.piccap.pollIntervalMs,
+      onAvailableChange: function () { piccapChanged(); }
     })
   : piccapTransport.initNoop();
 
@@ -759,6 +762,11 @@ function setupHomeAssistant() {
     }
   });
   piccap.attachMqtt({ client: mqttClient, prefix: pfx, allowControl: CONFIG.allowControl });
+  piccapChanged = function () {
+    if (!mqttClient.connected) return;
+    console.log('mqtt: PicCap ' + (piccap.getState() ? 'answering' : 'gone') + ' - republishing discovery');
+    publishDiscovery();
+  };
 
   MQTT_STATUS.broker = CONFIG.mqtt.host + ':' + mqttClient.opts.port;
   MQTT_STATUS.tls = useTls;
@@ -805,7 +813,8 @@ function setupHomeAssistant() {
       lgRows: lgsRows,
       allowPower: CONFIG.allowPower,
       isOled: oled.getIsOled(),
-      updatesElsewhere: fromHomebrewChannel()
+      updatesElsewhere: fromHomebrewChannel(),
+      piccap: piccap.getState() !== null
     });
 
     entities = ha.filterWithholds(entities, {

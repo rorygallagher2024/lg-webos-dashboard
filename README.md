@@ -496,19 +496,9 @@ Edit those in `config.json` and redeploy, or edit `/var/lib/tvweb/config.json` o
 
 ### Optional PicCap control
 
-PicCap is an app capturing the TV's screen and sending it to a Hyperion client that transforms it into an ambient-light system. PicCap MQTT control is off by default. It can be enabled via config in `/var/lib/tvweb/config.json`
+[PicCap](https://github.com/TBSniller/piccap) captures the TV's screen for a Hyperion server, which drives an ambient light from it. Where PicCap is installed, the MQTT settings offer a **PicCap switch**. With it on, Home Assistant gets a **PicCap Capture** switch that starts and stops the capture, so the light uses nothing while it is off. It is off by default, since checking PicCap's state starts a process on the TV every 30 seconds. In `config.json` it is `"piccap": { "enabled": true }`, with an optional `pollIntervalMs`.
 
-```
-"piccap": {
-  "enabled": true,
-  "pollIntervalMs": 30000
-}
-``` 
-
-Polling interval is optional, and defaults to 30 seconds. 
-The retained state topic `<topicPrefix>/state/piccap/power` carries `ON` or `OFF`; 
-the command topic `<topicPrefix>/command/piccap/power` accepts `ON` to start PicCap capturing and `OFF` to stop it. 
-Commands require `allowControl` to be `true`. Telemetry includes boolean `piccap.power` when PicCap is available. 
+The retained state topic `<topicPrefix>/state/piccap/power` carries `ON` or `OFF`, and the command topic `<topicPrefix>/command/piccap/power` accepts `ON` or `OFF`. Commands need `allowControl`. Telemetry includes boolean `piccap.power` while PicCap answers.
 
 ### Using MQTT without Home Assistant
 

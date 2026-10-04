@@ -854,6 +854,23 @@ function createMockRes(cb) {
     assert.strictEqual(written.apps, undefined, 'the saved file has no apps section');
   }, '127.0.0.1:8080');
 
+  // The PicCap switch: only piccap.enabled is written, and only when sent
+  fs.writeFileSync(cfgFile, JSON.stringify({ piccap: { enabled: false, pollIntervalMs: 5000 } }));
+  init({ allowControl: true, token: '', web: { enabled: false }, piccap: { enabled: false } });
+  routes.init({ getMqttStatus: function () { return { state: 'off' }; } });
+  getJson('/api/settings', '127.0.0.1', function (r, b) {
+    assert.deepEqual(b.piccap, { installed: false, enabled: false }, 'offered only where PicCap is installed or still on');
+  });
+  postJson('/api/settings', { mqtt: { telemetryIntervalMs: 10000 }, device: { id: 'lg' }, piccap: { enabled: true, pollIntervalMs: 1 } }, '127.0.0.1', function (r) {
+    assert.strictEqual(r.statusCode, 200);
+    assert.deepEqual(JSON.parse(fs.readFileSync(cfgFile, 'utf8')).piccap, { enabled: true, pollIntervalMs: 5000 });
+  }, '127.0.0.1:8080');
+  postJson('/api/settings', { mqtt: { telemetryIntervalMs: 10000 }, device: { id: 'lg' } }, '127.0.0.1', function (r) {
+    assert.strictEqual(r.statusCode, 200);
+    assert.strictEqual(JSON.parse(fs.readFileSync(cfgFile, 'utf8')).piccap.enabled, true, 'a form without the switch leaves it alone');
+  }, '127.0.0.1:8080');
+  fs.unlinkSync(cfgFile);
+
   // Upload: request rules, all refused before a byte is written
   init(open);
   ['multipart/form-data; boundary=x', 'application/json', 'text/plain', 'application/octet-stream; charset=binary',

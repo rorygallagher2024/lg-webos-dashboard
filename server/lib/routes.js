@@ -11,6 +11,7 @@ var say = require('./say');
 var msg = say.msg;
 var ha = require('./ha');
 var fetchLib = require('./fetch');
+var piccapLib = require('./piccap');
 
 var HA_CATEGORIES = ha.HA_CATEGORIES;
 var HA_ENTITIES = ha.HA_ENTITIES;
@@ -218,6 +219,10 @@ function validateSettings(j) {
   out.device.id = str(d.id);
   if (!/^[a-z0-9_]{1,64}$/.test(out.device.id)) e.push('device id must be 1-64 characters of a-z, 0-9 or _');
   out.device.name = str(d.name);
+
+  // Only when the form sends it, so a client without the switch leaves it be.
+  // piccap.pollIntervalMs stays as the file has it: writeSettings merges keys.
+  if (j && j.piccap && typeof j.piccap === 'object') out.piccap = { enabled: j.piccap.enabled === true };
 
   return { errors: e, value: out };
 }
@@ -1219,6 +1224,11 @@ function handleRequest(req, res) {
       device: {
         id: (config.device && config.device.id) || '',
         name: (config.device && config.device.name) || ''
+      },
+      // The switch is offered where PicCap is installed, or still on without it.
+      piccap: {
+        installed: piccapLib.installed(),
+        enabled: !!(config.piccap && config.piccap.enabled === true)
       },
       /* Ages rather than timestamps: the TV's clock is often minutes off the
          browser's, and a negative "last publish" reads as a fault. */
